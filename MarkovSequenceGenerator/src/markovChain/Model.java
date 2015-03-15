@@ -9,6 +9,11 @@ import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 
+/**
+ * NB: *This class used by regexEnrichment*
+ * @author berald01
+ *
+ */
 public class Model {
 	
 	private Map<String, HashMultiset<Character>> actualModel;
