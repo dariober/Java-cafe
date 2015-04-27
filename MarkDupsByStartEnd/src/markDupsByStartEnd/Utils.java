@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 public class Utils {
@@ -71,7 +72,10 @@ public class Utils {
 		//	sb.append(x + " ");
 		//}
 		// System.err.println(sb.toString());
-		Process p = new ProcessBuilder(cmd).start();
+		ProcessBuilder pb = new ProcessBuilder(cmd);
+		Map<String, String> env = pb.environment();
+		env.put("LC_ALL", "C");
+		Process p = pb.start();
 		return p;
 	}
 
