@@ -117,6 +117,7 @@ public class Main {
 				rec.setDuplicateReadFlag(true);
 				nRecsDups++;
 			} else {
+				rec.setDuplicateReadFlag(false); // <- NB: If read was marked dup. Now it is unmarked 
 				dedupBlock= Arrays.copyOfRange(line, 0, 5);
 				nRecsNonDups++;
 			}

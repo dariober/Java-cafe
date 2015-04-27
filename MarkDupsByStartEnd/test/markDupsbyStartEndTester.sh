@@ -4,11 +4,15 @@ shopt -s expand_aliases
 
 alias markdups='java -jar ~/Tritume/MarkDupsByStartEnd.jar'
 
-echo "TEST: HELP"
+echo "TEST: CAN SHOW HELP"
 markdups -h 
 
-echo "TEST: NOTHING MARKED OR CHANGED"
+echo "TEST: DOES NOTHING MARKED OR CHANGED"
 markdups -i test_data/testfile-1.sam > out.sam
 diff test_data/testfile-1.sam out.sam # diff should return nothing
 
-echo "TEST: "
+echo "TEST: SAM OUTPUT PASSES Picard Validation"
+# ...
+
+echo "TEST: TAG FIELDS ARE ALL RETURNED"
+# ...
