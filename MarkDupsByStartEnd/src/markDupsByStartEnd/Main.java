@@ -82,11 +82,13 @@ public class Main {
 		// =============================================================================
 		File tmp = File.createTempFile("markDupsByStartEnd.", ".tmp.txt");
 		tmp.deleteOnExit();
+		System.err.println("Writing to\n" + tmp.getAbsolutePath());
 		BufferedWriter br= new BufferedWriter(new FileWriter(tmp));
 		
 		// Read through sam file
+		int naln= 0;
 		for(SAMRecord rec : sam){
-			
+			naln++;
 			// Write out the reads unchanged that contain any one of these flags:
 			if(rec.getReadPairedFlag() || 
 			   rec.getReadUnmappedFlag() || 
@@ -97,11 +99,19 @@ public class Main {
 			} else {
 				br.write(Utils.samRecordToTabLine(rec, ignoreReadGroup));
 			}
+			if(naln % 1000000 == 0){
+				System.err.println(naln);
+			}
 		}
 		br.close();
-		// Sort tab separated file to bring together duplicates.
-		InputStream sortedTabFile= Utils.sortTabAndGetOuput(tmp.getAbsolutePath()).getInputStream();
+		System.err.println("N. records skipped\t" + nRecsSkipped);
+
+		System.err.println("File size: " + new File(tmp.getAbsolutePath()).length());
 		
+		// Sort tab separated file to bring together duplicates.
+		Process p= Utils.sortTabAndGetOuput(tmp.getAbsolutePath());
+		InputStream sortedTabFile= p.getInputStream();
+
 		// Mark duplicates
 		// Thanks to the sorting above, the first read of each block is the
 		// best one and is left unchanged. The following reads are marked.
@@ -123,10 +133,18 @@ public class Main {
 				nRecsNonDups++;
 			}
 			outbam.addAlignment(rec);
+			if((nRecsDups + nRecsNonDups + nRecsSkipped) % 1000000 == 0){
+				System.err.println(nRecsDups + nRecsNonDups + nRecsSkipped + " records processed.");
+			}
+		}
+		int pex= p.exitValue();
+		if(pex != 0){
+			System.err.println("Sorting exited with error " + pex);
+			p.getErrorStream();
+			// TODO: Code to return the exit message
 		}
 		
 		outbam.close();
-		System.err.println("N. records skipped\t" + nRecsSkipped);
 		System.err.println("N. duplicates\t" + nRecsDups);
 		System.err.println("N. non duplicates\t" + nRecsNonDups);
 		System.exit(0);
