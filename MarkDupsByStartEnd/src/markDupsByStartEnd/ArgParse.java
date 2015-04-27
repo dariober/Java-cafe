@@ -41,6 +41,11 @@ public class ArgParse {
 			.help("If set, output reads will be unsorted.\n"
 					+ "By default reads are cooridnate sorted.");
 		
+		parser.addArgument("--ignoreReadGroup", "-rg")
+			.action(Arguments.storeTrue())
+			.help("Ignore read group info. If set, positional duplicates sharing *different* read groups "
+					+ "will be considered duplicates.");
+		
 		parser.addArgument("--validationStringency", "-vs")
 			.type(String.class)
 			.required(false)

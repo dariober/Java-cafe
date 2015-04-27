@@ -17,16 +17,17 @@ public class Utils {
 	/**
 	 * Turn a SAMRecord to string tab separated useful to define read blocks
 	 * @param rec
+	 * @param ignoreReadGroup 
 	 * @return
 	 */
-	public static String samRecordToTabLine(SAMRecord rec){
+	public static String samRecordToTabLine(SAMRecord rec, boolean ignoreReadGroup){
 		/* Create a tab separated file with the following fields.
 
 		MEMO: Order of columns must be consistent with sortTabAndGetOuput()
 		*/
-
-		String rg= (rec.getAttribute("RG") != null) ? rec.getReadGroup().getId() : "";
-		Integer as= (Integer) ((rec.getAttribute("AS") != null) ? rec.getAttribute("AS") : -1000000);
+		
+		String rg= (rec.getAttribute("RG") == null || ignoreReadGroup) ? "" : rec.getReadGroup().getId();
+		Integer as= (Integer) ((rec.getAttribute("AS") != null) ? rec.getAttribute("AS") : -1000000); // If AS is NA put a large -ve number.
 		Integer nm= (Integer) rec.getAttribute("NM"); 
 		
 		StringBuilder sb= new StringBuilder();

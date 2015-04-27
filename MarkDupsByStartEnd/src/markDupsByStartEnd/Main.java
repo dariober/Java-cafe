@@ -33,6 +33,7 @@ public class Main {
 		String outsam= opts.getString("outsam");
 		boolean unsortedOutput= opts.getBoolean("unsortedOutput");
 		String vs= opts.getString("validationStringency");
+		boolean ignoreReadGroup= opts.getBoolean("ignoreReadGroup");
 		
 		ValidationStringency validationStringency = null;
 		if(vs.equals("SILENT")){
@@ -94,7 +95,7 @@ public class Main {
 				outbam.addAlignment(rec);
 				nRecsSkipped++;
 			} else {
-				br.write(Utils.samRecordToTabLine(rec));
+				br.write(Utils.samRecordToTabLine(rec, ignoreReadGroup));
 			}
 		}
 		br.close();
