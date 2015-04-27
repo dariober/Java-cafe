@@ -66,7 +66,7 @@ public class Utils {
 		cmd.add("-k8,8n");  // Edit distance NM
 		cmd.add(fileToSort);
 		
-		// ** Uncomment for debugging **
+		// ** Uncomment for debugging ****
 		//StringBuilder sb= new StringBuilder();
 		//for(String x : cmd){
 		//	sb.append(x + " ");
