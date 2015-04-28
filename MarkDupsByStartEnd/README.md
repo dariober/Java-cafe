@@ -15,8 +15,24 @@ Reads should be trimmed to remove adapter sequences before alignment.
 However, low quality 3'ends should not be trimmed as they would artificially make the sequence fragment size
 shorter. `bwa mem` copes well with low quality ends.
 
+By default reads are duplicates if they share: chrom, start, end, strand, read group. Read group can be ignored with `-rg`.
+
 **NB** If the same library is sequenced more than once with different read length it is not correct to consider the 3'end. 
 Use `Picard/MarkDuplicates` in this case. 
+
+Usage:
+
+    java -jar MarkDupsByStartEnd.jar -h
+    java -jar MarkDupsByStartEnd.jar -i <aln.bam|aln.sam> -o <md.bam|md.sam>
+    samtools view -u aln.bam | java -jar MarkDupsByStartEnd.jar -i - | samtools view ...
+
+You probably want to use `java -Xmx2g`. 
+Input need not to be sorted. Output will be coordinate sorted by default.
+
+## Requirements 
+
+GNU Coreutils `sort` is required to be on `PATH`. `sort` is used to sort reads after unclipping.
+Use `sort` version 8.6+ to take advantage of parallel threading.
 
 # TODO
 
