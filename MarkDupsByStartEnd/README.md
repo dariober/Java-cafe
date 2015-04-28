@@ -1,6 +1,6 @@
 # Mark duplicates by read 5' and 3'end position
 
-Get compiled jar from [releases](https://github.com/dariober/Java-cafe/releases).
+Get compiled `MarkDupsByStartEnd.jar` from [releases](https://github.com/dariober/Java-cafe/releases).
 
 `MarkDupsByStartEnd.jar` marks *single end* reads as duplicates if they share the
 same **start and end** position. 
@@ -26,7 +26,9 @@ Usage:
 
     java -jar MarkDupsByStartEnd.jar -h
     java -jar MarkDupsByStartEnd.jar -i <aln.bam|aln.sam> -o <md.bam|md.sam>
-    samtools view -u aln.bam | java -jar MarkDupsByStartEnd.jar -i - | samtools view ...
+    samtools view -u aln.bam \
+    | java -jar MarkDupsByStartEnd.jar -i - \
+    | samtools view ...
 
 If reading from stdin remember to include the sam header, e.g. `samtools view -u/-b/-h`, otherwise
 the output will be headerless. 
