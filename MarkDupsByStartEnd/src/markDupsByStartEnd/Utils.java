@@ -4,15 +4,35 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextTagCodec;
 
-import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
 public class Utils {
+
+	/** Calculates a score for the read which is the sum of scores over Q15. 
+	 * Code taken from 
+	 * https://github.com/samtools/htsjdk/blob/master/src/java/htsjdk/samtools/DuplicateScoringStrategy.java
+	 * */
+	public static short getSumOfBaseQualities(final SAMRecord rec) {
+		short score = 0;
+		for (final byte b : rec.getBaseQualities()) {
+			if (b >= 15) score += b;
+			}
+		return score;
+	}
+
+	
+	/**
+	 * This var is related to samRecordToTabLine().
+	 * samRecordToTabLine returns a tab separated string where the last n fields
+	 * make up a sam line. OFFSET gives the index of the start of the sam fields.
+	 * OFFSET is 0 based, so if the sam record starts at the 8th field, then OFFSET= 7.
+	 */
+	public static final int OFFSET= 7;
 
 	/**
 	 * Turn a SAMRecord to string tab separated useful to define read blocks
@@ -23,26 +43,26 @@ public class Utils {
 	public static String samRecordToTabLine(SAMRecord rec, boolean ignoreReadGroup){
 		/* Create a tab separated file with the following fields.
 
-		MEMO: Order of columns must be consistent with sortTabAndGetOuput()
+		MEMO: 1: Order of columns must be consistent with sortTabAndGetOuput()!
+		MEMO: 2: Keep OFFSET consistent! 
 		*/
 		
-		String rg= (rec.getAttribute("RG") == null || ignoreReadGroup) ? "" : rec.getReadGroup().getId();
-		Integer as= (Integer) ((rec.getAttribute("AS") != null) ? rec.getAttribute("AS") : -1000000); // If AS is NA put a large -ve number.
-		Integer nm= (Integer) rec.getAttribute("NM"); 
+		String rg= (rec.getAttribute("RG") == null || ignoreReadGroup) ? "\b" : rec.getReadGroup().getId();
+		// Integer as= (Integer) ((rec.getAttribute("AS") != null) ? rec.getAttribute("AS") : -1000000); // If AS is NA put a large -ve number.
+		// Integer nm= (Integer) rec.getAttribute("NM"); 
 		
 		StringBuilder sb= new StringBuilder();
 		sb.
-		append(rec.getContig()).append("\t").         // Duplicate defining fields
-		append(rec.getUnclippedStart()).append("\t").
-		append(rec.getUnclippedEnd()).append("\t").
-		append(rec.getReadNegativeStrandFlag()).append("\t").
-		append(rg).append("\t").
+		append(rec.getContig()).append("\t").         		   // 1.Duplicate defining fields
+		append(rec.getUnclippedStart()).append("\t").		   // 2.
+		append(rec.getUnclippedEnd()).append("\t").            // 3.
+		append(rec.getReadNegativeStrandFlag()).append("\t").  // 4.
+		append(rg).append("\t").                               // 5.
+
+		append(getSumOfBaseQualities(rec)).append("\t").       // 6. Discriminatory fields
+		append(rec.getMappingQuality()).append("\t").          // 7. 
 		
-		append(rec.getMappingQuality()).append("\t"). // Discriminatory fields
-		append(as).append("\t").
-		append(nm).append("\t").
-		
-		append(rec.getSAMString());					  // Data (original sam record)
+		append(rec.getSAMString());					           // 8. Data (original sam record)
 		return sb.toString();
 	}
 	public static Process sortTabAndGetOuput(String fileToSort) throws IOException, InterruptedException{
@@ -55,6 +75,7 @@ public class Utils {
 		
 		List<String> cmd= new ArrayList<String>();
 		cmd.add("sort");
+		cmd.add("-t\t");
 		cmd.add("-s");
 		cmd.add("-S 1G");
 		cmd.add("-k1,1");   // chrom
@@ -62,40 +83,24 @@ public class Utils {
 		cmd.add("-k3,3n");  // end
 		cmd.add("-k4,4");   // strand
 		cmd.add("-k5,5");   // read group
-		cmd.add("-k6,6nr"); // mapq
-		cmd.add("-k7,7nr"); // Alignment score AS
-		cmd.add("-k8,8n");  // Edit distance NM
+		cmd.add("-k6,6nr"); // sum of base quals
+		cmd.add("-k7,7nr"); // mapq
 		cmd.add(fileToSort);
-		
-		// ** Uncomment for debugging ****
-		//StringBuilder sb= new StringBuilder();
-		//for(String x : cmd){
-		//	sb.append(x + " ");
-		//}
-		// System.err.println(sb.toString());
+
 		ProcessBuilder pb = new ProcessBuilder(cmd);
 		Map<String, String> env = pb.environment();
 		env.put("LC_ALL", "C");
 		Process p = pb.start();		
 		return p;
 	}
-
-	// UNUSED
-	public static void checkExitSortTabAndGetOuput(Process p) throws IOException{
-		
-		if(p.exitValue() != 0){
-			System.err.println("Exited with code: " + p.exitValue());
-			BufferedReader er = new BufferedReader(
-		            new InputStreamReader(p.getErrorStream()));
-			String line = null;
-			while ((line = er.readLine()) != null) {
-				System.err.println(line);
-			}
-			System.exit(1);
-		} 
-		
-	}
 	
+	/**
+	 * Convert a string array to a SAMRecord. USeful to make SAMRecords from 
+	 * a string which e.g. comes from a tab separated file.
+	 * @param array
+	 * @param hdr
+	 * @return
+	 */
 	public static SAMRecord arrayToSAMRecord(String[] array, SAMFileHeader hdr){
 		SAMRecord rec= new SAMRecord(hdr);
 		rec.setReadName(array[0]);
@@ -116,5 +121,24 @@ public class Utils {
 		}
 		return rec;
 	} 
+	
+	/**
+	 * Get a name for a tmp file using "filename" as basename.
+	 * Essentially append to filename a suffix making sure that filename+suffix is not
+	 * an existing file.
+	 * Really you should use File.createTempFile() but I got problems with large tmp files.
+	 * @param filename
+	 * @return
+	 */
+	public static String getTmpFilename(String filename){
+		String suffix= "markdup.tmp";
+		int n= 0;
+		String tmpname= filename + "." + n + "." + suffix;
+		while( new File(tmpname).isFile() ){
+			n++;
+			tmpname= filename + "." + n + "." + suffix;
+		}
+		return tmpname;
+	}
 		
 }

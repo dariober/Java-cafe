@@ -7,7 +7,7 @@ alias markdups='java -jar ~/Tritume/MarkDupsByStartEnd.jar'
 echo "TEST: CAN SHOW HELP"
 markdups -h 
 
-echo "TEST: DOES NOTHING MARKED OR CHANGED"
+echo "TEST: NOTHING MARKED OR CHANGED"
 markdups -i test_data/testfile-1.sam > out.sam
 diff test_data/testfile-1.sam out.sam # diff should return nothing
 

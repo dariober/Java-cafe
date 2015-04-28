@@ -23,7 +23,7 @@ import htsjdk.samtools.ValidationStringency;
 public class Main {
 
 	public static void main(String[] args) throws IOException, InterruptedException {
-
+	
 		int MAX_RECORDS_IN_RAM= 1000000;
 		
 		/* Start parsing arguments */
@@ -53,6 +53,7 @@ public class Main {
 		long nRecsSkipped= 0;
 		long nRecsDups= 0;
 		long nRecsNonDups= 0;
+		long nRecsTot= 0;
 			
 		// Prepare to read input sam/bam
 		SamReaderFactory sf = SamReaderFactory.makeDefault().validationStringency(validationStringency);
@@ -85,15 +86,16 @@ public class Main {
 		
 		// Prepare tab delimited file that will be used to put together duplicate blocks
 		// =============================================================================
-		File tmp = new File(insam + ".tmp"); // File.createTempFile("markDupsByStartEnd.", ".tmp.txt");
+		String tmpname= Utils.getTmpFilename(insam); 
+		File tmp = new File(tmpname); // File.createTempFile("markDupsByStartEnd.", ".tmp.txt");
 		tmp.deleteOnExit();
-		System.err.println("Writing to\n" + tmp.getAbsolutePath());
 		BufferedWriter br= new BufferedWriter(new FileWriter(tmp));
 		
+		// System.err.println("Writing to\n" + tmp.getAbsolutePath()); // DEBUGGING
+		
 		// Read through sam file
-		int naln= 0;
 		for(SAMRecord rec : sam){
-			naln++;
+			nRecsTot++;
 			// Write out the reads unchanged that contain any one of these flags:
 			if(rec.getReadPairedFlag() || 
 			   rec.getReadUnmappedFlag() || 
@@ -104,14 +106,14 @@ public class Main {
 			} else {
 				br.write(Utils.samRecordToTabLine(rec, ignoreReadGroup));
 			}
-			if(naln % 1000000 == 0){
-				System.err.println(naln);
+			if(nRecsTot % 1000000 == 0){
+				System.err.println("First pass. " + nRecsTot + " read.");
 			}
 		}
 		br.close();
-		System.err.println("N. records skipped\t" + nRecsSkipped);
-
-		System.err.println("File size: " + new File(tmp.getAbsolutePath()).length());
+		
+		// System.err.println("N. records skipped\t" + nRecsSkipped); // DEBUGGING
+		// System.err.println("File size: " + new File(tmp.getAbsolutePath()).length()); // DEBUGGING
 		
 		// Sort tab separated file to bring together duplicates.
 		Process p= Utils.sortTabAndGetOuput(tmp.getAbsolutePath());
@@ -122,11 +124,10 @@ public class Main {
 		// best one and is left unchanged. The following reads are marked.
 		BufferedReader obr= new BufferedReader(new InputStreamReader(sortedTabFile));
 		String str;
-		String[] dedupBlock= null;
-		int OFFSET= 8; // Index where sam record fields start. 0 based. 
+		String[] dedupBlock= null; 
 		while ((str = obr.readLine()) != null) {
 			String[] line= str.split("\t");
-			String[] array= Arrays.copyOfRange(line, OFFSET, line.length);
+			String[] array= Arrays.copyOfRange(line, Utils.OFFSET, line.length);
 			SAMRecord rec= Utils.arrayToSAMRecord(array, outhdr);
 			String[] currentBlock= Arrays.copyOfRange(line, 0, 5);
 			if(Arrays.deepEquals(currentBlock, dedupBlock)){
@@ -138,22 +139,25 @@ public class Main {
 				nRecsNonDups++;
 			}
 			outbam.addAlignment(rec);
-			if((nRecsDups + nRecsNonDups + nRecsSkipped) % 1000000 == 0){
-				System.err.println(nRecsDups + nRecsNonDups + nRecsSkipped + " records processed.");
+			if((nRecsDups + nRecsNonDups) % 1000000 == 0){
+				System.err.println(nRecsDups + nRecsNonDups + " records processed.");
 			}
 		}
 		obr.close();
 		outbam.close();
-		int pex= p.exitValue();
-		if(pex != 0){
-			// Not sure this is useful at all. If there was an error, you wouldn't get here!
-			System.err.println("Sorting exited with error " + pex);
-			p.getErrorStream();
-			// TODO: Code to return the exit message
+		if(p.exitValue() != 0){
+			System.err.println("Sorting exited with error " + p.exitValue());
+			BufferedReader ebr= new BufferedReader(new InputStreamReader(p.getErrorStream()));
+			String x;
+			while ((x = ebr.readLine()) != null) {
+				System.err.println(x);
+			}
+			System.exit(1);
 		}
-		
-		System.err.println("N. duplicates\t" + nRecsDups);
-		System.err.println("N. non duplicates\t" + nRecsNonDups);
+		System.err.println("N. alignment total\t" + nRecsTot);
+		System.err.println("N. alignment skipped\t" + nRecsSkipped);
+		System.err.println("N. alignment duplicates\t" + nRecsDups);
+		System.err.println("N. alignment non duplicates\t" + nRecsNonDups);
 		System.exit(0);
 	}
 
