@@ -15,6 +15,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
@@ -52,12 +53,16 @@ public class Main {
 		long nRecsSkipped= 0;
 		long nRecsDups= 0;
 		long nRecsNonDups= 0;
-		
+			
 		// Prepare to read input sam/bam
-		SamReader sam= SamReaderFactory.
-				makeDefault().
-				validationStringency(validationStringency).
-				open(new File(insam));
+		SamReaderFactory sf = SamReaderFactory.makeDefault().validationStringency(validationStringency);
+		SamReader sam= null;
+		if(!insam.equals("-")){
+			sam= sf.open(new File(insam));
+		} else {
+			SamInputResource resource= SamInputResource.of(System.in);
+			sam= sf.open(resource);			
+		}
 		
 		// Prepare output file
 		// ===================
@@ -80,7 +85,7 @@ public class Main {
 		
 		// Prepare tab delimited file that will be used to put together duplicate blocks
 		// =============================================================================
-		File tmp = File.createTempFile("markDupsByStartEnd.", ".tmp.txt");
+		File tmp = new File(insam + ".tmp"); // File.createTempFile("markDupsByStartEnd.", ".tmp.txt");
 		tmp.deleteOnExit();
 		System.err.println("Writing to\n" + tmp.getAbsolutePath());
 		BufferedWriter br= new BufferedWriter(new FileWriter(tmp));
@@ -137,14 +142,16 @@ public class Main {
 				System.err.println(nRecsDups + nRecsNonDups + nRecsSkipped + " records processed.");
 			}
 		}
+		obr.close();
+		outbam.close();
 		int pex= p.exitValue();
 		if(pex != 0){
+			// Not sure this is useful at all. If there was an error, you wouldn't get here!
 			System.err.println("Sorting exited with error " + pex);
 			p.getErrorStream();
 			// TODO: Code to return the exit message
 		}
 		
-		outbam.close();
 		System.err.println("N. duplicates\t" + nRecsDups);
 		System.err.println("N. non duplicates\t" + nRecsNonDups);
 		System.exit(0);

@@ -26,7 +26,7 @@ public class ArgParse {
 		parser.addArgument("--insam", "-i")
 			.type(String.class)
 			.required(true)
-			.help("Input sam or bam file");
+			.help("Input sam or bam file. Use - to read from stdin.");
 		
 		parser.addArgument("--outsam", "-o")
 			.type(String.class)
