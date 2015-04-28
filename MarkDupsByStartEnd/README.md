@@ -25,7 +25,9 @@ Use `Picard/MarkDuplicates` in this case.
 Usage:
 
     java -jar MarkDupsByStartEnd.jar -h
+    
     java -jar MarkDupsByStartEnd.jar -i <aln.bam|aln.sam> -o <md.bam|md.sam>
+    
     samtools view -u aln.bam \
     | java -jar MarkDupsByStartEnd.jar -i - \
     | samtools view ...
