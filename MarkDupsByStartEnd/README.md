@@ -1,5 +1,7 @@
 # Mark duplicates by read 5' and 3'end position
 
+Get compiled jar from [releases](https://github.com/dariober/Java-cafe/releases).
+
 `MarkDupsByStartEnd.jar` marks *single end* reads as duplicates if they share the
 same **start and end** position. 
 In contrast, `Picard/MrkDuplicates` and `samtools rmdup` consider SE reads as duplicates if their 5'end
@@ -10,8 +12,6 @@ to or larger then the library fragment size.
 Also reads marked as unmapped, failed, supplementary are not considered.
 
 ## Recommended usage
-
-Get compiled jar from [releases](https://github.com/dariober/Java-cafe/releases).
 
 Reads should be trimmed to remove adapter sequences before alignment. 
 However, low quality 3'ends should not be trimmed as they would artificially make the sequence fragment size
@@ -62,7 +62,8 @@ Use `sort` version 8.6+ to take advantage of parallel threading.
 	  --unsortedOutput, -us  If set, output reads will be unsorted.
 	                         By default reads are coordinate sorted. (default: false)
 	  --ignoreReadGroup, -rg
-	                         Ignore read group info. If set, positional duplicates sharing *different* read groups will be considered duplicates. (default: false)
+	                         Ignore read group info. If set, positional duplicates sharing *different* 
+	                         read groups will be considered duplicates. (default: false)
 	  --validationStringency {SILENT,LENIENT,STRICT}, -vs {SILENT,LENIENT,STRICT}
 	                         Set picard validation stringency level. (default: SILENT)
 	  --version, -v
