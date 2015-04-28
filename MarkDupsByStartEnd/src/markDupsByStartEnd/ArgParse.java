@@ -39,7 +39,7 @@ public class ArgParse {
 		parser.addArgument("--unsortedOutput", "-us")
 			.action(Arguments.storeTrue())
 			.help("If set, output reads will be unsorted.\n"
-					+ "By default reads are cooridnate sorted.");
+					+ "By default reads are coordinate sorted.");
 		
 		parser.addArgument("--ignoreReadGroup", "-rg")
 			.action(Arguments.storeTrue())

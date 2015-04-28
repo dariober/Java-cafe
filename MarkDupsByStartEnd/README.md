@@ -1,4 +1,11 @@
-Start project
+# Mark duplicates by read start and end position
+
+`MarkDupsByStartEnd.jar` marks *single end* reads as duplicates if they share the
+same **start and end** position. 
+In contrast, `Picard/MrkDuplicates` and `samtools rmdup` consider SE reads as duplicates if their 5'end
+are the same and they ignore the 3'end. This approach is overly conservative if read length is is comparable
+to or larger then the library fragment size.    
+
 
 # TODO
 
