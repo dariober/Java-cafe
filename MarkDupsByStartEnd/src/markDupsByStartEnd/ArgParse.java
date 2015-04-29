@@ -32,8 +32,7 @@ public class ArgParse {
 			.type(String.class)
 			.required(false)
 			.setDefault("-")
-			.help("Output file.\n"
-					+ "Format will be sam or bam depending on extension.\n"
+			.help("Output file. Format will be sam or bam depending on extension.\n"
 					+ "Use - to print SAM to stdout.");
 		
 		parser.addArgument("--unsortedOutput", "-us")

@@ -7,7 +7,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import net.sourceforge.argparse4j.inf.Namespace;
 import htsjdk.samtools.SAMFileHeader.SortOrder;
@@ -23,7 +26,7 @@ import htsjdk.samtools.ValidationStringency;
 public class Main {
 
 	public static void main(String[] args) throws IOException, InterruptedException {
-	
+			
 		int MAX_RECORDS_IN_RAM= 1000000;
 		
 		/* Start parsing arguments */
@@ -94,7 +97,12 @@ public class Main {
 		// System.err.println("Writing to\n" + tmp.getAbsolutePath()); // DEBUGGING
 		
 		// Read through sam file
+		List<SAMRecordExt> lst= new ArrayList<SAMRecordExt>(); // STUB
+
 		for(SAMRecord rec : sam){
+			
+			lst.add(new SAMRecordExt(rec, ignoreReadGroup)); //STUB
+						
 			nRecsTot++;
 			// Write out the reads unchanged that contain any one of these flags:
 			if(rec.getReadPairedFlag() || 
@@ -107,10 +115,18 @@ public class Main {
 				br.write(Utils.samRecordToTabLine(rec, ignoreReadGroup));
 			}
 			if(nRecsTot % 1000000 == 0){
-				System.err.println("First pass. " + nRecsTot + " read.");
+				System.err.println("First pass: " + nRecsTot + " read.");
 			}
 		}
 		br.close();
+		
+		/* STUB FOR DEVEL
+		Collections.sort(lst, new SAMRecordExtComparer());
+		for(SAMRecordExt x : lst){
+			System.err.println(x.getSamrecord().getSAMString());
+		}
+		*/
+
 		
 		// System.err.println("N. records skipped\t" + nRecsSkipped); // DEBUGGING
 		// System.err.println("File size: " + new File(tmp.getAbsolutePath()).length()); // DEBUGGING

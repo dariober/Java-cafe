@@ -75,5 +75,7 @@ Use `sort` version 8.6+ to take advantage of parallel threading.
 
 ## TODO
 
-* `sort`: Use `getOutputStream` to feed sort instead of using a tmp file?
- 
+* `sort`: ~~Use `getOutputStream` to feed sort instead of using a tmp file?~~ 
+Move away from unix sort altogether! Implement external sorting of lists of samrecords.
+* If read group information in reads is inconsistent with the header, e.g. after `samtools merge`, you get a very cryptic error message.
+Capture that error and make it more comprehensible. The fix is just to use `-rg`.   

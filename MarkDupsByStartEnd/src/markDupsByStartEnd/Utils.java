@@ -7,6 +7,7 @@ import htsjdk.samtools.TextTagCodec;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -53,7 +54,7 @@ public class Utils {
 		
 		StringBuilder sb= new StringBuilder();
 		sb.
-		append(rec.getContig()).append("\t").         		   // 1.Duplicate defining fields
+		append(rec.getReferenceIndex()).append("\t").          // 1.Duplicate defining fields
 		append(rec.getUnclippedStart()).append("\t").		   // 2.
 		append(rec.getUnclippedEnd()).append("\t").            // 3.
 		append(rec.getReadNegativeStrandFlag()).append("\t").  // 4.
@@ -65,6 +66,28 @@ public class Utils {
 		append(rec.getSAMString());					           // 8. Data (original sam record)
 		return sb.toString();
 	}
+	
+	/**
+	 * Equivalent to bash dirname: Retunr file's dir from full path.
+	 * NB: Return empty string if there is no full path.  
+	 * @param filename
+	 * @return
+	 */
+	private static String dirname(String filename){
+		
+		String sep= System.getProperty("file.separator");
+		String[] path= filename.split(sep);
+		String[] dir= Arrays.copyOfRange(path, 0, path.length - 1);
+
+		StringBuilder sb = new StringBuilder();
+		for(String p : dir){
+			sb.append(p);
+			sb.append(sep);
+		}
+		return sb.toString();
+		
+	}
+	
 	public static Process sortTabAndGetOuput(String fileToSort) throws IOException, InterruptedException{
 		/* Sort tab file by the fields defining the duplicate block,  then by discriminatory fields.
 		Now you have reads at the same position, same strand, same RG next to each other,
@@ -73,12 +96,23 @@ public class Utils {
 		MEMO: Order of columns must be consistent with the one returned by samRecordToTabLine()
 		*/
 		
+		// Get dir of inout file as tmp dir for sort. The default /tmp might run out of space.
+		
+		String tmpdir= dirname(fileToSort);
+		if(!new File(tmpdir).isDirectory()){
+			// If this dir doesn't exist, sort will use TMPDIR without warning.
+			// So check it does exist.
+			System.err.println("Selected tmp dir '" + tmpdir + "' does not exist!");
+			System.exit(1);
+		}
+				
 		List<String> cmd= new ArrayList<String>();
 		cmd.add("sort");
+		cmd.add("-T" + tmpdir);
 		cmd.add("-t\t");
 		cmd.add("-s");
-		cmd.add("-S 1G");
-		cmd.add("-k1,1");   // chrom
+		cmd.add("-S1G");
+		cmd.add("-k1,1n");  // chrom (actually index of chrom)
 		cmd.add("-k2,2n");  // start
 		cmd.add("-k3,3n");  // end
 		cmd.add("-k4,4");   // strand
@@ -86,7 +120,9 @@ public class Utils {
 		cmd.add("-k6,6nr"); // sum of base quals
 		cmd.add("-k7,7nr"); // mapq
 		cmd.add(fileToSort);
-
+		
+		// System.err.println(cmd.toString());
+		
 		ProcessBuilder pb = new ProcessBuilder(cmd);
 		Map<String, String> env = pb.environment();
 		env.put("LC_ALL", "C");
