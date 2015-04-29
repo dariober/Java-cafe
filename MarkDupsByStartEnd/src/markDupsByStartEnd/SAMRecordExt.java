@@ -7,16 +7,16 @@ import htsjdk.samtools.SAMRecord;
  * Extended SAMRecord class to be used to appropriately sort records for
  * duplicate marking. Hold basequality score, RG field, unclipped start and end etc...  
  */
-public class SAMRecordExt {
+public class SAMRecordExt implements Comparable<SAMRecordExt>{
 	
 	private short baseQualityScore= -1;
 	private SAMRecord samrecord;
 	private String rgtag;
-	private Integer referenceIndex;
-	private int unclippedStart;
-	private int unclippedEnd;
-	private boolean negStrand;
-	private int mapq;
+	//private Integer referenceIndex;
+	//private int unclippedStart;
+	//private int unclippedEnd;
+	//private boolean negStrand;
+	//private int mapq;
 	
 	/* C O N S T R U C T O R */
 	public SAMRecordExt() {
@@ -25,13 +25,13 @@ public class SAMRecordExt {
 
 	public SAMRecordExt(SAMRecord rec, boolean ignoreReadGroup) {
 		
-		this.referenceIndex= rec.getReferenceIndex();
-		this.unclippedStart= rec.getUnclippedStart();
-		this.unclippedEnd= rec.getUnclippedEnd();
-		this.negStrand= rec.getReadNegativeStrandFlag();
+		//this.referenceIndex= rec.getReferenceIndex();
+		//this.unclippedStart= rec.getUnclippedStart();
+		//this.unclippedEnd= rec.getUnclippedEnd();
+		//this.negStrand= rec.getReadNegativeStrandFlag();
 		this.rgtag= getRGtag(rec, ignoreReadGroup);
 		this.baseQualityScore= getSumOfBaseQualities(rec);
-		this.mapq= rec.getMappingQuality();
+		//this.mapq= rec.getMappingQuality();
 		this.samrecord= rec;
 		
 	}
@@ -65,6 +65,33 @@ public class SAMRecordExt {
 		return rgtag;
 	}
 
+	/*  Comparator  */	
+	public int compareTo(SAMRecordExt other) {
+	    int i = this.samrecord.getReferenceIndex()- other.samrecord.getReferenceIndex();
+	    if (i != 0) return i;
+	    
+	    i = this.samrecord.getUnclippedStart() - other.samrecord.getUnclippedStart();
+	    if (i != 0) return i;
+	    
+	    i = this.samrecord.getUnclippedStart() - other.samrecord.getUnclippedStart();
+	    if (i != 0) return i;
+	    
+	    i= Boolean.valueOf(this.samrecord.getReadNegativeStrandFlag()).compareTo(other.samrecord.getReadNegativeStrandFlag());
+	    if (i != 0) return i;
+	    
+	    i= this.rgtag.compareTo(other.rgtag);
+	    if (i != 0) return i;
+	    
+	    i= other.baseQualityScore - this.baseQualityScore; // DESC: other - this
+	    if (i != 0) return i;
+	    
+	    i= other.samrecord.getMappingQuality() - this.samrecord.getMappingQuality();
+	    if (i != 0) return i;
+		
+	    return i;
+	    
+	}
+	
 	/* S E T T E R S  A N D  G E T T E R S */
 	
 	public SAMRecord getSamrecord() {
@@ -81,46 +108,6 @@ public class SAMRecordExt {
 
 	public void setRgtag(String rgtag) {
 		this.rgtag = rgtag;
-	}
-
-	public Integer getReferenceIndex() {
-		return referenceIndex;
-	}
-
-	public void setReferenceIndex(Integer referenceIndex) {
-		this.referenceIndex = referenceIndex;
-	}
-
-	public int getUnclippedStart() {
-		return unclippedStart;
-	}
-
-	public void setUnclippedStart(int unclippedStart) {
-		this.unclippedStart = unclippedStart;
-	}
-
-	public int getUnclippedEnd() {
-		return unclippedEnd;
-	}
-
-	public void setUnclippedEnd(int unclippedEnd) {
-		this.unclippedEnd = unclippedEnd;
-	}
-
-	public boolean isNegStrand() {
-		return negStrand;
-	}
-
-	public void setNegStrand(boolean negStrand) {
-		this.negStrand = negStrand;
-	}
-
-	public int getMapq() {
-		return mapq;
-	}
-
-	public void setMapq(int mapq) {
-		this.mapq = mapq;
 	}
 
 	public short getBaseQualityScore() {

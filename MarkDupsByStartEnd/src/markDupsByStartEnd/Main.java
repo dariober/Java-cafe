@@ -120,14 +120,12 @@ public class Main {
 		}
 		br.close();
 		
-		/* STUB FOR DEVEL
-		Collections.sort(lst, new SAMRecordExtComparer());
+		// STUB FOR DEVEL
+		Collections.sort(lst);
 		for(SAMRecordExt x : lst){
-			System.err.println(x.getSamrecord().getSAMString());
+			System.err.println(x.getSamrecord().getSAMString().trim());
 		}
-		*/
-
-		
+				
 		// System.err.println("N. records skipped\t" + nRecsSkipped); // DEBUGGING
 		// System.err.println("File size: " + new File(tmp.getAbsolutePath()).length()); // DEBUGGING
 		
