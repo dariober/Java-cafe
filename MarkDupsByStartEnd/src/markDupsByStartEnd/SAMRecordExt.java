@@ -1,5 +1,8 @@
 package markDupsByStartEnd;
 
+import java.util.Arrays;
+
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 
 /**
@@ -10,7 +13,7 @@ import htsjdk.samtools.SAMRecord;
 public class SAMRecordExt implements Comparable<SAMRecordExt>{
 	
 	private short baseQualityScore= -1;
-	private SAMRecord samrecord;
+	private SAMRecord samRecord;
 	private String rgtag;
 	//private Integer referenceIndex;
 	//private int unclippedStart;
@@ -23,6 +26,21 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 
 	}	
 
+	/**
+	 * Use a string, typically read from file, to produce a SAMRecord and 
+	 * additional fields for SAMRecordExt.
+	 * @param samRecordExtAsString String to be converted to record, tab separated.
+	 * @param hdr
+	 */
+	public SAMRecordExt(String samRecordExtAsString, SAMFileHeader hdr) {
+		String[] samRecordExtArray= samRecordExtAsString.split("\t");
+		// Make sure these indexes are correct!!
+		this.baseQualityScore= Short.parseShort(samRecordExtArray[0]); 
+		this.rgtag= samRecordExtArray[1];
+		String[] array= Arrays.copyOfRange(samRecordExtArray, 2, samRecordExtArray.length);
+		this.samRecord= Utils.arrayToSAMRecord(array, hdr);
+	}	
+	
 	public SAMRecordExt(SAMRecord rec, boolean ignoreReadGroup) {
 		
 		//this.referenceIndex= rec.getReferenceIndex();
@@ -32,7 +50,7 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 		this.rgtag= getRGtag(rec, ignoreReadGroup);
 		this.baseQualityScore= getSumOfBaseQualities(rec);
 		//this.mapq= rec.getMappingQuality();
-		this.samrecord= rec;
+		this.samRecord= rec;
 		
 	}
 	
@@ -55,7 +73,7 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 	/**
 	 * Return a string of read group ID or an not-available character if RG is
 	 * not avalilable or not required.
-	 * @param samrecord
+	 * @param samRecord
 	 * @param ignoreReadGroup Should the read group be ignored? If true an NA string is returned.
 	 * @return
 	 */
@@ -65,23 +83,30 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 		return rgtag;
 	}
 
+	/* Return object as string suitable to be written to file read
+	 * line by line later.
+	 * @see java.lang.Object#toString()
+	 */
 	public String toString(){
-		// TODO: Return object as string suitable to be read line by line later.
-		return this.toString();
+		StringBuilder sb= new StringBuilder();
+		sb.append(baseQualityScore).append("\t")
+		.append(rgtag).append("\t")
+		.append(samRecord.getSAMString().trim());
+		return sb.toString();
 	}
 	
 	/*  Comparator  */	
 	public int compareTo(SAMRecordExt other) {
-	    int i = this.samrecord.getReferenceIndex()- other.samrecord.getReferenceIndex();
+	    int i = this.samRecord.getReferenceIndex()- other.samRecord.getReferenceIndex();
 	    if (i != 0) return i;
 	    
-	    i = this.samrecord.getUnclippedStart() - other.samrecord.getUnclippedStart();
+	    i = this.samRecord.getUnclippedStart() - other.samRecord.getUnclippedStart();
 	    if (i != 0) return i;
 	    
-	    i = this.samrecord.getUnclippedStart() - other.samrecord.getUnclippedStart();
+	    i = this.samRecord.getUnclippedStart() - other.samRecord.getUnclippedStart();
 	    if (i != 0) return i;
 	    
-	    i= Boolean.valueOf(this.samrecord.getReadNegativeStrandFlag()).compareTo(other.samrecord.getReadNegativeStrandFlag());
+	    i= Boolean.valueOf(this.samRecord.getReadNegativeStrandFlag()).compareTo(other.samRecord.getReadNegativeStrandFlag());
 	    if (i != 0) return i;
 	    
 	    i= this.rgtag.compareTo(other.rgtag);
@@ -90,7 +115,7 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 	    i= other.baseQualityScore - this.baseQualityScore; // DESC: other - this
 	    if (i != 0) return i;
 	    
-	    i= other.samrecord.getMappingQuality() - this.samrecord.getMappingQuality();
+	    i= other.samRecord.getMappingQuality() - this.samRecord.getMappingQuality();
 	    if (i != 0) return i;
 		
 	    return i;
@@ -99,12 +124,12 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 	
 	/* S E T T E R S  A N D  G E T T E R S */
 	
-	public SAMRecord getSamrecord() {
-		return samrecord;
+	public SAMRecord getSamRecord() {
+		return samRecord;
 	}
 
-	public void setSamrecord(SAMRecord samrecord) {
-		this.samrecord = samrecord;
+	public void setSamRecord(SAMRecord samrecord) {
+		this.samRecord = samrecord;
 	}
 
 	public String getRgtag() {

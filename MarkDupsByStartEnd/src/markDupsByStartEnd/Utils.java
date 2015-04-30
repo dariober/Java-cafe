@@ -5,12 +5,18 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextTagCodec;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.zip.GZIPOutputStream;
 
 public class Utils {
 
@@ -26,6 +32,51 @@ public class Utils {
 		return score;
 	}
 
+	/**
+	 * Get a name for a tmp file using "filename" as basename.
+	 * Essentially append to filename a suffix making sure that filename+suffix is not
+	 * an existing file.
+	 * Really you should use File.createTempFile() but I got problems with large tmp files.
+	 * @param filename
+	 * @return
+	 */
+	public static String getTmpFilename(String filename, String suffix){
+		int n= 0;
+		String tmpname= filename + "." + String.format("%04d", n) + "." + suffix;
+		while( new File(tmpname).isFile() ){
+			n++;
+			tmpname= filename + "." + String.format("%04d", n) + "." + suffix;
+		}
+		return tmpname;
+	}
+
+	
+	/**
+	 * Write to file the given list. The output file name is returned.
+	 * The output file name is created by taking an input template name. 
+	 * Each element of lst converted with .toString(); Output is gzip'd. 
+	 * @param lst List of object (SAMRecordExt)
+	 * @param fileBaseName basename to create the tmp output file.
+	 * @throws UnsupportedEncodingException
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 */
+	public static String writeListToGzipFile(List<SAMRecordExt> lst, String fileBaseName) throws UnsupportedEncodingException, FileNotFoundException, IOException{
+		
+		String tmpFileName= Utils.getTmpFilename(fileBaseName, "markdup.tmp.gz"); 
+		// tmpfile.deleteOnExit();
+		
+		// BufferedWriter writer = new BufferedWriter(new FileWriter(tmpname + n));					
+		OutputStreamWriter writer = 
+				new OutputStreamWriter(
+					new GZIPOutputStream(
+						new FileOutputStream(tmpFileName)), "UTF-8");
+		for(SAMRecordExt x : lst){
+			writer.write(x.toString() + "\n");
+		}
+		writer.close();
+		return tmpFileName;
+	}
 	
 	/**
 	 * This var is related to samRecordToTabLine().
@@ -157,24 +208,5 @@ public class Utils {
 		}
 		return rec;
 	} 
-	
-	/**
-	 * Get a name for a tmp file using "filename" as basename.
-	 * Essentially append to filename a suffix making sure that filename+suffix is not
-	 * an existing file.
-	 * Really you should use File.createTempFile() but I got problems with large tmp files.
-	 * @param filename
-	 * @return
-	 */
-	public static String getTmpFilename(String filename){
-		String suffix= "markdup.tmp";
-		int n= 0;
-		String tmpname= filename + "." + n + "." + suffix;
-		while( new File(tmpname).isFile() ){
-			n++;
-			tmpname= filename + "." + n + "." + suffix;
-		}
-		return tmpname;
-	}
-		
+			
 }

@@ -3,16 +3,19 @@ package markDupsByStartEnd;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import net.sourceforge.argparse4j.inf.Namespace;
@@ -93,17 +96,14 @@ public class Main {
 		
 		// Prepare tab delimited file that will be used to put together duplicate blocks
 		// =============================================================================
-		String tmpname= Utils.getTmpFilename(insam); 
-		File tmp = new File(tmpname); // File.createTempFile("markDupsByStartEnd.", ".tmp.txt");
+		String tmpname= Utils.getTmpFilename(insam, "markdup.tmp"); 
+		File tmp = new File(tmpname);
 		tmp.deleteOnExit();
 		BufferedWriter br= new BufferedWriter(new FileWriter(tmp));
-		
-		// System.err.println("Writing to\n" + tmp.getAbsolutePath()); // DEBUGGING
-		
+				
 		// Read through sam file
 		List<SAMRecordExt> lst= new ArrayList<SAMRecordExt>(); // STUB
 		List<String> lstTmpFilenames= new ArrayList<String>(); //STUB
-		int n= 0; //STUB
 		for(SAMRecord rec : sam){
 									
 			nRecsTot++;
@@ -122,17 +122,13 @@ public class Main {
 				 * See if ArrayList can be saved as ser and then read back one item at a time
 				 * as you would for file.
 				lst.add(new SAMRecordExt(rec, ignoreReadGroup));
-				if(lst.size() > 5000000){
+				if(lst.size() >= 1000000){
+
 					Collections.sort(lst);
-					OutputStreamWriter writer = new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(tmpname + n)), "UTF-8");
-					// BufferedWriter writer = new BufferedWriter(new FileWriter(tmpname + n));
-					lstTmpFilenames.add(tmpname + n);
-					for(SAMRecordExt x : lst){
-						writer.write(x.toString());
-					}
-					writer.close();
+					String tmpFileName= Utils.writeListToGzipFile(lst, insam);
+					lstTmpFilenames.add(tmpFileName);
 					lst.clear();
-					n++;
+					
 				} */
 			}
 			if(nRecsTot % 1000000 == 0){
@@ -140,11 +136,45 @@ public class Main {
 			}
 		}
 		br.close();
-		// STUB: Code to write to file the last chunk of data in lst. Note that lst might be empty now. 
+		// STUB: Write to file the last chunk of data in lst. 
+		Collections.sort(lst);
+		String tmpFileName= Utils.writeListToGzipFile(lst, insam);
+		lstTmpFilenames.add(tmpFileName);
+			
 		// STUB: Code to read in parallel the files in lstTmpFilenames
-		// STUB: Each top line from files converted to SAMREcordExt, put in a list and sorted
-		// STUB: Process the stream of SAMREcordExt to pick mark duplicates,
-		
+		// Open a buffered reader for each file.
+		List<BufferedReader> brLst= new ArrayList<BufferedReader>();
+		for( String f : lstTmpFilenames ){
+			InputStream fileStream = new FileInputStream(f);
+			InputStream gzipStream = new GZIPInputStream(fileStream);
+			Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
+			BufferedReader buffered = new BufferedReader(decoder);
+			brLst.add(buffered);
+		}
+		// STUB: Each top line from files converted to SAMREcordExt, put in a list and sorted		
+		/*
+		List<SAMRecordExt> mergeLst= new ArrayList<SAMRecordExt>();
+		while(brLst.size() > 0){
+			for( int i= 0; i < brLst.size(); i++ ){
+				BufferedReader ibr= brLst.get(i);
+				String line= ibr.readLine();
+				if(line == null){
+					ibr.close();
+					brLst.remove(i);
+				} else {
+					SAMRecordExt srec= new SAMRecordExt(line, outbam.getFileHeader());
+					mergeLst.add(srec);
+				}
+			}
+			Collections.sort(mergeLst);
+			System.err.println(mergeLst);
+			// * Stream to code to pick the first read of each block and mark the remaining reads.
+			// -> Need method SAMRecordExt.blockPosition() to get the position of the current 
+			// read and compare to the next one. 
+			String[] dedupBlock= null;	
+			mergeLst.clear();
+		} */
+				
 		// Sort tab separated file to bring together duplicates.
 		Process p= Utils.sortTabAndGetOuput(tmp.getAbsolutePath());
 		InputStream sortedTabFile= p.getInputStream();
