@@ -65,6 +65,11 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 		return rgtag;
 	}
 
+	public String toString(){
+		// TODO: Return object as string suitable to be read line by line later.
+		return this.toString();
+	}
+	
 	/*  Comparator  */	
 	public int compareTo(SAMRecordExt other) {
 	    int i = this.samrecord.getReferenceIndex()- other.samrecord.getReferenceIndex();

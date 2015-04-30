@@ -3,14 +3,17 @@ package markDupsByStartEnd;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.zip.GZIPOutputStream;
 
 import net.sourceforge.argparse4j.inf.Namespace;
 import htsjdk.samtools.SAMFileHeader.SortOrder;
@@ -22,6 +25,7 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.cram.encoding.writer.Writer;
 
 public class Main {
 
@@ -98,11 +102,10 @@ public class Main {
 		
 		// Read through sam file
 		List<SAMRecordExt> lst= new ArrayList<SAMRecordExt>(); // STUB
-
+		List<String> lstTmpFilenames= new ArrayList<String>(); //STUB
+		int n= 0; //STUB
 		for(SAMRecord rec : sam){
-			
-			lst.add(new SAMRecordExt(rec, ignoreReadGroup)); //STUB
-						
+									
 			nRecsTot++;
 			// Write out the reads unchanged that contain any one of these flags:
 			if(rec.getReadPairedFlag() || 
@@ -113,21 +116,34 @@ public class Main {
 				nRecsSkipped++;
 			} else {
 				br.write(Utils.samRecordToTabLine(rec, ignoreReadGroup));
+				
+				/* STUB: Accumulate records until you hit a certain limit (5M recs?)
+				 * Then sort, write to tmp file. 
+				 * See if ArrayList can be saved as ser and then read back one item at a time
+				 * as you would for file.
+				lst.add(new SAMRecordExt(rec, ignoreReadGroup));
+				if(lst.size() > 5000000){
+					Collections.sort(lst);
+					OutputStreamWriter writer = new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(tmpname + n)), "UTF-8");
+					// BufferedWriter writer = new BufferedWriter(new FileWriter(tmpname + n));
+					lstTmpFilenames.add(tmpname + n);
+					for(SAMRecordExt x : lst){
+						writer.write(x.toString());
+					}
+					writer.close();
+					lst.clear();
+					n++;
+				} */
 			}
 			if(nRecsTot % 1000000 == 0){
 				System.err.println("First pass: " + nRecsTot + " read.");
 			}
 		}
 		br.close();
-		
-		// STUB FOR DEVEL
-		Collections.sort(lst);
-		for(SAMRecordExt x : lst){
-			System.err.println(x.getSamrecord().getSAMString().trim());
-		}
-				
-		// System.err.println("N. records skipped\t" + nRecsSkipped); // DEBUGGING
-		// System.err.println("File size: " + new File(tmp.getAbsolutePath()).length()); // DEBUGGING
+		// STUB: Code to write to file the last chunk of data in lst. Note that lst might be empty now. 
+		// STUB: Code to read in parallel the files in lstTmpFilenames
+		// STUB: Each top line from files converted to SAMREcordExt, put in a list and sorted
+		// STUB: Process the stream of SAMREcordExt to pick mark duplicates,
 		
 		// Sort tab separated file to bring together duplicates.
 		Process p= Utils.sortTabAndGetOuput(tmp.getAbsolutePath());
