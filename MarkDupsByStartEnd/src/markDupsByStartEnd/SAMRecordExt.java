@@ -15,6 +15,7 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 	private short baseQualityScore= -1;
 	private SAMRecord samRecord;
 	private String rgtag;
+	private String[] block;
 	//private Integer referenceIndex;
 	//private int unclippedStart;
 	//private int unclippedEnd;
@@ -39,19 +40,70 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 		this.rgtag= samRecordExtArray[1];
 		String[] array= Arrays.copyOfRange(samRecordExtArray, 2, samRecordExtArray.length);
 		this.samRecord= Utils.arrayToSAMRecord(array, hdr);
+		this.setBlockPosition();
 	}	
 	
 	public SAMRecordExt(SAMRecord rec, boolean ignoreReadGroup) {
 		
-		//this.referenceIndex= rec.getReferenceIndex();
-		//this.unclippedStart= rec.getUnclippedStart();
-		//this.unclippedEnd= rec.getUnclippedEnd();
-		//this.negStrand= rec.getReadNegativeStrandFlag();
 		this.rgtag= getRGtag(rec, ignoreReadGroup);
 		this.baseQualityScore= getSumOfBaseQualities(rec);
-		//this.mapq= rec.getMappingQuality();
 		this.samRecord= rec;
-		
+		this.setBlockPosition();
+	}
+
+	/* M E T H O D S */
+
+	/* Return object as string suitable to be written to file read
+	 * line by line later.
+	 * @see java.lang.Object#toString()
+	 */
+	public String toString(){
+		StringBuilder sb= new StringBuilder();
+		sb.append(baseQualityScore).append("\t")
+		.append(rgtag).append("\t")
+		.append(samRecord.getSAMString().trim());
+		return sb.toString();
+	}
+	
+	/* S E T T E R S  A N D  G E T T E R S */
+	
+	public SAMRecord getSamRecord() {
+		return samRecord;
+	}
+
+	public void setSamRecord(SAMRecord samrecord) {
+		this.samRecord = samrecord;
+	}
+
+	public String getRgtag() {
+		return rgtag;
+	}
+
+	public void setRgtag(String rgtag) {
+		this.rgtag = rgtag;
+	}
+
+	public short getBaseQualityScore() {
+		return baseQualityScore;
+	}
+	
+	/**
+	 * Array with identifying the position of the record:
+	 * chrom, start, end, strand, rg tag.
+	 * @return
+	 */
+	public void setBlockPosition() {
+		String[] block= {
+				String.valueOf(samRecord.getReferenceIndex()),
+				String.valueOf(samRecord.getUnclippedStart()),
+				String.valueOf(samRecord.getUnclippedEnd()),
+				String.valueOf(samRecord.getReadNegativeStrandFlag()),
+				this.rgtag
+		};
+		this.block= block;
+	}
+	public String[] getBlockPosition() {
+		return block;
 	}
 	
 	public void setBaseQualityScore(short baseQualityScore) {
@@ -83,19 +135,8 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 		return rgtag;
 	}
 
-	/* Return object as string suitable to be written to file read
-	 * line by line later.
-	 * @see java.lang.Object#toString()
-	 */
-	public String toString(){
-		StringBuilder sb= new StringBuilder();
-		sb.append(baseQualityScore).append("\t")
-		.append(rgtag).append("\t")
-		.append(samRecord.getSAMString().trim());
-		return sb.toString();
-	}
 	
-	/*  Comparator  */	
+	/*  C O M P A R A T O R  */	
 	public int compareTo(SAMRecordExt other) {
 	    int i = this.samRecord.getReferenceIndex()- other.samRecord.getReferenceIndex();
 	    if (i != 0) return i;
@@ -103,7 +144,7 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 	    i = this.samRecord.getUnclippedStart() - other.samRecord.getUnclippedStart();
 	    if (i != 0) return i;
 	    
-	    i = this.samRecord.getUnclippedStart() - other.samRecord.getUnclippedStart();
+	    i = this.samRecord.getUnclippedEnd() - other.samRecord.getUnclippedEnd();
 	    if (i != 0) return i;
 	    
 	    i= Boolean.valueOf(this.samRecord.getReadNegativeStrandFlag()).compareTo(other.samRecord.getReadNegativeStrandFlag());
@@ -120,28 +161,6 @@ public class SAMRecordExt implements Comparable<SAMRecordExt>{
 		
 	    return i;
 	    
-	}
-	
-	/* S E T T E R S  A N D  G E T T E R S */
-	
-	public SAMRecord getSamRecord() {
-		return samRecord;
-	}
-
-	public void setSamRecord(SAMRecord samrecord) {
-		this.samRecord = samrecord;
-	}
-
-	public String getRgtag() {
-		return rgtag;
-	}
-
-	public void setRgtag(String rgtag) {
-		this.rgtag = rgtag;
-	}
-
-	public short getBaseQualityScore() {
-		return baseQualityScore;
 	}
 	
 }

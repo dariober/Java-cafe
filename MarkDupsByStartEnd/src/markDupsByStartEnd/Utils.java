@@ -12,7 +12,6 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -64,13 +63,14 @@ public class Utils {
 	public static String writeListToGzipFile(List<SAMRecordExt> lst, String fileBaseName) throws UnsupportedEncodingException, FileNotFoundException, IOException{
 		
 		String tmpFileName= Utils.getTmpFilename(fileBaseName, "markdup.tmp.gz"); 
-		// tmpfile.deleteOnExit();
+		File tmpFile= new File(tmpFileName);
+		tmpFile.deleteOnExit();
 		
 		// BufferedWriter writer = new BufferedWriter(new FileWriter(tmpname + n));					
 		OutputStreamWriter writer = 
 				new OutputStreamWriter(
 					new GZIPOutputStream(
-						new FileOutputStream(tmpFileName)), "UTF-8");
+						new FileOutputStream(tmpFile)), "UTF-8");
 		for(SAMRecordExt x : lst){
 			writer.write(x.toString() + "\n");
 		}

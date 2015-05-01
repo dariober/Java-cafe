@@ -2,10 +2,21 @@
 
 set -e
 
-## cd ~/svn_git/Java-cafe/trunk/MarkDupsByStartEnd/test/test_data
+pathToJar=$1
+if [[ $1 == "" ]]; 
+then
+echo -e "\nThis is a test suite"
+echo -e "\nUSAGE"
+echo "markDupsbyStartEndTester.sh /path/to/MarkDupsByStartEnd.jar"
+echo ""
+exit 1
+fi
 
 shopt -s expand_aliases
-alias markdups='java -jar ~/Tritume/MarkDupsByStartEnd.jar -vs STRICT'
+alias markdups='java -jar '$1' -vs STRICT'
+
+## START TESTING
+## =============
 
 echo "
 0: CAN SHOW VERSION"
