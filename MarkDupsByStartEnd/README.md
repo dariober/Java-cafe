@@ -38,9 +38,6 @@ the output will be headerless.
 You probably want to use `java -Xmx2g`. 
 Input need not to be sorted. Output will be coordinate sorted by default.
 
-~~ Requirments: GNU Coreutils `sort` is required to be on `PATH`. `sort` is used to sort reads after unclipping.
-Use `sort` version 8.6+ to take advantage of parallel threading.~~
-
 ## Help
 
 (Might be outdated).
