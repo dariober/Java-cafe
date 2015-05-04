@@ -7,7 +7,10 @@ if [[ $1 == "" ]];
 then
 echo -e "\nThis is a test suite"
 echo -e "\nUSAGE"
-echo "markDupsbyStartEndTester.sh /path/to/MarkDupsByStartEnd.jar"
+echo -e "Move to dir containing the test file. E.g"
+echo -e "cd /path/to/test_data/"
+echo -e "\nThen execute:"
+echo "/path/to/markDupsbyStartEndTester.sh /path/to/MarkDupsByStartEnd.jar"
 echo ""
 exit 1
 fi

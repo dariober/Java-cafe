@@ -27,7 +27,7 @@ public class Main {
 
 	public static void main(String[] args) throws IOException, InterruptedException {
 			
-		int MAX_RECORDS_IN_RAM= 1000000;
+		int MAX_RECORDS_IN_RAM= 100000;
 		
 		/* Start parsing arguments */
 		Namespace opts= ArgParse.argParse(args);
@@ -79,7 +79,7 @@ public class Main {
 		SAMFileWriter outbam;
 		if(outsam.equals("-")){
 			outbam= new SAMFileWriterFactory().
-					setMaxRecordsInRam(MAX_RECORDS_IN_RAM).
+//					setMaxRecordsInRam(MAX_RECORDS_IN_RAM).
 					makeSAMWriter(outhdr, false, System.out);	
 		} else {
 			outbam= new SAMFileWriterFactory().
@@ -87,9 +87,8 @@ public class Main {
 					makeSAMOrBAMWriter(outhdr, false, new File(outsam));
 		}
 		
-		// Prepare tab delimited file that will be used to put together duplicate blocks
-		// =============================================================================
 		// Read through sam file
+		// =====================
 		List<SAMRecordExt> lst= new ArrayList<SAMRecordExt>();
 		List<String> lstTmpFilenames= new ArrayList<String>();
 		for(SAMRecord rec : sam){
@@ -107,8 +106,20 @@ public class Main {
 				 * Then sort, write to tmp file. 
 				 * See if ArrayList can be saved as ser and then read back one item at a time
 				 * as you would for file. */
-				lst.add(new SAMRecordExt(rec, ignoreReadGroup));
-				if(lst.size() >= 1000000){
+				
+				try{
+					lst.add(new SAMRecordExt(rec, ignoreReadGroup));
+				} catch (NullPointerException e) {		
+					System.err.println("Error reading read #" + nRecsTot 
+							+ "\nAre the RG tags in reads are consistent with the RG dictionary in the sam header?\n"
+							+ "To ignore the RG information use the --ignoreReadGroup/-rg option.\n"
+							+ "\nStack Trace:");
+					e.printStackTrace();
+					System.err.printf("\nRead was\n%s\n", rec.getSAMString());
+					System.exit(1);
+				}
+				
+				if(lst.size() >= 500000){
 					Collections.sort(lst);
 					String tmpFileName= Utils.writeListToGzipFile(lst, insam);
 					lstTmpFilenames.add(tmpFileName);
@@ -116,16 +127,17 @@ public class Main {
 					
 				}
 			}
-			if(nRecsTot % 1000000 == 0){
-				System.err.println("First pass: " + nRecsTot + " read.");
-			}
+			//if(nRecsTot % 1000000 == 0){
+			//	System.err.println("First pass: " + nRecsTot + " read.");
+			//}
 
 		}
 		//Write to file the last chunk of data in lst. 
-		Collections.sort(lst);
-		
+		Collections.sort(lst);		
 		String tmpFileName= Utils.writeListToGzipFile(lst, insam);
 		lstTmpFilenames.add(tmpFileName);
+		
+		System.err.println("Merge sorting and marking duplicates");
 		
 		// Code to read in parallel the files in lstTmpFilenames
 		// Open a buffered reader for each file.
@@ -154,6 +166,7 @@ public class Main {
 				topLst.add(srec);
 			}
 		}
+		long i= 0;
 		while(topLst.size() > 0){
 			
 			SAMRecordExt xRecMin= Collections.min(topLst);
@@ -179,13 +192,17 @@ public class Main {
 				nRecsNonDups++;
 			}
 			outbam.addAlignment(xRecMin.getSamRecord());
+			i++;
+			if(i % 1000000 == 0){
+				System.err.println(i + " to output");
+			}
 		}
 		outbam.close();
 
-		System.err.println("N. alignment total\t" + nRecsTot);
-		System.err.println("N. alignment skipped\t" + nRecsSkipped);
-		System.err.println("N. alignment duplicates\t" + nRecsDups);
-		System.err.println("N. alignment non duplicates\t" + nRecsNonDups);
+		System.err.printf("N. alignment total\t%s\t%.2f\n", nRecsTot, 100.0 * nRecsTot/nRecsTot);
+		System.err.printf("N. alignment skipped\t%s\t%.2f\n", nRecsSkipped, 100.0 * nRecsSkipped/nRecsTot);
+		System.err.printf("N. alignment duplicates\t%s\t%.2f\n", nRecsDups, 100.0 * nRecsDups/nRecsTot);
+		System.err.printf("N. alignment non duplicates\t%s\t%.2f\n", nRecsNonDups, 100.0 * nRecsNonDups/nRecsTot);
 		System.exit(0);
 	}
 }

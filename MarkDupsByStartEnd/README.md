@@ -72,7 +72,3 @@ Input need not to be sorted. Output will be coordinate sorted by default.
 ## TODO
 
 * Add arg to set max number of records in memory/ Profile memory usage vs performance for increasing memory.
-* If read group information in reads is inconsistent with the header, e.g. after `samtools merge`, you get a very cryptic error message.
-Capture that error and make it more comprehensible. The fix is just to use `-rg`.   
-* `sort`: ~~Use `getOutputStream` to feed sort instead of using a tmp file?
-Move away from unix sort altogether! Implement external sorting of lists of samrecords.~~

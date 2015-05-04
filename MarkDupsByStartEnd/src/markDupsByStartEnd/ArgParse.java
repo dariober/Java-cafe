@@ -42,7 +42,7 @@ public class ArgParse {
 		
 		parser.addArgument("--ignoreReadGroup", "-rg")
 			.action(Arguments.storeTrue())
-			.help("Ignore read group info. If set, positional duplicates sharing *different* "
+			.help("Ignore read group info. If set, positional duplicates sharing *different*\n"
 					+ "read groups will be considered duplicates.");
 		
 		parser.addArgument("--validationStringency", "-vs")
