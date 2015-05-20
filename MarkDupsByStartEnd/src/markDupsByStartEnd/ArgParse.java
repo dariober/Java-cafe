@@ -8,7 +8,7 @@ import net.sourceforge.argparse4j.inf.Namespace;
 
 public class ArgParse {
 	
-	public static String VERSION= "0.2.0";
+	public static String VERSION= "0.2.1";
 	
 	/* Parse command line args */
 	public static Namespace argParse(String[] args){
