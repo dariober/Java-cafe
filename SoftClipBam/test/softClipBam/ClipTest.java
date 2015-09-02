@@ -1,11 +1,15 @@
-package softClipBamReads;
+package softClipBam;
 
 import static org.junit.Assert.*;
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.CigarUtil;
+
 import java.io.File;
+
 import org.junit.Test;
 
 /* 
@@ -28,8 +32,9 @@ public class ClipTest {
 		rec.setReferenceName("chr18");
 		rec.setAlignmentStart(1000);
 		rec.setReadBases("AAAAACCCCCTTTTTGGGGG".getBytes());		
-		rec.setCigarString("20M");
 		
+		rec.setCigarString("20M");
+				
 		Clipper.clip(rec, 0, 0, 0, 0);
 		assertEquals("20M", rec.getCigarString());
 
@@ -236,7 +241,20 @@ public class ClipTest {
 		rec.setCigarString("1M2I17M");
 		Clipper.clip(rec, 2, 0, 0, 0);
 		assertEquals("3S17M", rec.getCigarString());	
-		assertEquals(rec.getReadLength(), rec.getCigar().getReadLength());
-		
+		assertEquals(rec.getReadLength(), rec.getCigar().getReadLength());		
+	}
+	
+	@Test
+	public void doesntComplainWithFullySoftClippedReads(){
+		// Shouldn't return any error message.
+		SAMRecord rec= new SAMRecord(sam.getFileHeader());
+		rec.setReadName("myread");
+		rec.setReferenceName("chr18");
+		rec.setFlags(83);
+		rec.setAlignmentStart(10000);
+		rec.setReadBases("CACGATAAAAACAAATTCGAAATACAATAAAAACTAATAACCTCAATTCCCAATATCCCAACCTAACCTCCCAATCCACCCAACAATTAATAAATACTACC".getBytes());		
+		rec.setCigarString("101M");
+		Clipper.clip(rec, 1000, 1000, 1000, 1000);
+		System.out.println(rec.getSAMString());
 	}
 }

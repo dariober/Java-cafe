@@ -1,4 +1,4 @@
-package softClipBamReads;
+package softClipBam;
 
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
@@ -13,15 +13,14 @@ public class ArgParse {
 	/* Parse command line args */
 	public static Namespace argParse(String[] args){
 		ArgumentParser parser= ArgumentParsers
-				.newArgumentParser("SoftClipBamReads")
+				.newArgumentParser("SoftClipBam")
 				.defaultHelp(true)
 				.version("${prog} " + VERSION)
 				.description("DESCRIPTION\n"
-+ "Mark duplicate reads by looking at both the unclipped read start and end position."
-+ "\n"
-+ "For further details see"
-+ "\n"
-+ "https://github.com/dariober/Java-cafe/tree/master/MarkDupsByStartEnd"
++ "Soft clip reads on 5' and 3' ends.\n"
++ "BS-Seq libraries often have a bias at the 3' and/or 5' end of reads so it useful\n"
++ "to ignore these bases for methylation calling.\n"
++ "For source code see https://github.com/dariober/Java-cafe/tree/master/SoftClipBam"
 + "");	
 		parser.addArgument("--insam", "-i")
 			.type(String.class)
@@ -33,25 +32,20 @@ public class ArgParse {
 			.required(false)
 			.setDefault("-")
 			.help("Output file. Format will be sam or bam depending on extension.\n"
-					+ "Use - to print SAM to stdout.");
+					+ "Use - to print BAM to stdout or '-.sam' for sam to stdout.");
 		
-		parser.addArgument("--unsortedOutput", "-us")
-			.action(Arguments.storeTrue())
-			.help("If set, output reads will be unsorted.\n"
-					+ "By default reads are coordinate sorted.");
+		parser.addArgument("--clipRead1", "-r1")
+			.nargs(2)
+			.type(Integer.class)
+			.setDefault(0, 0)
+			.help("A list of two integers: From read 1 soft clip this many bases from 5' and 3', respectively.");
 		
-		parser.addArgument("--ignoreReadGroup", "-rg")
-			.action(Arguments.storeTrue())
-			.help("Ignore read group info. If set, positional duplicates sharing *different*\n"
-					+ "read groups will be considered duplicates.");
-		
-		parser.addArgument("--validationStringency", "-vs")
-			.type(String.class)
-			.required(false)
-			.setDefault("SILENT")
-			.choices("SILENT", "LENIENT", "STRICT")
-			.help("Set picard validation stringency level.");
-		
+		parser.addArgument("--clipRead2", "-r2")
+			.nargs(2)
+			.type(Integer.class)
+			.setDefault(0, 0)
+			.help("A list of two integers: From read 2 soft clip this many bases from 5' and 3', respectively.");
+
 		parser.addArgument("--version", "-v").action(Arguments.version());
 		
 		Namespace opts= null;
@@ -66,6 +60,6 @@ public class ArgParse {
 	}
 	
 	public static void validateArgs(Namespace opts){
-		
+		// Optional checks to validate arguments.
 	}
 }

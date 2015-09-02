@@ -51,15 +51,17 @@ public class ReadWriteBAMUtils {
 	 */
 	public static SAMFileWriter writer(String outsam, SAMFileHeader outHeader) throws UnsupportedEncodingException {		
 		SAMFileWriter outbam;
+		outsam= outsam.trim();
+		boolean presorted= false;
 		if(outsam.equals("-") || outsam.equals("-.bam")){
 			// TODO: Replace System.out as it is slow. 
-			outbam= new SAMFileWriterFactory().makeBAMWriter(outHeader, false, System.out);
+			outbam= new SAMFileWriterFactory().makeBAMWriter(outHeader, presorted, System.out);
 		} else if(outsam.equals("-.sam")){
 			// TODO: Replace System.out as it is slow. 
-			outbam= new SAMFileWriterFactory().makeSAMWriter(outHeader, false, System.out);
+			outbam= new SAMFileWriterFactory().makeSAMWriter(outHeader, presorted, System.out);
 		} else {
 			outbam= new SAMFileWriterFactory().
-					makeSAMOrBAMWriter(outHeader, false, new File(outsam));
+					makeSAMOrBAMWriter(outHeader, presorted, new File(outsam));
 		}
 		return outbam;
 	}

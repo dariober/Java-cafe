@@ -1,4 +1,4 @@
-package softClipBamReads;
+package softClipBam;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -6,6 +6,7 @@ import java.util.List;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.CigarUtil;
@@ -22,20 +23,22 @@ MEMO: Read 1+ is handled in the same way as Read 2+ and Read 1- same as Read 2-.
 public class Clipper {
 	
 	public static SAMRecord clip(SAMRecord rec, int R1_5p, int R1_3p, int R2_5p, int R2_3p) {
-
-    	int r1_3p= (rec.getReadLength() - R1_3p+1) < 0 ? 1 : rec.getReadLength() - R1_3p+1;
+    			
+		int r1_3p= (rec.getReadLength() - R1_3p+1) < 0 ? 1 : rec.getReadLength() - R1_3p+1;
     	int r2_3p= (rec.getReadLength() - R2_3p+1) < 0 ? 1 : rec.getReadLength() - R2_3p+1;
-    	   	
-    	if (!rec.getReadPairedFlag() || rec.getFirstOfPairFlag()){
+
+    	if(!cigarHasMappedBases(rec.getCigar())){
+    		// If a read has already no aligned bases, e.g. after bam clipOverlap, reset it
+    		// to be consistent with softClip3PrimeEndOfRead();
+    		resetReadToNoAlignedBases(rec);
+    	} else if (!rec.getReadPairedFlag() || rec.getFirstOfPairFlag()){
     		// Read single end reads or Read first in pair
-    		rec= softClip5PrimeEndOfRead(rec, R1_5p);
-    		if(R1_3p > 0) CigarUtil.softClip3PrimeEndOfRead(rec, r1_3p);
-    	
+			if(R1_5p > 0 && cigarHasMappedBases(rec.getCigar())) rec= softClip5PrimeEndOfRead(rec, R1_5p);
+    		if(R1_3p > 0 && cigarHasMappedBases(rec.getCigar())) CigarUtil.softClip3PrimeEndOfRead(rec, r1_3p);    	
     	} else if(rec.getReadPairedFlag() && rec.getSecondOfPairFlag()){
     		// Read 2
-    		rec= softClip5PrimeEndOfRead(rec, R2_5p);
-    		if(R2_3p > 0) CigarUtil.softClip3PrimeEndOfRead(rec, r2_3p);
-    	
+    		if(R2_5p > 0 && cigarHasMappedBases(rec.getCigar())) rec= softClip5PrimeEndOfRead(rec, R2_5p);
+    		if(R2_3p > 0 && cigarHasMappedBases(rec.getCigar())) CigarUtil.softClip3PrimeEndOfRead(rec, r2_3p);
     	} else {
     		System.err.println("Unexpected case");
     		System.exit(1);
@@ -46,11 +49,14 @@ public class Clipper {
 	/* P R I V A T E   M E T H O D S */
 	
 	private static SAMRecord softClip5PrimeEndOfRead(SAMRecord rec, int clipUpTo){
+		
 		if(clipUpTo > 0){
 			final Cigar cigar = rec.getCigar();
 			boolean isPositiveStrand= !rec.getReadNegativeStrandFlag();
 			int clipFrom= (rec.getReadLength() + 1) - clipUpTo;
-
+			//if(clipFrom < 1){
+			//	clipFrom= 1;
+			//}
 			if (isPositiveStrand){
 				// Trim from 5' using softClip3PrimeEndOfRead method.
 				// For this you need to invert the cigar, clip, invert again.
@@ -75,6 +81,11 @@ public class Clipper {
 	        	// Just clip from end.
 	        	Cigar clipCigar= new Cigar(CigarUtil.softClipEndOfRead(clipFrom, rec.getCigar().getCigarElements()));
 	        	rec.setCigar(clipCigar);
+	        	if(!cigarHasMappedBases(clipCigar)){
+	        		resetReadToNoAlignedBases(rec);
+	        	} else {
+	        		rec.setCigar(clipCigar);
+	        	}
 	        }
 		}
 		return rec;
@@ -88,4 +99,40 @@ public class Clipper {
 		Cigar invCigar= new Cigar(cigarList);
 		return invCigar;
 	}	
+	
+	/**
+	 * Return true if cigar has mapped bases. Returns false when for example
+	 * cigar is entirely soft clipped like "50S", which can happen after 
+	 * clipping with bam clipOverlap.
+	 * This code is largely from CigarUtil.softClip3PrimeEndOfRead();
+	 * @param cigar
+	 * @return
+	 */
+	private static boolean cigarHasMappedBases(Cigar cigar){
+        boolean hasMappedBases = false;
+        for (final CigarElement elem : cigar.getCigarElements()) {
+            final CigarOperator op = elem.getOperator();
+            if (op.consumesReferenceBases() && op.consumesReadBases()) {
+                hasMappedBases = true;
+                break;
+            }
+        }
+        return hasMappedBases;
+	}
+	
+	/**
+	 * If a read has no aligned bases after trimming, reset attributes 
+	 * to be consistent with output of CigarUtil.softClip3PrimeEndOfRead();
+	 * @param rec
+	 * @return
+	 */
+	private static SAMRecord resetReadToNoAlignedBases(SAMRecord rec){
+		rec.setReadUnmappedFlag(true);
+		rec.setCigarString(SAMRecord.NO_ALIGNMENT_CIGAR);
+		rec.setReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
+		rec.setAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+		rec.setMappingQuality(SAMRecord.NO_MAPPING_QUALITY);
+		rec.setInferredInsertSize(0);
+		return rec;
+	}
 }
