@@ -29,6 +29,7 @@ public class Main {
 		SAMFileWriter out= ReadWriteBAMUtils.writer(outsam, insam);
 
 		/* Clipping */
+		long i= 0;
 		for(SAMRecord rec : in){
 			Clipper.clip(rec, 
 					(Integer) clipRead1.get(0), 
@@ -36,8 +37,13 @@ public class Main {
 					(Integer) clipRead2.get(0), 
 					(Integer) clipRead2.get(1));
 			out.addAlignment(rec);
+			i++;
+			if( i % 10000000 == 0 ){
+				System.err.println("Reads processed: " + i);
+			}
 		}
+		System.err.println("Total reads: " + i);
 		out.close();
+		System.exit(0);
 	}
-
 }

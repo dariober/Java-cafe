@@ -44,7 +44,7 @@ public class ReadWriteBAMUtils {
 	/**
 	 * Write sam or bam file, depending on extension or to stdout.
 	 * @param outsam Output filename, extension determines type. 
-	 *     Use - or -.bam to write BAM to stdout or -.sam for SAM to stdout.  
+	 *     Use - or ".bam" to write BAM to stdout or ".sam" for SAM to stdout.  
 	 * @param outHeader
 	 * @return
 	 * @throws UnsupportedEncodingException   
@@ -53,11 +53,9 @@ public class ReadWriteBAMUtils {
 		SAMFileWriter outbam;
 		outsam= outsam.trim();
 		boolean presorted= false;
-		if(outsam.equals("-") || outsam.equals("-.bam")){
-			// TODO: Replace System.out as it is slow. 
+		if(outsam.equals("-") || outsam.equals(".bam")){
 			outbam= new SAMFileWriterFactory().makeBAMWriter(outHeader, presorted, System.out);
-		} else if(outsam.equals("-.sam")){
-			// TODO: Replace System.out as it is slow. 
+		} else if(outsam.equals(".sam")){
 			outbam= new SAMFileWriterFactory().makeSAMWriter(outHeader, presorted, System.out);
 		} else {
 			outbam= new SAMFileWriterFactory().
