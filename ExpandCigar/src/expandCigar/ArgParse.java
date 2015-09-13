@@ -18,7 +18,10 @@ public class ArgParse {
 				.defaultHelp(true)
 				.version("${prog} " + VERSION)
 				.description("DESCRIPTION\n"
-+ "Expand cigar string in inout bam file to convert M operator to X and =.\n"
++ "Expand cigar string in input bam file to convert M operator to X and =.\n"
++ "\n"
++ "For source code and further information see:\n"
++ "https://github.com/dariober/Java-cafe/tree/master/ExpandCigar\n"
 + "");	
 		parser.addArgument("--insam", "-i")
 			.type(String.class)
