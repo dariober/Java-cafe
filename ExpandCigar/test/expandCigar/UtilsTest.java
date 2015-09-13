@@ -26,6 +26,5 @@ public class UtilsTest {
 		rec.setAttribute("MD", "NN6N");
 		String xcigar= Utils.expandCigarMtoX(rec);
 		assertEquals("2X5=1I1=1X", xcigar.toString());
-		
 	}	
 }
