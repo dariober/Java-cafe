@@ -1,13 +1,10 @@
 package softClipBam;
 
 import static org.junit.Assert.*;
-import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.util.CigarUtil;
-
 import java.io.File;
 
 import org.junit.Test;

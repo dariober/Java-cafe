@@ -3,6 +3,7 @@ package softClipBam;
 import java.io.IOException;
 import java.util.List;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
@@ -24,9 +25,24 @@ public class Main {
 		List<Object> clipRead1= opts.getList("clipRead1");
 		List<Object> clipRead2= opts.getList("clipRead2");
 		
-		/* Input/Output */
+		/* Input */
 		SamReader in= ReadWriteBAMUtils.reader(insam, ValidationStringency.SILENT);
-		SAMFileWriter out= ReadWriteBAMUtils.writer(outsam, insam);
+		/* Add program group */
+		SAMFileHeader header= in.getFileHeader();
+
+		StringBuilder cmdLine= new StringBuilder();
+		cmdLine.append(ArgParse.PROG_NAME);
+		for(String x : args){
+			cmdLine.append(" ");
+			cmdLine.append(x);
+		}
+		header= ReadWriteBAMUtils.addPGtoFileHeader(header, 
+				ArgParse.PROG_NAME, 
+				ArgParse.PROG_NAME,
+				ArgParse.VERSION, 
+				cmdLine.toString());
+		/* Output */
+		SAMFileWriter out= ReadWriteBAMUtils.writer(outsam, header);
 
 		/* Clipping */
 		long i= 0;
