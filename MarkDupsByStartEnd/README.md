@@ -71,4 +71,5 @@ Input need not to be sorted. Output will be coordinate sorted by default.
 
 ## TODO
 
+* Set @PG line in sam header. Use [readWriteBAMUtils.addPGtoFileHeader](https://github.com/dariober/Java-cafe/blob/master/MiscUtils/src/readWriteBAMUtils/ReadWriteBAMUtils.java). See also ExpandCigar for an example.
 * Add arg to set max number of records in memory/ Profile memory usage vs performance for increasing memory.
