@@ -2,15 +2,17 @@
 
 Classes and methods to convenietly handle bioinformatics data. See individual classes for usage.
 
-# Installation from compiled jar
+# Installation
+
+You have created a java project where you want to use the classes in **MiscUtils**. The steps below assume you are using Eclipse.
+
+## Option 1: Using compiled jar
 
 Download the **MiscUtils** jar from [realeses](https://github.com/dariober/Java-cafe/releases). Configure you project's build path to include this jar 
 
 Right-click your Project `->` Configure Build Path `->` select Libraries tab `->` Add external jars `->` Select `MiscUtils.x.x.x.jar`
 
-# Installation from source (using Eclipse)
-
-You have created a java project where you want to use the classes in **MiscUtils**. For this you need:
+## Option 2: From source
 
 * Check out this repository *This retrieves the whole lot, not just MiscUtils but that's fine*
 ```
