@@ -21,7 +21,7 @@ svn co https://github.com/dariober/Java-cafe/
 
 * In the **src** directory of your Java project create a package called **miscUtils**.
 * Using the GUI Finder or Explorer navigate to the **src** directory inside donwloaded **MiscUtils**. It might be somewehere like `~/.../Java-cafe/trunk/MiscUtils/src`
-* Drag and drop some or all the content of `src` into the package **miscUtils**. The main dir in `MiscUtils/src` can (should) be skipped.
+* Drag and drop some or all the content of `src` into the package **miscUtils**. The dir `MiscUtils/src/main` can (should) be skipped.
 * Configure the project build path to add possible libraries required by MiscUtils. 
 For example you might need [htsjdk-x.xxx.jar](https://github.com/broadinstitute/picard/releases/). 
 So download the required jar files. Then right-click on the project `->` Configure Build Path `->` Libraries tab `->` Add external jars `->` Select `htsjdk-x.xxx.jar`
