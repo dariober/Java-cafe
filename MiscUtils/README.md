@@ -19,7 +19,7 @@ Right-click your Project `->` Configure Build Path `->` select Libraries tab `->
 svn co https://github.com/dariober/Java-cafe/
 ```
 
-* In the **src** directory of the Java your project create a package called **miscUtils**.
+* In the **src** directory of your Java project create a package called **miscUtils**.
 * Using the GUI Finder or Explorer navigate to the **src** directory inside donwloaded **MiscUtils**. It might be somewehere like `~/.../Java-cafe/trunk/MiscUtils/src`
 * Drag and drop some or all the content of `src` into the package **miscUtils**. The main dir in `MiscUtils/src` can (should) be skipped.
 * Configure the project build path to add possible libraries required by MiscUtils. 
