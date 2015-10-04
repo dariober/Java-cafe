@@ -16,6 +16,7 @@ import readWriteBAMUtils.ReadWriteBAMUtils;
 
 public class UtilsTest {
 
+	private static final int ArrayList = 0;
 	public static SAMSequenceDictionary samSeqDict= ReadWriteBAMUtils
 			.reader("test/test_data/ds051.short.bam", ValidationStringency.STRICT)
 			.getFileHeader().getSequenceDictionary();
@@ -117,8 +118,52 @@ AAAAA
 		
 		String rawInput= "-r chr10 -F 1024";
 		List<String> clArgs= Arrays.asList(rawInput.split("\\s+"));
-		System.out.println(clArgs.indexOf("-R"));
+		// System.out.println(clArgs.indexOf("-R"));
 		
 	}
 	
+	@Test
+	public void canCompressListOfInts(){
+		
+		int[] intArr= {1, 2, 3, 10, 20, 30, 100, 200, 300, 150};
+		List<Integer> intList= new ArrayList<Integer>();
+		for(int x : intArr){
+			intList.add(x);
+		}
+		int nwinds= 3;
+		List<Integer> zlist= Utils.compressListOfInts(intList, nwinds);
+		assertEquals("[2, 20, 200, 150]", zlist.toString());
+		
+		//
+		int[] intArr2= {1, 2, 3, 10, 20, 30, 100, 200, 300};
+		intList= new ArrayList<Integer>();
+		for(int x : intArr2){
+			intList.add(x);
+		}
+		nwinds= 3;
+		zlist= Utils.compressListOfInts(intList, nwinds);
+		assertEquals("[2, 20, 200]", zlist.toString());
+
+		// No compression as more windows then elements
+		nwinds= 30; 
+		zlist= Utils.compressListOfInts(intList, nwinds);
+		assertEquals("[1, 2, 3, 10, 20, 30, 100, 200, 300]", zlist.toString());
+
+		// Empty input list return empty input list. 
+		nwinds= 3; 
+		zlist.clear();
+		zlist= Utils.compressListOfInts(intList, nwinds);
+		assertEquals("[]", zlist.toString());
+	}
+	
+	@Test
+	public void canPrintRuler(){
+		int from= 1;
+		int to= 1000;
+		int by= 10;
+		int windowSize= 160;
+		String ruler= Utils.ruler(from, to, by, windowSize);
+		System.out.println("Ruler:");
+		System.out.println(ruler);
+	}
 }

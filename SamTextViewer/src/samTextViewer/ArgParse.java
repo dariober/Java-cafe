@@ -18,8 +18,10 @@ public class ArgParse {
 				.defaultHelp(true)
 				.version("${prog} " + VERSION)
 				.description("DESCRIPTION\n"
-+ "Text based viewer for sam/bam files, hopefully more convenient then samtools tview"
-+ " and with support for bisulfite converted reads."
++ "Text based viewer for sam/bam files, hopefully more convenient then samtools tview\n"
++ " and with support for bisulfite converted reads.\n"
++ "\n"
++ "See also home page at https://github.com/dariober/Java-cafe/tree/master/SamTextViewer"
 + "");	
 		parser.addArgument("--insam", "-i")
 			.type(String.class)
@@ -30,7 +32,8 @@ public class ArgParse {
 		parser.addArgument("--region", "-r")
 			.type(String.class)
 			.required(false)
-			.help("Region to visualize and to collect reads from. Format 1-based: chrom:start-end or chrom:start or chrom. "
+			.help("Region to visualize and to collect reads from.\n"
+					+ "Format 1-based: chrom:start-end or chrom:start or chrom.\n"
 					+ "If not given the view will be at the start of the first read found.");
 
 		parser.addArgument("--windowSize", "-w")
@@ -40,8 +43,8 @@ public class ArgParse {
 		
 		parser.addArgument("--fasta", "-fa")
 			.type(String.class)
-			.help("Optional reference fasta reference file. If given, must be indexed, "
-					+ "e.g. with `samtools faidx ref.fa`");
+			.help("Optional reference fasta reference file.\n"
+					+ "If given, must be indexed, e.g. with `samtools faidx ref.fa`");
 
 		parser.addArgument("--f", "-f")
 			.type(Integer.class)
@@ -61,8 +64,14 @@ public class ArgParse {
 		parser.addArgument("--maxLines", "-m")
 			.type(Integer.class)
 			.setDefault(-1)
-			.help("Maximum number of lines to print for each bam file. No limit If <0.");
+			.help("Maximum number of lines to print for each read track. No limit If <0.");
 
+		parser.addArgument("--maxDepthLines", "-d")
+			.type(Integer.class)
+			.setDefault(10)
+			.help("Maximum number of lines to print for each coverage.");
+
+		
 		parser.addArgument("--BSseq", "-bs")
 			.action(Arguments.storeTrue())
 			.help("Bisulphite mode: Mark bases as methylated (M/m) or unmethylated (U/u).");
@@ -71,6 +80,10 @@ public class ArgParse {
 		parser.addArgument("--noFormat", "-nf")
 			.action(Arguments.storeTrue())
 			.help("Do not format output with non ascii chars (colour, bold, etc.)");
+
+		parser.addArgument("--nonInteractive", "-ni")
+			.action(Arguments.storeFalse())
+			.help("Non interactive mode: Exit after having processed cmd line args.");
 
 		
 		parser.addArgument("--version", "-v").action(Arguments.version());

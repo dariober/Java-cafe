@@ -5,6 +5,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.ValidationStringency;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -225,5 +226,89 @@ public class Utils {
 	    }
 	    // only got here if we didn't return false
 	    return true;
+	}
+	
+	/**
+	 * Compress the input list of ints in a list of length nwinds by 
+	 * grouping elements and taking the mean of each group (or other summary stat).
+	 * @param ints
+	 * @param nwinds
+	 * @return
+	 */
+	public static List<Integer> compressListOfInts(List<Integer> ints, int nwinds){
+		
+		if(ints.size() <= nwinds){
+			return ints;
+		}
+		
+		int grpSize= (int) Math.floor(((float)ints.size() / nwinds));
+		List<Integer> zlist= new ArrayList<Integer>();
+		List<Integer> sublist= new ArrayList<Integer>();
+		for(int x : ints){
+			sublist.add(x);
+			if(sublist.size() == grpSize){
+				int avg= (int) Math.round(calculateAverage(sublist));
+				zlist.add(avg);
+				sublist.clear();
+			}
+		}
+		if(sublist.size() > 0){
+			int avg= (int) Math.round(calculateAverage(sublist));
+			zlist.add(avg);			
+		}
+		return zlist;
+	} 
+	
+	/**
+	 * Average of ints in array x. Adapted from:
+	 * http://stackoverflow.com/questions/10791568/calculating-average-of-an-array-list
+	 * @param marks
+	 * @return
+	 */
+	private static double calculateAverage(List <Integer> x) {
+		long sum = 0;
+		if(!x.isEmpty()) {
+			for (Integer z : x) {
+				sum += z;
+			}
+			return (double)sum / x.size();
+		}
+		return 0;
+	}
+	
+	/**
+	 * Return a string to use as ruler.
+	 * @param from Start in genomic coordinates 
+	 * @param to End in genomic coords
+	 * @param by Print a mark every so many text chars (e.g. 10)
+	 * @param windowSize WindowSize in number of text char.
+	 * @return
+	 */
+	public static String ruler(int from, int to, int by, int windowSize){
+
+		float lenInBp=  to - from + 1;
+		float stepInBp= Math.round(lenInBp / windowSize); // One text char corresponds to this many bp
+	
+		int curGenome= from;
+		String numberLine= String.valueOf(from);
+		int prevLen= 0;
+		while(curGenome < to){
+			if((numberLine.length() - prevLen) >= by){
+				prevLen= numberLine.length();
+				numberLine= numberLine + curGenome;
+				curGenome += String.valueOf(curGenome).length() * stepInBp;
+			} else {
+				numberLine= numberLine + "-";
+				curGenome += stepInBp;
+			}
+//			if(curGenome % by == 1){
+//				numberLine= numberLine + curGenome;
+//				curGenome += String.valueOf(curGenome).length() * stepInBp;
+//			} else {
+//				numberLine= numberLine + " ";
+//				curGenome += stepInBp;
+//			}
+		}
+		return numberLine;
 	}
 }

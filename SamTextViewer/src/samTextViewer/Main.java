@@ -9,6 +9,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
+
+import coverageViewer.CoverageViewer;
 import net.sourceforge.argparse4j.inf.Namespace;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
@@ -16,8 +20,14 @@ import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import readWriteBAMUtils.ReadWriteBAMUtils;
 
+/**
+ * @author berald01
+ *
+ */
 public class Main {
 
+	final static int RULER_BY= 10; // Print the genomic position every so many text chars
+	
 	private static String prettySeqPrinter(byte[] faSeq, boolean noFormat){
 		
 		String faSeqStr= "";
@@ -58,6 +68,9 @@ public class Main {
 		return numberLine;
 	}
 
+
+
+	
 	/** Read all records in input bam intersecting the given coordinates, then 
 	 * arrange them to fill up the window.
 	 * @param bam
@@ -97,15 +110,51 @@ public class Main {
 	 * @param nReadsOut Max number of lines of output
 	 * @param fmt Use formatted printing?
 	 */
-	private static void printer(List<List<TextRead>> stackReads, int maxLines, boolean noFormat) {
+	private static String stackReadsToString(List<List<TextRead>> stackReads, int maxLines, boolean noFormat) {
 		int i= 0;
+		StringBuilder sb= new StringBuilder();
 		while((maxLines < 0 || i < maxLines) && i < stackReads.size()){
 			List<TextRead> line= stackReads.get(i);
-			String outline= Utils.linePrinter(line, noFormat);
-			System.out.println(outline);
+			sb.append(Utils.linePrinter(line, noFormat)).append("\n");
 			i++;
 		}
+		return sb.toString();
 	}
+	
+	/**
+	 * Get sequence as byte[] for the given genomic coords. Array of N if fasta is null.
+	 * @param fasta
+	 * @param gc
+	 * @return
+	 * @throws IOException
+	 */
+	private static byte[] prepareRefSeq(String fasta, GenomicCoords gc) throws IOException{
+
+		byte[] faSeq= null;
+		if(fasta != null){
+			IndexedFastaSequenceFile faSeqFile = null;
+			try {
+				faSeqFile = new IndexedFastaSequenceFile(new File(fasta));
+				try{
+					System.out.println(gc);
+					faSeq= faSeqFile.getSubsequenceAt(gc.getChrom(), gc.getFrom(), gc.getTo()).getBases();
+				} catch (NullPointerException e){
+					System.err.println("Cannot fetch sequence " + gc.toString());
+					e.printStackTrace();
+				}
+				faSeqFile.close();
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			}
+		} else {
+			faSeq= new byte[gc.getTo() - gc.getFrom() + 1];
+			for(int i= 0; i < faSeq.length; i++){
+				faSeq[i]= 'N';
+			}
+		}
+		return faSeq;
+	} 
+	
 	/* ------------------- M A I N ------------------- */
 	public static void main(String[] args) throws IOException {
 		
@@ -116,14 +165,16 @@ public class Main {
 		
 		List<String> insam= opts.getList("insam");
 		String region= opts.getString("region");
-		int windowSize= opts.getInt("windowSize") - 1; // Because end is included
+		final int windowSize= opts.getInt("windowSize");
 		String fasta= opts.getString("fasta");
 		int maxLines= opts.getInt("maxLines");
+		int maxDepthLines= opts.getInt("maxDepthLines");
 		int f_incl= opts.getInt("f");
 		int F_excl= opts.getInt("F");
 		int mapq= opts.getInt("mapq");
 		boolean bs= opts.getBoolean("BSseq");
 		boolean noFormat= opts.getBoolean("noFormat");
+		boolean nonInteractive= opts.getBoolean("nonInteractive");
 		
 		if(fasta == null && bs == true){
 			System.err.println("Warning:\n"
@@ -141,51 +192,81 @@ public class Main {
 		
 		// -----------------------------------------
 		while(true){
-			byte[] faSeq= null;
-			if(fasta != null){
-				IndexedFastaSequenceFile faSeqFile = null;
-				try {
-					faSeqFile = new IndexedFastaSequenceFile(new File(fasta));
-					try{
-						faSeq= faSeqFile.getSubsequenceAt(gc.getChrom(), gc.getFrom(), gc.getTo()).getBases();
-					} catch (NullPointerException e){
-						System.err.println("Cannot fetch sequence " + gc.toString());
-						e.printStackTrace();
-					}
-					faSeqFile.close();
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				}
-			} else {
-				faSeq= new byte[gc.getTo() - gc.getFrom() + 1];
-				for(int i= 0; i < faSeq.length; i++){
-					faSeq[i]= 'N';
-				}
-			}
-	
-			String prettySeq= prettySeqPrinter(faSeq, noFormat);
-			String prettyRuler= ruler(gc.getFrom(), gc.getTo(), 10);
+
+			/* Need to compress? */
+			boolean doCompress= false;
+			if((gc.getTo() - gc.getFrom()) > windowSize){
+				doCompress= true;
+			} 
 			
+			/* Prepare reference seq if necessary */
+			byte[] faSeq= null;
+			String prettySeq= null;
+			if(!doCompress){ // Print sequence only if compression is not needed. 
+				faSeq= prepareRefSeq(fasta, gc);	
+				prettySeq= prettySeqPrinter(faSeq, noFormat);
+				System.out.println(prettySeq);
+			}
+
+			/* Prepare and print ruler */
+			String prettyRuler= "";
+			if(doCompress){
+				prettyRuler= Utils.ruler(gc.getFrom(), gc.getTo(), RULER_BY, windowSize);
+			} else {
+				prettyRuler= ruler(gc.getFrom(), gc.getTo(), RULER_BY);			
+			}
 			System.out.println(prettyRuler);
-			System.out.println(prettySeq);
+			
 			for(String sam : insam){
-				/*Always filter out read unmapped*/
-				if((F_excl & 4) != 4){
-					F_excl += 4;
+
+				/* coverage track */
+				int maxDepth= -1;
+				double depthPerLine= -1;
+				String depthTrack= "";
+				if(maxDepthLines != 0){
+					CoverageViewer cw= new CoverageViewer(sam, gc.getChrom(), gc.getFrom(), gc.getTo());
+					if(doCompress){
+						List<Integer> zcw= Utils.compressListOfInts(cw.getDepth(), windowSize);
+						cw= new CoverageViewer(zcw);
+					}
+					List<String> depthStrings= cw.getProfileStrings(maxDepthLines);
+					maxDepth= cw.getMaxDepth();
+					depthPerLine= (double)Math.round((float) maxDepth / maxDepthLines * 10d) / 10d;
+					depthPerLine= (depthPerLine < 1) ? 1 : depthPerLine;
+					depthTrack= StringUtils.join(depthStrings, "\n") + "\n";
 				}
-				List<List<TextRead>> stackReads= readAndStackSAMRecords(sam, gc, faSeq, f_incl, F_excl, mapq, bs);
-				String header= gc.toString() + " - " + sam;
+
+				/* Header */
+				String fname= new File(sam).getName();
+				String header= gc.toString() + "; " + fname+ "; Max read depth: " + maxDepth + "; Each '*': " + depthPerLine + "x";
 				if(!noFormat){
 					header= "\033[0;34m" + header + "\033[0m";
 				}
+				
+				/* Reads */
+				String stackReadsStr= "";
+				if(maxLines != 0 && !doCompress){
+					if((F_excl & 4) != 4){ // Always filter out read unmapped
+						F_excl += 4;
+					}
+					List<List<TextRead>> stackReads= readAndStackSAMRecords(sam, gc, faSeq, f_incl, F_excl, mapq, bs);
+					stackReadsStr= stackReadsToString(stackReads, maxLines, noFormat);	
+				}
+				/* And print out... */
 				System.out.println(header);
-				printer(stackReads, maxLines, noFormat);
+				System.out.print(depthTrack);
+				System.out.print(stackReadsStr);
 			}
-			System.out.println(prettySeq);
+			if(!doCompress){
+				System.out.println(prettySeq);
+			}
 			System.out.println(prettyRuler);
 			
 			/* Interactive input */
-			System.err.print("\n[f]orward or [b]ack or move with -/+[int] e.g. -10k;\nUse short opts e.g. -F 16 -r <chr>:[from]; [q]uit: ");
+			if(!nonInteractive){
+				break;
+			}
+			System.err.print("\nNavigate [f]orward, [b]ack or jump -/+[int] e.g. +1m or -10k;\nOr set cmd line short opts e.g. -F 16 -r <chr>:[from]; [q]uit: ");
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			String rawInput= br.readLine().trim();
 			/* Parse args */
@@ -196,6 +277,7 @@ public class Main {
 				|| rawInput.equals("b") 
 				|| rawInput.matches("^\\-{0,1}\\d+.*") 
 				|| rawInput.matches("^\\+{0,1}\\d+.*")){ // No cmd line args either f/b ops or ints
+				rawInput= rawInput.matches("^\\+.*") ? rawInput.substring(1) : rawInput;
 				String newRegion= Utils.parseConsoleInput(rawInput, gc).trim();
 				gc= GenomicCoords.goToRegion(newRegion, insam.get(0), windowSize);				
 			} else {
@@ -220,9 +302,12 @@ public class Main {
 					int i= clArgs.indexOf("-m") + 1;
 					maxLines= Integer.parseInt(clArgs.get(i));
 				}				
-			}
-			
-			
+				if(clArgs.indexOf("-d") != -1){
+					int i= clArgs.indexOf("-d") + 1;
+					maxDepthLines= Integer.parseInt(clArgs.get(i));
+				}				
+
+			}	
 		}
 	}
 }
