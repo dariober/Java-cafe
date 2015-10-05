@@ -4,11 +4,21 @@ import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReader;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.SamLocusIterator;
+import htsjdk.samtools.util.SamLocusIterator.LocusInfo;
+import htsjdk.samtools.util.SamLocusIterator.RecordAndOffset;
 
 import org.junit.Test;
 
@@ -16,7 +26,6 @@ import readWriteBAMUtils.ReadWriteBAMUtils;
 
 public class UtilsTest {
 
-	private static final int ArrayList = 0;
 	public static SAMSequenceDictionary samSeqDict= ReadWriteBAMUtils
 			.reader("test/test_data/ds051.short.bam", ValidationStringency.STRICT)
 			.getFileHeader().getSequenceDictionary();
@@ -125,35 +134,39 @@ AAAAA
 	@Test
 	public void canCompressListOfInts(){
 		
-		int[] intArr= {1, 2, 3, 10, 20, 30, 100, 200, 300, 150};
+		// N. windows is a multiple of N. elements
+		int[] intArr= {1, 2, 3, 10, 20, 30, 100, 200, 300};
 		List<Integer> intList= new ArrayList<Integer>();
 		for(int x : intArr){
 			intList.add(x);
 		}
 		int nwinds= 3;
-		List<Integer> zlist= Utils.compressListOfInts(intList, nwinds);
-		assertEquals("[2, 20, 200, 150]", zlist.toString());
-		
-		//
-		int[] intArr2= {1, 2, 3, 10, 20, 30, 100, 200, 300};
-		intList= new ArrayList<Integer>();
-		for(int x : intArr2){
-			intList.add(x);
-		}
-		nwinds= 3;
-		zlist= Utils.compressListOfInts(intList, nwinds);
-		assertEquals("[2, 20, 200]", zlist.toString());
+		LinkedHashMap<Integer, Integer> zlist= Utils.compressListOfInts(intList, nwinds);
+		Set<Integer> at= zlist.keySet();
+		assertEquals("[0, 3, 6]", at.toString());
+		Collection<Integer> depth= zlist.values();
+		assertEquals("[2, 20, 200]", depth.toString());
 
 		// No compression as more windows then elements
-		nwinds= 30; 
+		nwinds= 300; 
 		zlist= Utils.compressListOfInts(intList, nwinds);
-		assertEquals("[1, 2, 3, 10, 20, 30, 100, 200, 300]", zlist.toString());
+		assertEquals(intList, new ArrayList<Integer>(zlist.values()));
+		
+		// An odd division of #elements by #windows
+		intList.clear();
+		for (int i = 0; i < 100; i++) {
+			intList.add(i);
+		}
+		nwinds= 17;
+		zlist= Utils.compressListOfInts(intList, nwinds);
+		assertEquals(nwinds, zlist.size());
+		assertEquals("[3, 9, 15, 21, 27, 33, 39, 45, 51, 57, 63, 69, 75, 81, 87, 93, 98]", zlist.values().toString());
 
-		// Empty input list return empty input list. 
+		// Empty input list return empty map. 
 		nwinds= 3; 
-		zlist.clear();
+		intList.clear();
 		zlist= Utils.compressListOfInts(intList, nwinds);
-		assertEquals("[]", zlist.toString());
+		assertEquals(0, zlist.size());
 	}
 	
 	@Test

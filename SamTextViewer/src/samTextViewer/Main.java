@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -207,18 +208,11 @@ public class Main {
 				prettySeq= prettySeqPrinter(faSeq, noFormat);
 				System.out.println(prettySeq);
 			}
-
-			/* Prepare and print ruler */
-			String prettyRuler= "";
-			if(doCompress){
-				prettyRuler= Utils.ruler(gc.getFrom(), gc.getTo(), RULER_BY, windowSize);
-			} else {
-				prettyRuler= ruler(gc.getFrom(), gc.getTo(), RULER_BY);			
-			}
-			System.out.println(prettyRuler);
 			
-			for(String sam : insam){
-
+			String prettyRuler= "";
+			for(int i= 0; i < insam.size(); i++){
+				String sam= insam.get(i);
+				
 				/* coverage track */
 				int maxDepth= -1;
 				double depthPerLine= -1;
@@ -226,8 +220,12 @@ public class Main {
 				if(maxDepthLines != 0){
 					CoverageViewer cw= new CoverageViewer(sam, gc.getChrom(), gc.getFrom(), gc.getTo());
 					if(doCompress){
-						List<Integer> zcw= Utils.compressListOfInts(cw.getDepth(), windowSize);
-						cw= new CoverageViewer(zcw);
+						LinkedHashMap<Integer, Integer> zcw= Utils.compressListOfInts(cw.getDepth(), windowSize);
+						ArrayList<Integer> zdepth= new ArrayList<Integer>(zcw.values());
+						ArrayList<Integer> zat= new ArrayList<Integer>(zcw.keySet());
+						cw= new CoverageViewer(zdepth, zat);
+						cw.setDepthAt(cw.getDepthAt(), gc.getFrom());
+						prettyRuler= cw.ruler(RULER_BY);
 					}
 					List<String> depthStrings= cw.getProfileStrings(maxDepthLines);
 					maxDepth= cw.getMaxDepth();
@@ -236,6 +234,12 @@ public class Main {
 					depthTrack= StringUtils.join(depthStrings, "\n") + "\n";
 				}
 
+				/* Prepare and print ruler */
+				if(!doCompress){
+					prettyRuler= ruler(gc.getFrom(), gc.getTo(), RULER_BY);			
+				}
+				System.out.println(prettyRuler);
+				
 				/* Header */
 				String fname= new File(sam).getName();
 				String header= gc.toString() + "; " + fname+ "; Max read depth: " + maxDepth + "; Each '*': " + depthPerLine + "x";

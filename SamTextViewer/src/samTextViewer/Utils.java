@@ -5,9 +5,9 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.ValidationStringency;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -227,37 +227,47 @@ public class Utils {
 	    // only got here if we didn't return false
 	    return true;
 	}
-	
+
 	/**
 	 * Compress the input list of ints in a list of length nwinds by 
 	 * grouping elements and taking the mean of each group (or other summary stat).
+	 * E.g.
 	 * @param ints
 	 * @param nwinds
-	 * @return
+	 * @return Map where key is index (0-based) of first element in original input 
+	 * and value is averaged of grouped elements. The keys can be used as ruler for the coverage track.  
 	 */
-	public static List<Integer> compressListOfInts(List<Integer> ints, int nwinds){
+	public static LinkedHashMap<Integer, Integer> compressListOfInts(List<Integer> ints, int nwinds){
 		
-		if(ints.size() <= nwinds){
-			return ints;
-		}
+		// if(ints.size() <= nwinds){
+		//	return ints;
+		// }
 		
-		int grpSize= (int) Math.floor(((float)ints.size() / nwinds));
-		List<Integer> zlist= new ArrayList<Integer>();
+		int grpSize= (int) Math.round(((float)ints.size() / nwinds));
+		// After round() you get a remainder which goes in the last bin
+		LinkedHashMap<Integer, Integer> zlist= new LinkedHashMap<Integer, Integer>();
 		List<Integer> sublist= new ArrayList<Integer>();
-		for(int x : ints){
-			sublist.add(x);
-			if(sublist.size() == grpSize){
+		// int i= 0;
+		int at= 0;
+		for(int i= 0; i < ints.size(); i++){
+			sublist.add(ints.get(i));
+
+			if(sublist.size() == grpSize || grpSize < 1){ // < 1 is for num. of windows >num. elements. 
+														  // So no compression done 
 				int avg= (int) Math.round(calculateAverage(sublist));
-				zlist.add(avg);
+				zlist.put(at, avg);
 				sublist.clear();
+				at= i+1;
+			
 			}
 		}
 		if(sublist.size() > 0){
 			int avg= (int) Math.round(calculateAverage(sublist));
-			zlist.add(avg);			
+			zlist.put(at, avg);			
 		}
 		return zlist;
 	} 
+
 	
 	/**
 	 * Average of ints in array x. Adapted from:

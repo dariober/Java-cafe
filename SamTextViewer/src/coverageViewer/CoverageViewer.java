@@ -23,10 +23,17 @@ public class CoverageViewer {
 	final static String DOT= "*";
 	final static String FILL= " ";
 	
-	private List<Integer> depth;
-//	private List<String> depthStrings;
-	private int maxDepth= 0; // Max depth in interval 
-//	private float depthPerLine; // After scaling, 1 line corresponds to 'depthPerLine' reads. 
+	/** List of positions and corresponding depth. Each element need not to represent a single
+	 * genomic bp. An element might be an summary (e.g. mean) of a group of adjacent positions. */
+	private List<Integer> depth= new ArrayList<Integer>();
+
+	/** Max value in depth List */
+	private int maxDepth= 0;
+	
+	/** Ruler: For each element in depth list say what position in genomic coordinates it corresponds to.
+	 * Need not to be an ungapped sequence since each element in depth might be a group positions. In
+	 * such case "depthAt" refers to the first base position of the group.*/
+	private List<Integer> depthAt= new ArrayList<Integer>();
 	
 	/* C o n s t r u c t o r s */
 
@@ -53,25 +60,25 @@ public class CoverageViewer {
 		
 		// TODO: Implement SamRecordFilter by interpreting -f <int> and -F <int> flags
 		
-		List<Integer> depth= new ArrayList<Integer>();
-		Iterator<LocusInfo> iter= samLocIter.iterator();		
+		Iterator<LocusInfo> iter= samLocIter.iterator();
 		while(iter.hasNext()){
-			int curDepth= iter.next().getRecordAndPositions().size();
-			depth.add(curDepth);
+			LocusInfo locusInfo= iter.next();
+			int curDepth= locusInfo.getRecordAndPositions().size();
+			this.depth.add(curDepth);
+			this.depthAt.add(locusInfo.getPosition());
 			if(curDepth > this.maxDepth){
 				this.maxDepth= curDepth;
 			}
-		}
-		this.depth= depth;
-		
+		}		
 	}
 	
 	/**
-	 * Initialize coverage track directly with list of ints.
+	 * Initialize coverage track directly with lists of ints.
 	 * @param depth
 	 */
-	public CoverageViewer(List<Integer> depth){
+	public CoverageViewer(List<Integer> depth, List<Integer> depthAt){
 		this.depth= depth;
+		this.depthAt= depthAt;
 		int maxDepth= 0;
 		for(int x : depth){
 			if(x > maxDepth){
@@ -177,6 +184,35 @@ public class CoverageViewer {
     	}
     	return null;
     }
+    
+    public String ruler(int markDist){
+    	String numberLine= "";
+    	int prevLen= 0;
+    	int i= 0;
+		while(i < this.depthAt.size()){
+			String posMark= String.valueOf(this.getDepthAt().get(i));
+			if(i == 0){
+				numberLine= posMark;
+				i += posMark.length();
+			} else if((numberLine.length() - prevLen) >= markDist){
+				prevLen= numberLine.length();
+				numberLine= numberLine + posMark;
+				i += posMark.length();
+			} else {
+				numberLine= numberLine + "-";
+				i++;
+			}
+		}
+    	return numberLine;
+    }
+    
+    public String toString(){
+    	StringBuilder sb= new StringBuilder();
+    	sb.append("depth: " + this.depth + "\n");
+    	sb.append("depthAt: " + this.depthAt + "\n");
+    	sb.append("maxDepth: " + this.maxDepth + "\n");
+    	return sb.toString();
+    }
 
     /* Setters and setters */
     
@@ -188,22 +224,30 @@ public class CoverageViewer {
 		return maxDepth;
 	}
 
+	public List<Integer> getDepthAt() {
+		return depthAt;
+	}
+
+	public void setDepthAt(List<Integer> depthAt) {
+		this.depthAt = depthAt;
+	}
+
+	/**
+	 * Set the depthAt list of positions. Each position in input is increased by "offset".
+	 * There is no check whether position goes beyond chron length.
+	 * @param depthAt
+	 * @param offset
+	 */
+	public void setDepthAt(List<Integer> newDepthAt, int offset) {
+		for(int i= 0; i < newDepthAt.size(); i++){
+			this.depthAt.set(i, newDepthAt.get(i) + offset);
+		}
+	}	
 }
 
-/*
-private void setProfileStrings(int ymaxLines){
-	
-	ArrayList<String> depthStrings= new ArrayList<String>();
-	ArrayList<List<String>> profile= (ArrayList<List<String>>) getProfileList(this.depth, ymaxLines);
-		
-	for(int i= (profile.size() - 1); i >= 0; i--){
-		List<String> xl= profile.get(i);
-		Set<String> unique= new HashSet<String>(xl);
-		if(unique.size() == 1 && unique.contains(FILL)){ // Do not print blank only lines
-			continue;
-		} else {
-			depthStrings.add(StringUtils.join(xl, ""));
-		}
-	}
-	this.depthStrings= depthStrings;
-} */
+
+//List<Integer> offsetDepthAt= new ArrayList<Integer>();	
+//for(int i= 0; i < newDepthAt.size(); i++){
+//	offsetDepthAt.add(newDepthAt.get(i) + offset);
+//}
+//this.depthAt= offsetDepthAt;
