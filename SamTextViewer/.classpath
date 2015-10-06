@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="src" path="test"/>
+	<classpathentry excluding="test_data/" kind="src" path="test"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry kind="lib" path="/Users/berald01/Documents/eclipse/libraries/picard-tools-1.130/htsjdk-1.130.jar" sourcepath="/Users/berald01/Documents/eclipse/libraries/picard-tools-1.130/htsjdk-1.130.zip"/>
 	<classpathentry kind="lib" path="/Users/berald01/Documents/eclipse/commons-lang3-3.3.2/commons-lang3-3.3.2.jar"/>

@@ -239,10 +239,6 @@ public class Utils {
 	 */
 	public static LinkedHashMap<Integer, Integer> compressListOfInts(List<Integer> ints, int nwinds){
 		
-		// if(ints.size() <= nwinds){
-		//	return ints;
-		// }
-		
 		int grpSize= (int) Math.round(((float)ints.size() / nwinds));
 		// After round() you get a remainder which goes in the last bin
 		LinkedHashMap<Integer, Integer> zlist= new LinkedHashMap<Integer, Integer>();
@@ -311,13 +307,6 @@ public class Utils {
 				numberLine= numberLine + "-";
 				curGenome += stepInBp;
 			}
-//			if(curGenome % by == 1){
-//				numberLine= numberLine + curGenome;
-//				curGenome += String.valueOf(curGenome).length() * stepInBp;
-//			} else {
-//				numberLine= numberLine + " ";
-//				curGenome += stepInBp;
-//			}
 		}
 		return numberLine;
 	}

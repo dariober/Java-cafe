@@ -3,12 +3,15 @@ package coverageViewer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 
 import readWriteBAMUtils.ReadWriteBAMUtils;
+import samTextViewer.Utils;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.ValidationStringency;
@@ -20,6 +23,10 @@ import htsjdk.samtools.util.SamLocusIterator.LocusInfo;
 
 public class CoverageViewer {
 
+	/** Max number of loci per window (column of text char). If you query 
+	 * large intervals, only some loci will be stored. This const define the density of
+	 * loci per window. */
+	final static int LOC_PER_WINDOW= 100;
 	final static String DOT= "*";
 	final static String FILL= " ";
 	
@@ -71,6 +78,40 @@ public class CoverageViewer {
 			}
 		}		
 	}
+
+	public CoverageViewer(String sam, String chrom, int from, int to, int windowSize){
+
+		int range= to -from + 1;
+		float density= 1/((float)range / ((float)windowSize * LOC_PER_WINDOW));
+		
+		SamReader samReader= ReadWriteBAMUtils.reader(sam, ValidationStringency.SILENT);
+		SAMFileHeader fh= samReader.getFileHeader();
+		
+		IntervalList il= new IntervalList(fh);
+		Random rand= new Random(); // Really you shouldn;t use rnd o filter loci.
+		for(int i= from; i <= to; i++){
+			float p= rand.nextFloat();
+			if(p < density){
+				Interval interval= new Interval(chrom, i, i);
+				il.add(interval);
+			}
+		}
+		SamLocusIterator samLocIter= new SamLocusIterator(samReader, il, true);
+		// TODO: Implement SamRecordFilter by interpreting -f <int> and -F <int> flags
+
+		Iterator<LocusInfo> iter= samLocIter.iterator();
+	
+		while(iter.hasNext()){
+			LocusInfo locusInfo= iter.next();
+			int curDepth= locusInfo.getRecordAndPositions().size();
+			this.depth.add(curDepth);
+			this.depthAt.add(locusInfo.getPosition());
+			if(curDepth > this.maxDepth){
+				this.maxDepth= curDepth;
+			}
+		}	
+	}
+
 	
 	/**
 	 * Initialize coverage track directly with lists of ints.
@@ -167,7 +208,27 @@ public class CoverageViewer {
         return ret;
     }
 
-
+    /**
+     * Compress coverage viewer track to reduce it to number of elements given in "windowSize".
+     * The new depthAt positions will correspond to the first position of each group of elements.  
+     * @param windowSize Number of elements to reduce the track to. I.e. the number of chars to
+     * display horizontally.
+     */
+    public void compressCovergeViewer(int windowSize){
+		LinkedHashMap<Integer, Integer> zcw= Utils.compressListOfInts(this.getDepth(), windowSize);
+		this.depth= new ArrayList<Integer>(zcw.values()); // Summarized values for each group. This will be the y-axis
+		ArrayList<Integer> zidx= new ArrayList<Integer>(zcw.keySet()); // Indexes of the first element of each group.
+		List<Integer> newDepthAt= new ArrayList<Integer>();
+		this.maxDepth= 0; // Recalculate max depth
+		for(int i=0; i < zidx.size(); i++){
+			newDepthAt.add(this.getDepthAt().get(zidx.get(i)));
+			if(this.depth.get(i) > this.maxDepth){
+				this.maxDepth= this.depth.get(i); 
+			}
+		}
+		this.depthAt= newDepthAt;
+    }
+    
     /**STUB: USed to filter out records. Doesn't seem to be very friendly though. 
      * Maybe better to write out a tmp bam with the required records?
      * @param f_incl
@@ -232,18 +293,19 @@ public class CoverageViewer {
 		this.depthAt = depthAt;
 	}
 
-	/**
-	 * Set the depthAt list of positions. Each position in input is increased by "offset".
-	 * There is no check whether position goes beyond chron length.
-	 * @param depthAt
-	 * @param offset
-	 */
-	public void setDepthAt(List<Integer> newDepthAt, int offset) {
-		for(int i= 0; i < newDepthAt.size(); i++){
-			this.depthAt.set(i, newDepthAt.get(i) + offset);
-		}
-	}	
 }
+
+/**
+ * Set the depthAt list of positions. Each position in input is increased by "offset".
+ * There is no check whether position goes beyond chrom length.
+ * @param depthAt
+ * @param offset
+ */
+//public void setDepthAt(List<Integer> newDepthAt, int offset) {
+//	for(int i= 0; i < newDepthAt.size(); i++){
+//		this.depthAt.set(i, newDepthAt.get(i) + offset);
+//	}
+//}	
 
 
 //List<Integer> offsetDepthAt= new ArrayList<Integer>();	

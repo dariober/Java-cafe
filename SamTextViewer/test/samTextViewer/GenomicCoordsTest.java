@@ -17,7 +17,7 @@ import readWriteBAMUtils.ReadWriteBAMUtils;
 public class GenomicCoordsTest {
 	
 	public static SAMSequenceDictionary samSeqDict= ReadWriteBAMUtils
-			.reader("test/test_data/ds051.short.bam", ValidationStringency.STRICT)
+			.reader("test_data/ds051.short.bam", ValidationStringency.STRICT)
 			.getFileHeader().getSequenceDictionary();
 	
 	@Test
@@ -49,36 +49,36 @@ public class GenomicCoordsTest {
 	
 	@Test
 	public void canGoToRegionAndReset(){
-		GenomicCoords gc= GenomicCoords.goToRegion("chr1:1-10", "test/test_data/ds051.short.bam", 100);
+		GenomicCoords gc= GenomicCoords.goToRegion("chr1:1-10", "test_data/ds051.short.bam", 100);
 		assertEquals("chr1", gc.getChrom());
 		assertEquals(1, (int)gc.getFrom());
 		assertEquals(10, (int)gc.getTo());
 		
-		gc= GenomicCoords.goToRegion("chr1:1", "test/test_data/ds051.short.bam", 100);
+		gc= GenomicCoords.goToRegion("chr1:1", "test_data/ds051.short.bam", 100);
 		assertEquals("chr1", gc.getChrom());
 		assertEquals(1, (int)gc.getFrom());
 		assertEquals(100, (int)gc.getTo());
 		
-		gc= GenomicCoords.goToRegion("chr1:1", "test/test_data/ds051.short.bam", 100);
+		gc= GenomicCoords.goToRegion("chr1:1", "test_data/ds051.short.bam", 100);
 		assertEquals("chr1", gc.getChrom());
 		assertEquals(1, (int)gc.getFrom());
 		assertEquals(100, (int)gc.getTo());
 
-		gc= GenomicCoords.goToRegion("chr1:100000-100200", "test/test_data/ds051.short.bam", 100);
+		gc= GenomicCoords.goToRegion("chr1:100000-100200", "test_data/ds051.short.bam", 100);
 		
 		assertEquals("chr1", gc.getChrom());
 		assertEquals(100000, (int)gc.getFrom());
 		assertEquals(100200, (int)gc.getTo());
 
-		gc= GenomicCoords.goToRegion("chrM:16550", "test/test_data/ds051.short.bam", 100);
+		gc= GenomicCoords.goToRegion("chrM:16550", "test_data/ds051.short.bam", 100);
 		assertEquals(16472, (int)gc.getFrom());
 		assertEquals(16571, (int)gc.getTo());
 
-		gc= GenomicCoords.goToRegion("chrM:16550-17000", "test/test_data/ds051.short.bam", 100);
+		gc= GenomicCoords.goToRegion("chrM:16550-17000", "test_data/ds051.short.bam", 100);
 		assertEquals(16472, (int)gc.getFrom());
 		assertEquals(16571, (int)gc.getTo());
 
-		gc= GenomicCoords.goToRegion("nonsense", "test/test_data/ds051.short.bam", 100);
+		gc= GenomicCoords.goToRegion("nonsense", "test_data/ds051.short.bam", 100);
 		assertEquals(null, gc.getChrom());
 		assertEquals(null, gc.getFrom());
 		assertEquals(null, gc.getTo());

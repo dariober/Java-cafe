@@ -27,7 +27,7 @@ import readWriteBAMUtils.ReadWriteBAMUtils;
 public class UtilsTest {
 
 	public static SAMSequenceDictionary samSeqDict= ReadWriteBAMUtils
-			.reader("test/test_data/ds051.short.bam", ValidationStringency.STRICT)
+			.reader("test_data/ds051.short.bam", ValidationStringency.STRICT)
 			.getFileHeader().getSequenceDictionary();
 	
 	@Test
@@ -85,7 +85,7 @@ AAAAA
 	
 	@Test 
 	public void canGetStartOfBamFile(){
-		GenomicCoords gc= Utils.getStartCoordsOfBAM("test/test_data/ds051.short.bam");
+		GenomicCoords gc= Utils.getStartCoordsOfBAM("test_data/ds051.short.bam");
 		assertEquals("chr7", gc.getChrom());
 		assertEquals(5566778, (int)gc.getFrom());
 		assertEquals(gc.getFrom(), gc.getTo());
@@ -94,13 +94,13 @@ AAAAA
 	
 	@Test
 	public void canGetStartOfChrom(){
-		GenomicCoords gc= Utils.getStartCoordsOfBAM("test/test_data/ds051.short.bam", "chr7");
+		GenomicCoords gc= Utils.getStartCoordsOfBAM("test_data/ds051.short.bam", "chr7");
 		assertEquals("chr7", gc.getChrom());
 		assertEquals(5566778, (int)gc.getFrom());
 		assertEquals(gc.getFrom(), gc.getTo());
 		
 		// null for chrom with no reads. Fails if chrom does not exist in header.
-		gc= Utils.getStartCoordsOfBAM("test/test_data/ds051.short.bam", "chrY");
+		gc= Utils.getStartCoordsOfBAM("test_data/ds051.short.bam", "chrY");
 		assertEquals(null, gc.getChrom());
 		assertEquals(null, gc.getFrom());
 		assertEquals(null, gc.getTo());

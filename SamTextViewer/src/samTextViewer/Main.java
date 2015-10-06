@@ -119,7 +119,7 @@ public class Main {
 		SamReader samReader= ReadWriteBAMUtils.reader(bam, ValidationStringency.SILENT);
 		
 		long cnt= countReadsInWindow(bam, gc, f_incl, F_excl, mapq);
-		double probSample= (cnt < maxReadsStack) ? 1 : (double)maxReadsStack / cnt;
+		float probSample= (float)maxReadsStack / cnt;
 		
 		Iterator<SAMRecord> sam= samReader.query(gc.getChrom(), gc.getFrom(), gc.getTo(), false);
 		TextWindow textWindow= new TextWindow(gc.getFrom(), gc.getTo());
@@ -259,13 +259,9 @@ public class Main {
 				double depthPerLine= -1;
 				String depthTrack= "";
 				if(maxDepthLines != 0){
-					CoverageViewer cw= new CoverageViewer(sam, gc.getChrom(), gc.getFrom(), gc.getTo());
+					CoverageViewer cw= new CoverageViewer(sam, gc.getChrom(), gc.getFrom(), gc.getTo(), windowSize);
 					if(doCompress){
-						LinkedHashMap<Integer, Integer> zcw= Utils.compressListOfInts(cw.getDepth(), windowSize);
-						ArrayList<Integer> zdepth= new ArrayList<Integer>(zcw.values());
-						ArrayList<Integer> zat= new ArrayList<Integer>(zcw.keySet());
-						cw= new CoverageViewer(zdepth, zat);
-						cw.setDepthAt(cw.getDepthAt(), gc.getFrom());
+						cw.compressCovergeViewer(windowSize);
 						prettyRuler= cw.ruler(RULER_BY);
 					}
 					List<String> depthStrings= cw.getProfileStrings(maxDepthLines);
@@ -317,7 +313,7 @@ public class Main {
 			if(!nonInteractive){
 				break;
 			}
-			System.err.print("[f]orward, [b]ack; Zoom out [X] / in [x]; Jump to pos -/+[int][k|m] e.g. +1m or -10k;\nOr set cmd line short opts e.g. -F 16 -r <chr>:[from]; [q]uit: ");
+			System.err.print("[f]orward, [b]ack; Zoom in/out with [zi]/[zo]; Jump to pos -/+[int][k|m] e.g. +1m or -10k;\nOr set cmd line short opts e.g. -F 16 -r <chr>:[from]; [q]uit: ");
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			String rawInput= br.readLine().trim();
 			/* Parse args */
@@ -331,9 +327,9 @@ public class Main {
 				rawInput= rawInput.matches("^\\+.*") ? rawInput.substring(1) : rawInput;
 				String newRegion= Utils.parseConsoleInput(rawInput, gc).trim();
 				gc= GenomicCoords.goToRegion(newRegion, insam.get(0), windowSize);
-			} else if(rawInput.equals("X")){
+			} else if(rawInput.equals("zo")){
 				gc.zoomOut();
-			} else if(rawInput.equals("x")){
+			} else if(rawInput.equals("zi")){
 				gc.zoomIn();
 			} else {
 				List<String> clArgs= Arrays.asList(rawInput.split("\\s+"));
