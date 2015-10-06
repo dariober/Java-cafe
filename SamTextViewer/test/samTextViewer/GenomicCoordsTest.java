@@ -2,6 +2,10 @@ package samTextViewer;
 
 import static org.junit.Assert.*;
 
+import java.text.NumberFormat;
+import java.util.Locale;
+import java.util.Random;
+
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.ValidationStringency;
@@ -15,6 +19,33 @@ public class GenomicCoordsTest {
 	public static SAMSequenceDictionary samSeqDict= ReadWriteBAMUtils
 			.reader("test/test_data/ds051.short.bam", ValidationStringency.STRICT)
 			.getFileHeader().getSequenceDictionary();
+	
+	@Test
+	public void canZoom(){
+		GenomicCoords gc= new GenomicCoords("chr1:101-105", samSeqDict); 
+		gc.zoomOut();
+		assertEquals(95, (int)gc.getFrom());
+		assertEquals(111, (int)gc.getTo());
+		for(int i= 0; i < 30; i++){
+			gc.zoomOut();
+		}
+		assertEquals(1, (int)gc.getFrom());
+		assertEquals(samSeqDict.getSequence("chr1").getSequenceLength(), (int)gc.getTo()); // Doesn't extend beyond chrom
+		
+		gc= new GenomicCoords("chr1:100-200", samSeqDict);
+		gc.zoomIn();
+		assertEquals(125, (int)gc.getFrom());
+		assertEquals(175, (int)gc.getTo());
+		
+		for(int i= 0; i < 20; i++){
+			gc.zoomIn();
+		}
+		assertEquals(149, (int)gc.getFrom());
+		assertEquals(151, (int)gc.getTo());
+		
+
+		
+	}
 	
 	@Test
 	public void canGoToRegionAndReset(){

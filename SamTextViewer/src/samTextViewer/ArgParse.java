@@ -71,6 +71,12 @@ public class ArgParse {
 			.setDefault(10)
 			.help("Maximum number of lines to print for each coverage.");
 
+		parser.addArgument("--maxReadsStack", "-M")
+			.type(Integer.class)
+			.setDefault(2000)
+			.help("Maximum number of reads to accumulate before printing. If more than this many reads map to the window\n"
+					+ "randomy select them");
+
 		
 		parser.addArgument("--BSseq", "-bs")
 			.action(Arguments.storeTrue())

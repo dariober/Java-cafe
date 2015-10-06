@@ -1,5 +1,8 @@
 package samTextViewer;
 
+import java.text.NumberFormat;
+import java.util.Locale;
+
 import org.apache.commons.lang3.StringUtils;
 
 import readWriteBAMUtils.ReadWriteBAMUtils;
@@ -209,7 +212,63 @@ public class GenomicCoords {
 	}
 	
 	public String toString(){
-		return this.chrom + ":" + this.from + "-" + this.to;
+		int range= this.to - this.from + 1;
+		return this.chrom + ":" + this.from + "-" + this.to + "; " + NumberFormat.getNumberInstance(Locale.UK).format(range) + "bp";
+		// return this.chrom + ":" + NumberFormat.getNumberInstance(Locale.UK).format(this.from) + "-" + NumberFormat.getNumberInstance(Locale.UK).format(this.to);
+	}
+	
+	private int getMidpoint(){
+		int range= this.to - this.from + 1;
+		if(range % 2 == 1){
+			range--;
+		}
+		// * Get midpoint of genomic interval
+		int midpoint= range / 2 + this.from;
+		return midpoint;
+	}
+	
+	/**
+	 * Rescale coords to extend them as in zooming-in/-out
+	 */
+	public void zoomOut(){
+		int zoom= 2;
+		// * Get size of window (to - from + 1)
+		int range= this.to - this.from + 1;
+		if(range % 2 == 1){
+			range--;
+		}
+		int midpoint= this.getMidpoint();
+		
+		// * Extend midpoint left by window size x2 and check coords
+		this.from= midpoint - (range * zoom);
+		this.from= (this.from <= 0) ? 1 : this.from; 
+		
+		// Extend midpoint right
+		this.to= midpoint + (range * zoom);
+		if(this.chrom != null && this.samSeqDict.getSequence(this.chrom).getSequenceLength() > 0){
+			this.to= (this.to > this.samSeqDict.getSequence(this.chrom).getSequenceLength()) ? 
+					this.samSeqDict.getSequence(this.chrom).getSequenceLength() : this.to;
+		}
+	}
+
+	/**
+	 * Zoom into range. 
+	 */
+	public void zoomIn(){
+		float zoom= (float) (1/4.0);
+		// * Get size of window (to - from + 1)
+		int range= this.to - this.from + 1;
+		if(range % 2 == 1){
+			range--;
+		}
+		// * Get midpoint of range
+		int midpoint= this.getMidpoint();
+		int extendBy= Math.round(range * zoom);
+		this.from= midpoint - extendBy;
+		this.to= midpoint + extendBy;
+		if(this.from > this.to){ // Not sure this can happen.
+			this.to= this.from;
+		}
 	}
 	
 	/* Getters and setters */

@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Random;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -27,7 +28,10 @@ import readWriteBAMUtils.ReadWriteBAMUtils;
  */
 public class Main {
 
-	final static int RULER_BY= 10; // Print the genomic position every so many text chars
+	/** Print the genomic position every so many text chars */
+	final static int RULER_BY= 10; 
+//	/** Stack up to so many reads to print in read window */
+//	final static int MAX_READS_IN_STACK= 2000;
 	
 	private static String prettySeqPrinter(byte[] faSeq, boolean noFormat){
 		
@@ -69,11 +73,39 @@ public class Main {
 		return numberLine;
 	}
 
+	/**
+	 * Count reads in interval using the given filters.
+	 * NB: Make sure you use the same filter as in readAndStackSAMRecords();
+	 * @param bam
+	 * @param gc
+	 * @param f_incl
+	 * @param F_excl
+	 * @param mapq
+	 * @return
+	 */
+	private static long countReadsInWindow(String bam, GenomicCoords gc, int f_incl, int F_excl, int mapq) {
 
+		long cnt= 0;
+		
+		SamReader samReader= ReadWriteBAMUtils.reader(bam, ValidationStringency.SILENT);
+		Iterator<SAMRecord> sam= samReader.query(gc.getChrom(), gc.getFrom(), gc.getTo(), false);
+		while(sam.hasNext()){
+			SAMRecord rec= sam.next();
+			if((rec.getFlags() & f_incl) == f_incl && (rec.getFlags() & F_excl) == 0 && rec.getMappingQuality() >= mapq){
+				cnt++;
+			}
+		}
+		try {
+			samReader.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return cnt;
+	}
 
-	
 	/** Read all records in input bam intersecting the given coordinates, then 
-	 * arrange them to fill up the window.
+	 * arrange them to fill up the window. If you change filters here change also 
+	 * in the counter!
 	 * @param bam
 	 * @param chrom
 	 * @param from
@@ -82,23 +114,31 @@ public class Main {
 	 * @return
 	 */
 	private static List<List<TextRead>> readAndStackSAMRecords(
-			String bam, GenomicCoords gc, byte[] faSeq, int f_incl, int F_excl, int mapq, boolean bs) {
+			String bam, GenomicCoords gc, byte[] faSeq, int f_incl, int F_excl, int mapq, boolean bs, int maxReadsStack) {
 
 		SamReader samReader= ReadWriteBAMUtils.reader(bam, ValidationStringency.SILENT);
+		
+		long cnt= countReadsInWindow(bam, gc, f_incl, F_excl, mapq);
+		double probSample= (cnt < maxReadsStack) ? 1 : (double)maxReadsStack / cnt;
+		
 		Iterator<SAMRecord> sam= samReader.query(gc.getChrom(), gc.getFrom(), gc.getTo(), false);
-		List<TextRead> textReads= new ArrayList<TextRead>();
 		TextWindow textWindow= new TextWindow(gc.getFrom(), gc.getTo());
-		while(sam.hasNext()){
-			// First accumulate all reads in window
+		List<TextRead> textReads= new ArrayList<TextRead>();
+		Random rand = new Random();
+		while(sam.hasNext() && textReads.size() < maxReadsStack){
+
 			SAMRecord rec= sam.next();
 			if((rec.getFlags() & f_incl) == f_incl && (rec.getFlags() & F_excl) == 0 && rec.getMappingQuality() >= mapq){
-				TextRead tr= new TextRead(rec, textWindow);
-				if(bs){
-					tr.setTextRead(tr.convertTextToBS(faSeq));
-				} else {
-					tr.setTextRead(tr.getTextChars(faSeq));
+				
+				if(rand.nextFloat() < probSample){ // Downsampler
+					TextRead tr= new TextRead(rec, textWindow);
+					if(bs){
+						tr.setTextRead(tr.convertTextToBS(faSeq));
+					} else {
+						tr.setTextRead(tr.getTextChars(faSeq));
+					}
+					textReads.add(tr);
 				}
-				textReads.add(tr);				
 			}
 		}
 		// Arrange reads nicely 
@@ -170,6 +210,7 @@ public class Main {
 		String fasta= opts.getString("fasta");
 		int maxLines= opts.getInt("maxLines");
 		int maxDepthLines= opts.getInt("maxDepthLines");
+		final int maxReadsStack= opts.getInt("maxReadsStack");
 		int f_incl= opts.getInt("f");
 		int F_excl= opts.getInt("F");
 		int mapq= opts.getInt("mapq");
@@ -242,7 +283,7 @@ public class Main {
 				
 				/* Header */
 				String fname= new File(sam).getName();
-				String header= gc.toString() + "; " + fname+ "; Max read depth: " + maxDepth + "; Each '*': " + depthPerLine + "x";
+				String header= fname+ "; Max read depth: " + maxDepth + "; Each '*': " + depthPerLine + "x";
 				if(!noFormat){
 					header= "\033[0;34m" + header + "\033[0m";
 				}
@@ -253,7 +294,7 @@ public class Main {
 					if((F_excl & 4) != 4){ // Always filter out read unmapped
 						F_excl += 4;
 					}
-					List<List<TextRead>> stackReads= readAndStackSAMRecords(sam, gc, faSeq, f_incl, F_excl, mapq, bs);
+					List<List<TextRead>> stackReads= readAndStackSAMRecords(sam, gc, faSeq, f_incl, F_excl, mapq, bs, maxReadsStack);
 					stackReadsStr= stackReadsToString(stackReads, maxLines, noFormat);	
 				}
 				/* And print out... */
@@ -266,24 +307,34 @@ public class Main {
 			}
 			System.out.println(prettyRuler);
 			
+			/* Footer */ 
+			if(!noFormat){
+				System.out.println("\033[0;34m" + gc.toString() + "\033[0m");
+			} else {
+				System.out.println(gc.toString());
+			}
 			/* Interactive input */
 			if(!nonInteractive){
 				break;
 			}
-			System.err.print("\nNavigate [f]orward, [b]ack or jump -/+[int] e.g. +1m or -10k;\nOr set cmd line short opts e.g. -F 16 -r <chr>:[from]; [q]uit: ");
+			System.err.print("[f]orward, [b]ack; Zoom out [X] / in [x]; Jump to pos -/+[int][k|m] e.g. +1m or -10k;\nOr set cmd line short opts e.g. -F 16 -r <chr>:[from]; [q]uit: ");
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			String rawInput= br.readLine().trim();
 			/* Parse args */
 			if(rawInput.equals("q")){
 				break;
 			}
-			if(rawInput.equals("f")  
-				|| rawInput.equals("b") 
+			if(rawInput.equals("f") 
+				|| rawInput.equals("b")
 				|| rawInput.matches("^\\-{0,1}\\d+.*") 
 				|| rawInput.matches("^\\+{0,1}\\d+.*")){ // No cmd line args either f/b ops or ints
 				rawInput= rawInput.matches("^\\+.*") ? rawInput.substring(1) : rawInput;
 				String newRegion= Utils.parseConsoleInput(rawInput, gc).trim();
-				gc= GenomicCoords.goToRegion(newRegion, insam.get(0), windowSize);				
+				gc= GenomicCoords.goToRegion(newRegion, insam.get(0), windowSize);
+			} else if(rawInput.equals("X")){
+				gc.zoomOut();
+			} else if(rawInput.equals("x")){
+				gc.zoomIn();
 			} else {
 				List<String> clArgs= Arrays.asList(rawInput.split("\\s+"));
 				if(clArgs.indexOf("-r") != -1){
