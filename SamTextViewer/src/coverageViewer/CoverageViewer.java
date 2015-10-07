@@ -48,38 +48,81 @@ public class CoverageViewer {
 		
 	}
 	
+
+//	public CoverageViewer(String sam, String chrom, int from, int to){
+//
+//		SamReader samReader= ReadWriteBAMUtils.reader(sam, ValidationStringency.SILENT);
+//		SAMFileHeader fh= samReader.getFileHeader();
+//		
+//		IntervalList il= new IntervalList(fh);
+//		Interval interval= new Interval(chrom, from, to);
+//		il.add(interval);
+//		SamLocusIterator samLocIter= new SamLocusIterator(samReader, il, true);
+//		
+//		// TODO: Implement SamRecordFilter by interpreting -f <int> and -F <int> flags
+//		
+//		Iterator<LocusInfo> iter= samLocIter.iterator();
+//		while(iter.hasNext()){
+//			LocusInfo locusInfo= iter.next();
+//			int curDepth= locusInfo.getRecordAndPositions().size();
+//			this.depth.add(curDepth);
+//			this.depthAt.add(locusInfo.getPosition());
+//			if(curDepth > this.maxDepth){
+//				this.maxDepth= curDepth;
+//			}
+//		}		
+//	}
+//
+//	/**
+//	 * Construct coverage track from bam file and coordinates.
+//	 * @param sam
+//	 * @param chrom
+//	 * @param from
+//	 * @param to
+//	 */
+//	public CoverageViewer(String sam, String chrom, int from, int to, int windowSize){
+//
+//		int range= to -from + 1;
+//		float density= 1/((float)range / ((float)windowSize * LOC_PER_WINDOW));
+//		
+//		SamReader samReader= ReadWriteBAMUtils.reader(sam, ValidationStringency.SILENT);
+//		SAMFileHeader fh= samReader.getFileHeader();
+//		
+//		IntervalList il= new IntervalList(fh);
+//		Random rand= new Random(); // Really you shouldn;t use rnd o filter loci.
+//		for(int i= from; i <= to; i++){
+//			float p= rand.nextFloat();
+//			if(p < density){
+//				Interval interval= new Interval(chrom, i, i);
+//				il.add(interval);
+//			}
+//		}
+//		SamLocusIterator samLocIter= new SamLocusIterator(samReader, il, true);
+//	
+//		Iterator<LocusInfo> iter= samLocIter.iterator();
+//	
+//		while(iter.hasNext()){
+//			LocusInfo locusInfo= iter.next();
+//			int curDepth= locusInfo.getRecordAndPositions().size();
+//			this.depth.add(curDepth);
+//			this.depthAt.add(locusInfo.getPosition());
+//			if(curDepth > this.maxDepth){
+//				this.maxDepth= curDepth;
+//			}
+//		}	
+//	}
+
 	/**
 	 * Construct coverage track from bam file and coordinates.
 	 * @param sam
 	 * @param chrom
 	 * @param from
 	 * @param to
+	 * @param windowSize
+	 * @param filters
 	 */
-	public CoverageViewer(String sam, String chrom, int from, int to){
-
-		SamReader samReader= ReadWriteBAMUtils.reader(sam, ValidationStringency.SILENT);
-		SAMFileHeader fh= samReader.getFileHeader();
-		
-		IntervalList il= new IntervalList(fh);
-		Interval interval= new Interval(chrom, from, to);
-		il.add(interval);
-		SamLocusIterator samLocIter= new SamLocusIterator(samReader, il, true);
-		
-		// TODO: Implement SamRecordFilter by interpreting -f <int> and -F <int> flags
-		
-		Iterator<LocusInfo> iter= samLocIter.iterator();
-		while(iter.hasNext()){
-			LocusInfo locusInfo= iter.next();
-			int curDepth= locusInfo.getRecordAndPositions().size();
-			this.depth.add(curDepth);
-			this.depthAt.add(locusInfo.getPosition());
-			if(curDepth > this.maxDepth){
-				this.maxDepth= curDepth;
-			}
-		}		
-	}
-
-	public CoverageViewer(String sam, String chrom, int from, int to, int windowSize){
+	public CoverageViewer(String sam, String chrom, int from, int to, int windowSize, 
+			List<SamRecordFilter> filters){
 
 		int range= to -from + 1;
 		float density= 1/((float)range / ((float)windowSize * LOC_PER_WINDOW));
@@ -97,8 +140,7 @@ public class CoverageViewer {
 			}
 		}
 		SamLocusIterator samLocIter= new SamLocusIterator(samReader, il, true);
-		// TODO: Implement SamRecordFilter by interpreting -f <int> and -F <int> flags
-
+		samLocIter.setSamFilters(filters);
 		Iterator<LocusInfo> iter= samLocIter.iterator();
 	
 		while(iter.hasNext()){
@@ -228,24 +270,7 @@ public class CoverageViewer {
 		}
 		this.depthAt= newDepthAt;
     }
-    
-    /**STUB: USed to filter out records. Doesn't seem to be very friendly though. 
-     * Maybe better to write out a tmp bam with the required records?
-     * @param f_incl
-     * @param F_excl
-     * @return
-     */
-    private List<SamRecordFilter> bitflagToSamRecFilterList(int f_incl, int F_excl){
-		
-    	final int[] bits= {2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048};
-    	for(int i : bits){
-    		if((f_incl & 2) == 2){
-//    			new FailsVendorReadQualityFilter();
-    		}
-    	}
-    	return null;
-    }
-    
+        
     public String ruler(int markDist){
     	String numberLine= "";
     	int prevLen= 0;
@@ -260,7 +285,7 @@ public class CoverageViewer {
 				numberLine= numberLine + posMark;
 				i += posMark.length();
 			} else {
-				numberLine= numberLine + "-";
+				numberLine= numberLine + " ";
 				i++;
 			}
 		}

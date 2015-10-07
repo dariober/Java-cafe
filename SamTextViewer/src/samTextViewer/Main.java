@@ -16,9 +16,12 @@ import org.apache.commons.lang3.StringUtils;
 
 import coverageViewer.CoverageViewer;
 import net.sourceforge.argparse4j.inf.Namespace;
+import filter.FlagToFilter;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.filter.MappingQualityFilter;
+import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import readWriteBAMUtils.ReadWriteBAMUtils;
 
@@ -218,6 +221,10 @@ public class Main {
 		boolean noFormat= opts.getBoolean("noFormat");
 		boolean nonInteractive= opts.getBoolean("nonInteractive");
 		
+		if((F_excl & 4) != 4){ // Always filter out read unmapped
+			F_excl += 4;
+		}
+		
 		if(fasta == null && bs == true){
 			System.err.println("Warning:\n"
 					+ "Bisulfite mode enabled without fasta reference. Methylated bases will not be shown.");
@@ -235,6 +242,11 @@ public class Main {
 		// -----------------------------------------
 		while(true){
 
+			/* Prepare filters */
+			
+			List<SamRecordFilter> filters= FlagToFilter.flagToFilterList(f_incl, F_excl); // new ArrayList<SamRecordFilter>();
+			filters.add(new MappingQualityFilter(mapq));
+			
 			/* Need to compress? */
 			boolean doCompress= false;
 			if((gc.getTo() - gc.getFrom()) > windowSize){
@@ -259,7 +271,8 @@ public class Main {
 				double depthPerLine= -1;
 				String depthTrack= "";
 				if(maxDepthLines != 0){
-					CoverageViewer cw= new CoverageViewer(sam, gc.getChrom(), gc.getFrom(), gc.getTo(), windowSize);
+					CoverageViewer cw= new CoverageViewer(sam, gc.getChrom(), gc.getFrom(), gc.getTo(), 
+							windowSize, filters);
 					if(doCompress){
 						cw.compressCovergeViewer(windowSize);
 						prettyRuler= cw.ruler(RULER_BY);
@@ -287,9 +300,6 @@ public class Main {
 				/* Reads */
 				String stackReadsStr= "";
 				if(maxLines != 0 && !doCompress){
-					if((F_excl & 4) != 4){ // Always filter out read unmapped
-						F_excl += 4;
-					}
 					List<List<TextRead>> stackReads= readAndStackSAMRecords(sam, gc, faSeq, f_incl, F_excl, mapq, bs, maxReadsStack);
 					stackReadsStr= stackReadsToString(stackReads, maxLines, noFormat);	
 				}
@@ -304,16 +314,17 @@ public class Main {
 			System.out.println(prettyRuler);
 			
 			/* Footer */ 
+			String footer= gc.toString() + "; -q " + mapq  + " -f " + f_incl + " -F " + F_excl;
 			if(!noFormat){
-				System.out.println("\033[0;34m" + gc.toString() + "\033[0m");
+				System.out.println("\033[0;34m" + footer + "\033[0m; ");
 			} else {
-				System.out.println(gc.toString());
+				System.out.println(footer);
 			}
 			/* Interactive input */
 			if(!nonInteractive){
 				break;
 			}
-			System.err.print("[f]orward, [b]ack; Zoom in/out with [zi]/[zo]; Jump to pos -/+[int][k|m] e.g. +1m or -10k;\nOr set cmd line short opts e.g. -F 16 -r <chr>:[from]; [q]uit: ");
+			System.err.print("[f]orward, [b]ack; Zoom in/out with [zi]/[zo]; Jump to pos -/+[int][k|m] e.g. +1m or -10k;\nSet cmd line short opts e.g. -F 16 -r <chr>:[from]; [q]uit: ");
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			String rawInput= br.readLine().trim();
 			/* Parse args */
@@ -344,6 +355,9 @@ public class Main {
 				if(clArgs.indexOf("-F") != -1){
 					int i= clArgs.indexOf("-F") + 1;
 					F_excl= Integer.parseInt(clArgs.get(i));
+					if((F_excl & 4) != 4){ // Always filter out read unmapped
+						F_excl += 4;
+					}
 				}				
 				if(clArgs.indexOf("-q") != -1){
 					int i= clArgs.indexOf("-q") + 1;
