@@ -136,37 +136,46 @@ AAAAA
 		
 		// N. windows is a multiple of N. elements
 		int[] intArr= {1, 2, 3, 10, 20, 30, 100, 200, 300};
-		List<Integer> intList= new ArrayList<Integer>();
+		List<Integer> longList= new ArrayList<Integer>();
 		for(int x : intArr){
-			intList.add(x);
+			longList.add(x);
 		}
 		int nwinds= 3;
-		LinkedHashMap<Integer, Integer> zlist= Utils.compressListOfInts(intList, nwinds);
-		Set<Integer> at= zlist.keySet();
+		LinkedHashMap<Integer, Integer> compressedList= Utils.compressListOfInts(longList, nwinds);
+		Set<Integer> at= compressedList.keySet();
 		assertEquals("[0, 3, 6]", at.toString());
-		Collection<Integer> depth= zlist.values();
+		Collection<Integer> depth= compressedList.values();
 		assertEquals("[2, 20, 200]", depth.toString());
 
 		// No compression as more windows then elements
 		nwinds= 300; 
-		zlist= Utils.compressListOfInts(intList, nwinds);
-		assertEquals(intList, new ArrayList<Integer>(zlist.values()));
+		compressedList= Utils.compressListOfInts(longList, nwinds);
+		assertEquals(longList, new ArrayList<Integer>(compressedList.values()));
 		
 		// An odd division of #elements by #windows
-		intList.clear();
+		longList.clear();
 		for (int i = 0; i < 100; i++) {
-			intList.add(i);
+			longList.add(i);
 		}
 		nwinds= 17;
-		zlist= Utils.compressListOfInts(intList, nwinds);
-		assertEquals(nwinds, zlist.size());
-		assertEquals("[3, 9, 15, 21, 27, 33, 39, 45, 51, 57, 63, 69, 75, 81, 87, 93, 98]", zlist.values().toString());
+		// System.out.println("Long list");
+		compressedList= Utils.compressListOfInts(longList, nwinds);
+		// System.out.println("END Long list");
+		assertEquals(nwinds, compressedList.size());
+		assertEquals("[3, 9, 15, 21, 27, 33, 39, 45, 51, 57, 63, 69, 75, 81, 87, 93, 98]", compressedList.values().toString());
 
+		// BUG! compressedList.size() should be == nwinds but is rounded to longList.size()!
+		// See also
+		// echo -e "chr1\t0\t100" | windowMaker -b - -n 70 | awk '{print $0, $3-$2, NR}'
+		nwinds= 70;
+		compressedList= Utils.compressListOfInts(longList, nwinds);
+		assertEquals(compressedList.size(), longList.size()); // 
+		
 		// Empty input list return empty map. 
 		nwinds= 3; 
-		intList.clear();
-		zlist= Utils.compressListOfInts(intList, nwinds);
-		assertEquals(0, zlist.size());
+		longList.clear();
+		compressedList= Utils.compressListOfInts(longList, nwinds);
+		assertEquals(0, compressedList.size());
 	}
 	
 	@Test
