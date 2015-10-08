@@ -108,7 +108,23 @@ public class FilterTest {
 
 		rec.setFlags(2048);
 		assertFalse(new SupplementaryAlignmentFilter(true).filterOut(rec)); // Keep if set: Kept
-		assertTrue(new SupplementaryAlignmentFilter(false).filterOut(rec)); // Exclude if set: Excluded
+		assertTrue(new SupplementaryAlignmentFilter(false).filterOut(rec)); // Exclude if set: Excluded		
+	}
+	
+	@Test
+	public void filterForTopBottomStrand(){
+		rec.setFlags(0);
+		assertFalse(new ReadFromTopStrandFilter(true).filterOut(rec)); // Keep if set: Kept
+		assertTrue(new ReadFromTopStrandFilter(false).filterOut(rec)); // Exclude if set: Excluded
+		rec.setFlags(16);
+		assertTrue(new ReadFromTopStrandFilter(true).filterOut(rec)); // Keep if set: Excluded
+		assertFalse(new ReadFromTopStrandFilter(false).filterOut(rec)); // Exclude if set: Kept
+		
+		rec.setFlags(17); // paired -ve strand
+		// Keep if from bottom strand
+		assertFalse(new ReadFromTopStrandFilter(false).filterOut(rec));
+		// Keep if from top strand
+		assertTrue(new ReadFromTopStrandFilter(true).filterOut(rec));
 	}
 	
 	@Test
@@ -171,11 +187,11 @@ public class FilterTest {
 				char refbase= Character.toUpperCase('\0');
 				char rb= Character.toUpperCase((char)recOff.getReadBase());
 				
+				boolean isTopStrand= (new ReadFromTopStrandFilter(true)).filterOut(recOff.getRecord());
+				
 				if(refbase == 'C'){
 
-					if(	(!recOff.getRecord().getReadNegativeStrandFlag() && !recOff.getRecord().getReadPairedFlag()) ||  // +ve unpaired
-						    (!recOff.getRecord().getReadNegativeStrandFlag() && recOff.getRecord().getFirstOfPairFlag()) ||  // +ve 1st  in pair
-								recOff.getRecord().getReadNegativeStrandFlag() && recOff.getRecord().getSecondOfPairFlag()){ // -ve 2nd pair
+					if( isTopStrand	){ // -ve 2nd pair
 						if(rb == 'C'){
 							M++;
 						} else if(rb == 'T'){
@@ -186,9 +202,7 @@ public class FilterTest {
 					}  					
 				} else if (refbase == 'G'){
 
-					if(	(recOff.getRecord().getReadNegativeStrandFlag() && !recOff.getRecord().getReadPairedFlag()) || 
-						    (recOff.getRecord().getReadNegativeStrandFlag() && recOff.getRecord().getFirstOfPairFlag()) || 
-								!recOff.getRecord().getReadNegativeStrandFlag() && recOff.getRecord().getSecondOfPairFlag()){
+					if(	!isTopStrand ){
 						if(rb == 'G'){
 							M++;
 						} else if(rb == 'A'){

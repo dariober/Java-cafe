@@ -97,6 +97,14 @@ public class FlagToFilter {
 			list.add(new SupplementaryAlignmentFilter(false));
 		}		
 
+		if((f_incl & 4096) == 4096){
+			list.add(new ReadFromTopStrandFilter(true));
+		}
+		if((F_excl & 4096) == 4096){
+			list.add(new ReadFromTopStrandFilter(false));
+		}		
+
+		
 		return list;
 	} 
 
