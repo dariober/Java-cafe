@@ -105,7 +105,4 @@ public class ArgParse {
 		return(opts);
 	}
 	
-	public static void validateArgs(Namespace opts){
-		// Optional checks to validate arguments.
-	}
 }

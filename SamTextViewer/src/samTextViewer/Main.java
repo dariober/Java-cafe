@@ -8,7 +8,6 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Random;
 
@@ -20,6 +19,7 @@ import filter.FlagToFilter;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.filter.AggregateFilter;
 import htsjdk.samtools.filter.MappingQualityFilter;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
@@ -81,20 +81,19 @@ public class Main {
 	 * NB: Make sure you use the same filter as in readAndStackSAMRecords();
 	 * @param bam
 	 * @param gc
-	 * @param f_incl
-	 * @param F_excl
-	 * @param mapq
+	 * @param filters List of filters to apply
 	 * @return
 	 */
-	private static long countReadsInWindow(String bam, GenomicCoords gc, int f_incl, int F_excl, int mapq) {
+	private static long countReadsInWindow(String bam, GenomicCoords gc, List<SamRecordFilter> filters) {
 
 		long cnt= 0;
 		
 		SamReader samReader= ReadWriteBAMUtils.reader(bam, ValidationStringency.SILENT);
 		Iterator<SAMRecord> sam= samReader.query(gc.getChrom(), gc.getFrom(), gc.getTo(), false);
+		AggregateFilter aggregateFilter= new AggregateFilter(filters);
 		while(sam.hasNext()){
 			SAMRecord rec= sam.next();
-			if((rec.getFlags() & f_incl) == f_incl && (rec.getFlags() & F_excl) == 0 && rec.getMappingQuality() >= mapq){
+			if( !aggregateFilter.filterOut(rec) ){
 				cnt++;
 			}
 		}
@@ -117,22 +116,23 @@ public class Main {
 	 * @return
 	 */
 	private static List<List<TextRead>> readAndStackSAMRecords(
-			String bam, GenomicCoords gc, byte[] faSeq, int f_incl, int F_excl, int mapq, boolean bs, int maxReadsStack) {
+			String bam, GenomicCoords gc, byte[] faSeq, List<SamRecordFilter> filters, boolean bs, int maxReadsStack) {
 
 		SamReader samReader= ReadWriteBAMUtils.reader(bam, ValidationStringency.SILENT);
 		
-		long cnt= countReadsInWindow(bam, gc, f_incl, F_excl, mapq);
+		long cnt= countReadsInWindow(bam, gc, filters);
 		float probSample= (float)maxReadsStack / cnt;
 		
 		Iterator<SAMRecord> sam= samReader.query(gc.getChrom(), gc.getFrom(), gc.getTo(), false);
 		TextWindow textWindow= new TextWindow(gc.getFrom(), gc.getTo());
 		List<TextRead> textReads= new ArrayList<TextRead>();
 		Random rand = new Random();
+		
+		AggregateFilter aggregateFilter= new AggregateFilter(filters); 
 		while(sam.hasNext() && textReads.size() < maxReadsStack){
 
 			SAMRecord rec= sam.next();
-			if((rec.getFlags() & f_incl) == f_incl && (rec.getFlags() & F_excl) == 0 && rec.getMappingQuality() >= mapq){
-				
+			if( !aggregateFilter.filterOut(rec) ){
 				if(rand.nextFloat() < probSample){ // Downsampler
 					TextRead tr= new TextRead(rec, textWindow);
 					if(bs){
@@ -180,7 +180,6 @@ public class Main {
 			try {
 				faSeqFile = new IndexedFastaSequenceFile(new File(fasta));
 				try{
-					System.out.println(gc);
 					faSeq= faSeqFile.getSubsequenceAt(gc.getChrom(), gc.getFrom(), gc.getTo()).getBases();
 				} catch (NullPointerException e){
 					System.err.println("Cannot fetch sequence " + gc.toString());
@@ -202,10 +201,10 @@ public class Main {
 	/* ------------------- M A I N ------------------- */
 	public static void main(String[] args) throws IOException {
 		
+		
 		/* Start parsing arguments * 
 		 * *** If you change something here change also in console input ***/
 		Namespace opts= ArgParse.argParse(args);
-		ArgParse.validateArgs(opts);
 		
 		List<String> insam= opts.getList("insam");
 		String region= opts.getString("region");
@@ -220,10 +219,11 @@ public class Main {
 		boolean bs= opts.getBoolean("BSseq");
 		boolean noFormat= opts.getBoolean("noFormat");
 		boolean nonInteractive= opts.getBoolean("nonInteractive");
-		
+
 		if((F_excl & 4) != 4){ // Always filter out read unmapped
 			F_excl += 4;
 		}
+		
 		
 		if(fasta == null && bs == true){
 			System.err.println("Warning:\n"
@@ -243,7 +243,6 @@ public class Main {
 		while(true){
 
 			/* Prepare filters */
-			
 			List<SamRecordFilter> filters= FlagToFilter.flagToFilterList(f_incl, F_excl); // new ArrayList<SamRecordFilter>();
 			filters.add(new MappingQualityFilter(mapq));
 			
@@ -267,7 +266,7 @@ public class Main {
 				String sam= insam.get(i);
 				
 				/* coverage track */
-				int maxDepth= -1;
+				float maxDepth= -1;
 				double depthPerLine= -1;
 				String depthTrack= "";
 				if(maxDepthLines != 0){
@@ -282,17 +281,20 @@ public class Main {
 					depthPerLine= (double)Math.round((float) maxDepth / maxDepthLines * 10d) / 10d;
 					depthPerLine= (depthPerLine < 1) ? 1 : depthPerLine;
 					depthTrack= StringUtils.join(depthStrings, "\n") + "\n";
+					//if( !noFormat ){  // See http://misc.flogisoft.com/bash/tip_colors_and_formatting
+					// 	depthTrack= "\033[47;30m" + depthTrack + "\033[0m";
+					//}
 				}
 
 				/* Prepare and print ruler */
 				if(!doCompress){
-					prettyRuler= ruler(gc.getFrom(), gc.getTo(), RULER_BY);			
+					prettyRuler= ruler(gc.getFrom(), gc.getTo(), RULER_BY);
 				}
 				System.out.println(prettyRuler);
 				
 				/* Header */
 				String fname= new File(sam).getName();
-				String header= fname+ "; Max read depth: " + maxDepth + "; Each '*': " + depthPerLine + "x";
+				String header= fname+ "; Max read depth: " + Math.round(maxDepth * 10d)/10d + "; Each . = " + depthPerLine + "x";
 				if(!noFormat){
 					header= "\033[0;34m" + header + "\033[0m";
 				}
@@ -300,7 +302,7 @@ public class Main {
 				/* Reads */
 				String stackReadsStr= "";
 				if(maxLines != 0 && !doCompress){
-					List<List<TextRead>> stackReads= readAndStackSAMRecords(sam, gc, faSeq, f_incl, F_excl, mapq, bs, maxReadsStack);
+					List<List<TextRead>> stackReads= readAndStackSAMRecords(sam, gc, faSeq, filters, bs, maxReadsStack);
 					stackReadsStr= stackReadsToString(stackReads, maxLines, noFormat);	
 				}
 				/* And print out... */

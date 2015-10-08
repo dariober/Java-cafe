@@ -158,6 +158,8 @@ public class FilterTest {
 	@Test
 	public void STUBcanCallBS(){
 		
+		System.out.println("\u203E");
+		
 		int f_incl= 0;
 		int F_excl= 0;
 		String chrom= "chrY";

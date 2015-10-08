@@ -32,10 +32,11 @@ public class CoverageViewer {
 	
 	/** List of positions and corresponding depth. Each element need not to represent a single
 	 * genomic bp. An element might be an summary (e.g. mean) of a group of adjacent positions. */
-	private List<Integer> depth= new ArrayList<Integer>();
+	// private List<Integer> depth= new ArrayList<Integer>();
+	private List<Float> depth= new ArrayList<Float>();
 
 	/** Max value in depth List */
-	private int maxDepth= 0;
+	private float maxDepth= 0;
 	
 	/** Ruler: For each element in depth list say what position in genomic coordinates it corresponds to.
 	 * Need not to be an ungapped sequence since each element in depth might be a group positions. In
@@ -145,7 +146,7 @@ public class CoverageViewer {
 	
 		while(iter.hasNext()){
 			LocusInfo locusInfo= iter.next();
-			int curDepth= locusInfo.getRecordAndPositions().size();
+			float curDepth= locusInfo.getRecordAndPositions().size();
 			this.depth.add(curDepth);
 			this.depthAt.add(locusInfo.getPosition());
 			if(curDepth > this.maxDepth){
@@ -159,11 +160,11 @@ public class CoverageViewer {
 	 * Initialize coverage track directly with lists of ints.
 	 * @param depth
 	 */
-	public CoverageViewer(List<Integer> depth, List<Integer> depthAt){
+	public CoverageViewer(List<Float> depth, List<Integer> depthAt){
 		this.depth= depth;
 		this.depthAt= depthAt;
-		int maxDepth= 0;
-		for(int x : depth){
+		float maxDepth= 0;
+		for(float x : depth){
 			if(x > maxDepth){
 				maxDepth= x;
 			}
@@ -186,7 +187,7 @@ public class CoverageViewer {
 		for(int i= (profile.size() - 1); i >= 0; i--){
 			List<String> xl= profile.get(i);
 			Set<String> unique= new HashSet<String>(xl);
-			if(unique.size() == 1 && unique.contains(FILL)){ // Do not print blank lines made of blanks.
+			if(unique.size() == 1 && unique.contains(FILL)){ // Do not print blank lines
 				continue;
 			} else {
 				depthStrings.add(StringUtils.join(xl, ""));
@@ -205,26 +206,53 @@ public class CoverageViewer {
 	 * Values in depthArray will be rescaled accordingly. 0 or -ve to disable scaling.
 	 * @return
 	 */
-	private List<List<String>> getProfileList(List<Integer> depth, int ymaxLines){
+	private List<List<String>> getProfileList(List<Float> depth, int ymaxLines){
 		
 		if(ymaxLines > 0 && ymaxLines <= this.maxDepth){ // Rescale depth as required
 			for(int i= 0; i < depth.size(); i++){
-				int rescaled= (int) Math.round( (double) depth.get(i) / maxDepth * ymaxLines);
+				// int rescaled= (int) Math.round( (float) depth.get(i) / maxDepth * ymaxLines);
+				float rescaled= (float) depth.get(i) / maxDepth * ymaxLines;
 				depth.set(i, rescaled);  
 			}
 		}
 		List<List<String>> profile= new ArrayList<List<String>>();
 		
 		for(int i= 0; i < depth.size(); i++){
-			ArrayList<String> strDepth= new ArrayList<String>();
-			int locDepth= depth.get(i);
-			for(int j= 0; j < locDepth; j++){
-				strDepth.add(DOT);
+			ArrayList<String> strDepth= new ArrayList<String>(); // This will be a vertical bar
+			float locDepth= depth.get(i);
+			
+			int nDouble= ((int)locDepth) / 2; // how many :
+			for(int j= 0; j < nDouble; j++){
+				strDepth.add(":");
+			} 
+			int diff= (int)Math.round(locDepth- (nDouble*2)); // Get remainder
+			if(diff == 2){
+				strDepth.add(":");
+			} else if(diff == 1) {
+				strDepth.add(".");
+			} else if(diff == 0){
+				//
+			} else {
+				System.err.println("Unexpected division");
+				System.exit(1);
 			}
+			
+			//for(int j= 0; j < (int)locDepth; j++){ // Stack up dots
+			//	strDepth.add(":");
+			//}
+
+			// Add on top a symbol for the possible decimal part
+			//if( (locDepth - (int)locDepth) < 0.33){
+			//	// strDepth.add(" ");
+			//} else if( (locDepth - (int)locDepth) < 0.66 ){
+			//	strDepth.add(".");
+			//} else {
+			//	strDepth.add(":");
+			//}
 			// Fill up list with blanks
-			while(strDepth.size() < maxDepth){
+			while(strDepth.size() < this.maxDepth){
 				strDepth.add(FILL);
-			}
+		    }
 			profile.add(strDepth);
 		}
 		return transpose(profile);
@@ -257,8 +285,8 @@ public class CoverageViewer {
      * display horizontally.
      */
     public void compressCovergeViewer(int windowSize){
-		LinkedHashMap<Integer, Integer> zcw= Utils.compressListOfInts(this.getDepth(), windowSize);
-		this.depth= new ArrayList<Integer>(zcw.values()); // Summarized values for each group. This will be the y-axis
+		LinkedHashMap<Integer, Float> zcw= Utils.compressListOfInts(this.getDepth(), windowSize);
+		this.depth= new ArrayList<Float>(zcw.values()); // Summarized values for each group. This will be the y-axis
 		ArrayList<Integer> zidx= new ArrayList<Integer>(zcw.keySet()); // Indexes of the first element of each group.
 		List<Integer> newDepthAt= new ArrayList<Integer>();
 		this.maxDepth= 0; // Recalculate max depth
@@ -302,11 +330,11 @@ public class CoverageViewer {
 
     /* Setters and setters */
     
-	public List<Integer> getDepth(){
+	public List<Float> getDepth(){
 		return this.depth;
 	}
     
-	public int getMaxDepth() {
+	public float getMaxDepth() {
 		return maxDepth;
 	}
 

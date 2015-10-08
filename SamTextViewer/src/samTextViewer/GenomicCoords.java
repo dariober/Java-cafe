@@ -213,7 +213,7 @@ public class GenomicCoords {
 	
 	public String toString(){
 		int range= this.to - this.from + 1;
-		return this.chrom + ":" + this.from + "-" + this.to + "; " + NumberFormat.getNumberInstance(Locale.UK).format(range) + "bp";
+		return this.chrom + ":" + this.from + "-" + this.to + "; " + NumberFormat.getNumberInstance(Locale.UK).format(range) + " bp";
 		// return this.chrom + ":" + NumberFormat.getNumberInstance(Locale.UK).format(this.from) + "-" + NumberFormat.getNumberInstance(Locale.UK).format(this.to);
 	}
 	

@@ -23,8 +23,8 @@ public class CoverageViewerTest {
 		
 		CoverageViewer cw= new CoverageViewer(sam, chrom, from, to, 1000, filters);
 		assertEquals(to - from + 1, cw.getDepth().size());
-		assertEquals("[4, 5, 6, 8, 9, 9, 9, 9, 9, 9, 10]", cw.getDepth().toString());
-		assertEquals(10, cw.getMaxDepth());
+		assertEquals("[4.0, 5.0, 6.0, 8.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 10.0]", cw.getDepth().toString());
+		assertEquals(10, cw.getMaxDepth(), 0.001);
 		assertEquals(5566781, (int)cw.getDepthAt().get(0));
 		
 		String expProfile= ""
@@ -99,8 +99,8 @@ public class CoverageViewerTest {
 		
 		CoverageViewer cw= new CoverageViewer(sam, chrom, from, to, windowSize, filters);
 		cw.compressCovergeViewer(windowSize);
-		assertEquals(from, cw.getDepthAt().get(0), 200);
-		assertEquals(to, cw.getDepthAt().get(cw.getDepthAt().size()-1), 200);
+		assertEquals(from, cw.getDepthAt().get(0), 500);
+		assertEquals(to, cw.getDepthAt().get(cw.getDepthAt().size()-1), 500);
 //		System.out.println(cw);
 	}	
 }

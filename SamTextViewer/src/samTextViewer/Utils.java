@@ -237,12 +237,12 @@ public class Utils {
 	 * @return Map where key is index (0-based) of first element in original input 
 	 * and value is averaged of grouped elements. The keys can be used as ruler for the coverage track.  
 	 */
-	public static LinkedHashMap<Integer, Integer> compressListOfInts(List<Integer> ints, int nwinds){
+	public static LinkedHashMap<Integer, Float> compressListOfInts(List<Float> ints, int nwinds){
 		
 		int grpSize= (int) Math.round(((float)ints.size() / nwinds));
 		// After round() you get a remainder which goes in the last bin
-		LinkedHashMap<Integer, Integer> zlist= new LinkedHashMap<Integer, Integer>();
-		List<Integer> sublist= new ArrayList<Integer>();
+		LinkedHashMap<Integer, Float> zlist= new LinkedHashMap<Integer, Float>();
+		List<Float> sublist= new ArrayList<Float>();
 		// int i= 0;
 		int at= 0;
 		for(int i= 0; i < ints.size(); i++){
@@ -250,7 +250,7 @@ public class Utils {
 
 			if(sublist.size() == grpSize || grpSize < 1){ // < 1 is for num. of windows >num. elements. 
 														  // So no compression done 
-				int avg= (int) Math.round(calculateAverage(sublist));
+				float avg= calculateAverage(sublist);
 				zlist.put(at, avg);
 				sublist.clear();
 				at= i+1;
@@ -258,7 +258,7 @@ public class Utils {
 			}
 		}
 		if(sublist.size() > 0){
-			int avg= (int) Math.round(calculateAverage(sublist));
+			float avg= Math.round(calculateAverage(sublist));
 			zlist.put(at, avg);			
 		}
 		return zlist;
@@ -271,13 +271,13 @@ public class Utils {
 	 * @param marks
 	 * @return
 	 */
-	private static double calculateAverage(List <Integer> x) {
-		long sum = 0;
+	private static float calculateAverage(List <Float> x) {
+		double sum = 0;
 		if(!x.isEmpty()) {
-			for (Integer z : x) {
+			for (Float z : x) {
 				sum += z;
 			}
-			return (double)sum / x.size();
+			return (float)sum / x.size();
 		}
 		return 0;
 	}
