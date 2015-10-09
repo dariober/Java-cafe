@@ -88,11 +88,25 @@ public class Utils {
 				if(!noFormat){
 					// For formatting see http://misc.flogisoft.com/bash/tip_colors_and_formatting
 					// and http://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux
-					if(fx.equals("M") || fx.equals("m")){
-						fx= "\033[97;101m" + fx + "\033[0m";
-					} else if(fx.equals("U") || fx.equals("u")){
-						fx= "\033[97;104m" + fx + "\033[0m";
+					String fmt= "\033["; // Start format 
+					if(tr.rec.getReadPairedFlag() && tr.rec.getSecondOfPairFlag()){
+						fmt += "4;"; // Underline 2nd n pair
+					}					
+					if(fx.toUpperCase().equals("M")){
+						fmt += "97;101";
+					} else if(fx.toUpperCase().equals("U")){
+						fmt += "97;104";
+					} else if(fx.toUpperCase().equals("A")){
+						fmt += "1;107;34";  //1: bold; 107: white bg
+					} else if(fx.toUpperCase().equals("C")) {
+						fmt += "1;107;31";
+					} else if(fx.toUpperCase().equals("G")) {
+						fmt += "1;107;32";
+					} else if(fx.toUpperCase().equals("T")) {
+						fmt += "1;107;33";
 					}
+					// The formatted string will look like `echo -e "\033[4;1;107;31mACTGnnnnnACTG\033[0m"`
+					fx= fmt + "m" + fx + "\033[0m"; // Clear all formatting
 				}
 				sb.append(fx);
 				curPos++;

@@ -27,7 +27,7 @@ public class CoverageViewer {
 	 * large intervals, only some loci will be stored. This const define the density of
 	 * loci per window. */
 	final static int LOC_PER_WINDOW= 100;
-	final static String DOT= "*";
+	//final static String DOT= "*";
 	final static String FILL= " ";
 	
 	/** List of positions and corresponding depth. Each element need not to represent a single
@@ -43,76 +43,20 @@ public class CoverageViewer {
 	 * such case "depthAt" refers to the first base position of the group.*/
 	private List<Integer> depthAt= new ArrayList<Integer>();
 	
+	private String chrom;
+	private int from;
+	private int to;
+	/**
+	 * Number of bases (bp) per character text on the screen. Set to 1 to start with
+	 * Increased as large genomci windows are compressed.
+	 * */
+	private float bpPerChar= 1;
 	/* C o n s t r u c t o r s */
 
 	public CoverageViewer(){
 		
 	}
 	
-
-//	public CoverageViewer(String sam, String chrom, int from, int to){
-//
-//		SamReader samReader= ReadWriteBAMUtils.reader(sam, ValidationStringency.SILENT);
-//		SAMFileHeader fh= samReader.getFileHeader();
-//		
-//		IntervalList il= new IntervalList(fh);
-//		Interval interval= new Interval(chrom, from, to);
-//		il.add(interval);
-//		SamLocusIterator samLocIter= new SamLocusIterator(samReader, il, true);
-//		
-//		// TODO: Implement SamRecordFilter by interpreting -f <int> and -F <int> flags
-//		
-//		Iterator<LocusInfo> iter= samLocIter.iterator();
-//		while(iter.hasNext()){
-//			LocusInfo locusInfo= iter.next();
-//			int curDepth= locusInfo.getRecordAndPositions().size();
-//			this.depth.add(curDepth);
-//			this.depthAt.add(locusInfo.getPosition());
-//			if(curDepth > this.maxDepth){
-//				this.maxDepth= curDepth;
-//			}
-//		}		
-//	}
-//
-//	/**
-//	 * Construct coverage track from bam file and coordinates.
-//	 * @param sam
-//	 * @param chrom
-//	 * @param from
-//	 * @param to
-//	 */
-//	public CoverageViewer(String sam, String chrom, int from, int to, int windowSize){
-//
-//		int range= to -from + 1;
-//		float density= 1/((float)range / ((float)windowSize * LOC_PER_WINDOW));
-//		
-//		SamReader samReader= ReadWriteBAMUtils.reader(sam, ValidationStringency.SILENT);
-//		SAMFileHeader fh= samReader.getFileHeader();
-//		
-//		IntervalList il= new IntervalList(fh);
-//		Random rand= new Random(); // Really you shouldn;t use rnd o filter loci.
-//		for(int i= from; i <= to; i++){
-//			float p= rand.nextFloat();
-//			if(p < density){
-//				Interval interval= new Interval(chrom, i, i);
-//				il.add(interval);
-//			}
-//		}
-//		SamLocusIterator samLocIter= new SamLocusIterator(samReader, il, true);
-//	
-//		Iterator<LocusInfo> iter= samLocIter.iterator();
-//	
-//		while(iter.hasNext()){
-//			LocusInfo locusInfo= iter.next();
-//			int curDepth= locusInfo.getRecordAndPositions().size();
-//			this.depth.add(curDepth);
-//			this.depthAt.add(locusInfo.getPosition());
-//			if(curDepth > this.maxDepth){
-//				this.maxDepth= curDepth;
-//			}
-//		}	
-//	}
-
 	/**
 	 * Construct coverage track from bam file and coordinates.
 	 * @param sam
@@ -125,6 +69,10 @@ public class CoverageViewer {
 	public CoverageViewer(String sam, String chrom, int from, int to, int windowSize, 
 			List<SamRecordFilter> filters){
 
+		this.chrom= chrom;
+		this.from= from;
+		this.to= to;
+		
 		int range= to -from + 1;
 		float density= 1/((float)range / ((float)windowSize * LOC_PER_WINDOW));
 		
@@ -210,17 +158,24 @@ public class CoverageViewer {
 		
 		if(ymaxLines > 0 && ymaxLines <= this.maxDepth){ // Rescale depth as required
 			for(int i= 0; i < depth.size(); i++){
-				// int rescaled= (int) Math.round( (float) depth.get(i) / maxDepth * ymaxLines);
 				float rescaled= (float) depth.get(i) / maxDepth * ymaxLines;
 				depth.set(i, rescaled);  
 			}
 		}
+		//float scailingFactor= (float)ymaxLines/((float)maxDepth + (float)0.0001);
+		//for(int i= 0; i < depth.size(); i++){
+		//	float rescaled= depth.get(i) * scailingFactor;
+		//	depth.set(i, rescaled);  
+		//}
 		List<List<String>> profile= new ArrayList<List<String>>();
 		
 		for(int i= 0; i < depth.size(); i++){
 			ArrayList<String> strDepth= new ArrayList<String>(); // This will be a vertical bar
 			float locDepth= depth.get(i);
 			
+			if((int)Math.round(locDepth) == 0){ // For zero coverage
+				strDepth.add("_"); 
+			}
 			int nDouble= ((int)locDepth) / 2; // how many :
 			for(int j= 0; j < nDouble; j++){
 				strDepth.add(":");
@@ -236,19 +191,6 @@ public class CoverageViewer {
 				System.err.println("Unexpected division");
 				System.exit(1);
 			}
-			
-			//for(int j= 0; j < (int)locDepth; j++){ // Stack up dots
-			//	strDepth.add(":");
-			//}
-
-			// Add on top a symbol for the possible decimal part
-			//if( (locDepth - (int)locDepth) < 0.33){
-			//	// strDepth.add(" ");
-			//} else if( (locDepth - (int)locDepth) < 0.66 ){
-			//	strDepth.add(".");
-			//} else {
-			//	strDepth.add(":");
-			//}
 			// Fill up list with blanks
 			while(strDepth.size() < this.maxDepth){
 				strDepth.add(FILL);
@@ -296,6 +238,7 @@ public class CoverageViewer {
 				this.maxDepth= this.depth.get(i); 
 			}
 		}
+		this.bpPerChar= (float)(this.to - this.from + 1) / zcw.size(); 
 		this.depthAt= newDepthAt;
     }
         
@@ -346,23 +289,11 @@ public class CoverageViewer {
 		this.depthAt = depthAt;
 	}
 
+	public float getBpPerChar() {
+		return bpPerChar;
+	}
+
+	public void setBpPerChar(float bpPerChar) {
+		this.bpPerChar = bpPerChar;
+	}
 }
-
-/**
- * Set the depthAt list of positions. Each position in input is increased by "offset".
- * There is no check whether position goes beyond chrom length.
- * @param depthAt
- * @param offset
- */
-//public void setDepthAt(List<Integer> newDepthAt, int offset) {
-//	for(int i= 0; i < newDepthAt.size(); i++){
-//		this.depthAt.set(i, newDepthAt.get(i) + offset);
-//	}
-//}	
-
-
-//List<Integer> offsetDepthAt= new ArrayList<Integer>();	
-//for(int i= 0; i < newDepthAt.size(); i++){
-//	offsetDepthAt.add(newDepthAt.get(i) + offset);
-//}
-//this.depthAt= offsetDepthAt;

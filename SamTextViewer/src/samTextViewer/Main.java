@@ -44,13 +44,13 @@ public class Main {
 				char base= (char)faSeq[i];
 				// For colour scheme see http://www.umass.edu/molvis/tutorials/dna/atgc.htm
 				if(base == 'A' || base == 'a'){
-					faSeqStr += "\033[34m" + base + "\033[0m";
+					faSeqStr += "\033[107;34m" + base + "\033[0m";
 				} else if(base == 'C' || base == 'c') {
-					faSeqStr += "\033[31m" + base + "\033[0m";
+					faSeqStr += "\033[107;31m" + base + "\033[0m";
 				} else if(base == 'G' || base == 'g') {
-					faSeqStr += "\033[32m" + base + "\033[0m";
+					faSeqStr += "\033[107;32m" + base + "\033[0m";
 				} else if(base == 'T' || base == 't') {
-					faSeqStr += "\033[33m" + base + "\033[0m";
+					faSeqStr += "\033[107;33m" + base + "\033[0m";
 				} else {
 					faSeqStr += base;
 				} 
@@ -269,6 +269,7 @@ public class Main {
 				float maxDepth= -1;
 				double depthPerLine= -1;
 				String depthTrack= "";
+				float bpPerChar= -1;
 				if(maxDepthLines != 0){
 					CoverageViewer cw= new CoverageViewer(sam, gc.getChrom(), gc.getFrom(), gc.getTo(), 
 							windowSize, filters);
@@ -278,23 +279,21 @@ public class Main {
 					}
 					List<String> depthStrings= cw.getProfileStrings(maxDepthLines);
 					maxDepth= cw.getMaxDepth();
+					bpPerChar= cw.getBpPerChar();
 					depthPerLine= (double)Math.round((float) maxDepth / maxDepthLines * 10d) / 10d;
 					depthPerLine= (depthPerLine < 1) ? 1 : depthPerLine;
 					depthTrack= StringUtils.join(depthStrings, "\n") + "\n";
-					//if( !noFormat ){  // See http://misc.flogisoft.com/bash/tip_colors_and_formatting
-					// 	depthTrack= "\033[47;30m" + depthTrack + "\033[0m";
-					//}
 				}
 
-				/* Prepare and print ruler */
+				/* Prepare ruler */
 				if(!doCompress){
 					prettyRuler= ruler(gc.getFrom(), gc.getTo(), RULER_BY);
 				}
-				System.out.println(prettyRuler);
+				// System.out.println(prettyRuler);
 				
 				/* Header */
 				String fname= new File(sam).getName();
-				String header= fname+ "; Max read depth: " + Math.round(maxDepth * 10d)/10d + "; Each . = " + depthPerLine + "x";
+				String header= fname+ "; Max read depth: " + Math.round(maxDepth * 10d)/10d + "; Each . = " + depthPerLine + "x, " + Math.round(bpPerChar * 10d)/10d + " bp";
 				if(!noFormat){
 					header= "\033[0;34m" + header + "\033[0m";
 				}
@@ -373,8 +372,8 @@ public class Main {
 					int i= clArgs.indexOf("-d") + 1;
 					maxDepthLines= Integer.parseInt(clArgs.get(i));
 				}				
-
-			}	
-		}
+			} 
+			System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+		} // End while loop
 	}
 }

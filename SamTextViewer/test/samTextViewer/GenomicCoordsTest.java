@@ -3,6 +3,9 @@ package samTextViewer;
 import static org.junit.Assert.*;
 
 import java.text.NumberFormat;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
@@ -234,5 +237,6 @@ public class GenomicCoordsTest {
 		assertEquals(null, gc.getTo());
 		assertEquals(null, gc.getFrom());
 
-	}	
+	}
+		
 }
