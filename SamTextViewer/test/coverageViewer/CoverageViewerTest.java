@@ -27,28 +27,22 @@ public class CoverageViewerTest {
 		assertEquals(10, cw.getMaxDepth(), 0.001);
 		assertEquals(5566781, (int)cw.getDepthAt().get(0));
 		
-		String expProfile= ""
-				+ "          *\n"
-				+ "    *******\n"
-				+ "   ********\n"
-				+ "   ********\n"
-				+ "  *********\n"
-				+ " **********\n"
-				+ "***********\n"
-				+ "***********\n"
-				+ "***********\n"
-				+ "***********";
+		String expProfile= 
+"    ......:\n" +
+"   ::::::::\n" +
+" .:::::::::\n" +
+":::::::::::\n" +
+":::::::::::";
+
 		//List<String> depthList = 
 		
 		String obsProfile= StringUtils.join(cw.getProfileStrings(10), "\n");
 		assertEquals(expProfile, obsProfile);
 
-		expProfile= ""
-				+ "    *******\n"
-				+ "   ********\n"
-				+ " **********\n"
-				+ "***********\n"
-				+ "***********";		
+		expProfile= ""+
+"    .......\n" +
+" ..::::::::\n" +
+":::::::::::";		
 		obsProfile= StringUtils.join(cw.getProfileStrings(5), "\n");
 		assertEquals(expProfile, obsProfile);
 		
