@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -245,13 +246,16 @@ public class Utils {
 	/**
 	 * Compress the input list of ints in a list of length nwinds by 
 	 * grouping elements and taking the mean of each group (or other summary stat).
-	 * E.g.
+	 * 
+	 * **NB**: If you change the splitting algorithm here check also Ruler class is
+	 * consistent.
+	 * 
 	 * @param ints
 	 * @param nwinds
 	 * @return Map where key is index (0-based) of first element in original input 
 	 * and value is averaged of grouped elements. The keys can be used as ruler for the coverage track.  
 	 */
-	public static LinkedHashMap<Integer, Float> compressListOfInts(List<Float> ints, int nwinds){
+	public static LinkedHashMap<Integer, Float> compressNumericList(List<Float> ints, int nwinds){
 		
 		int grpSize= (int) Math.round(((float)ints.size() / nwinds));
 		// After round() you get a remainder which goes in the last bin
@@ -282,46 +286,52 @@ public class Utils {
 	/**
 	 * Average of ints in array x. Adapted from:
 	 * http://stackoverflow.com/questions/10791568/calculating-average-of-an-array-list
+	 * null values are ignored, like R mean(..., na.rm= TRUE). 
+	 * Returns Float.NaN if input list is empty or only nulls. You can check for Float.NaN
+	 * with Float.isNaN(x); 
 	 * @param marks
 	 * @return
 	 */
-	private static float calculateAverage(List <Float> x) {
+	private static Float calculateAverage(List <Float> x) {
 		double sum = 0;
+		long  N= 0;  
 		if(!x.isEmpty()) {
 			for (Float z : x) {
-				sum += z;
+				if(z  != null && !Float.isNaN(z)){
+					sum += z;
+					N++;
+				}
 			}
-			return (float)sum / x.size();
+			return (float)sum / N;
 		}
-		return 0;
+		return Float.NaN;
 	}
-	
+
 	/**
-	 * Return a string to use as ruler.
-	 * @param from Start in genomic coordinates 
-	 * @param to End in genomic coords
-	 * @param by Print a mark every so many text chars (e.g. 10)
-	 * @param windowSize WindowSize in number of text char.
+	 * Naive search to get the index position of the value in list closest to a given value.
+	 * 
+	 * @param value
+	 * @param list
 	 * @return
 	 */
-	public static String ruler(int from, int to, int by, int windowSize){
-
-		float lenInBp=  to - from + 1;
-		float stepInBp= Math.round(lenInBp / windowSize); // One text char corresponds to this many bp
-	
-		int curGenome= from;
-		String numberLine= String.valueOf(from);
-		int prevLen= 0;
-		while(curGenome < to){
-			if((numberLine.length() - prevLen) >= by){
-				prevLen= numberLine.length();
-				numberLine= numberLine + curGenome;
-				curGenome += String.valueOf(curGenome).length() * stepInBp;
-			} else {
-				numberLine= numberLine + "-";
-				curGenome += stepInBp;
+	public static int getIndexOfclosestValue(float value, List<Float> list){
+		float bestDiff= Integer.MAX_VALUE;
+		int closest= -1;
+		for(int idx= 0; idx < list.size(); idx++){ 
+			// Iterate through entire list to find closest position on screen, it's a bit wasteful since
+			// the list is ordered, but it's ok.
+			float candidate= list.get(idx);
+			float diff= Math.abs(value - candidate);
+			if(diff < bestDiff){
+				closest= idx;
+				bestDiff= diff;
 			}
 		}
-		return numberLine;
+		if(closest < 0){
+			System.err.println("Invalid index position.");
+			System.exit(1);
+		}
+		return closest;
 	}
+		
 }

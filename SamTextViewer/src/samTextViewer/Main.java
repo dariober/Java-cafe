@@ -14,6 +14,7 @@ import java.util.Random;
 import org.apache.commons.lang3.StringUtils;
 
 import coverageViewer.CoverageViewer;
+import methylationViewer.MethylLoci;
 import net.sourceforge.argparse4j.inf.Namespace;
 import filter.FlagToFilter;
 import htsjdk.samtools.SAMRecord;
@@ -61,21 +62,6 @@ public class Main {
 		return faSeqStr;
 	}
 	
-	private static String ruler(int from, int to, int by){
-		int current= from;
-		String numberLine= "";
-		while(current < to){
-			if(current % by == 1){
-				numberLine= numberLine + current;
-				current += String.valueOf(current).length();
-			} else {
-				numberLine= numberLine + " ";
-				current++;
-			}
-		}
-		return numberLine;
-	}
-
 	/**
 	 * Count reads in interval using the given filters.
 	 * NB: Make sure you use the same filter as in readAndStackSAMRecords();
@@ -198,20 +184,25 @@ public class Main {
 		return faSeq;
 	} 
 	
+	private static String getMemoryStat(){
+		float mem= (float) ((float)Runtime.getRuntime().totalMemory() / 1000000d);
+		String memStats= "Mem use: " +  Math.round(mem * 10)/10 + " MB";
+		return memStats;
+	}
 	/* ------------------- M A I N ------------------- */
 	public static void main(String[] args) throws IOException {
-		
-		
+				
 		/* Start parsing arguments * 
 		 * *** If you change something here change also in console input ***/
 		Namespace opts= ArgParse.argParse(args);
 		
 		List<String> insam= opts.getList("insam");
 		String region= opts.getString("region");
-		final int windowSize= opts.getInt("windowSize");
+		int windowSize= opts.getInt("windowSize");
 		String fasta= opts.getString("fasta");
 		int maxLines= opts.getInt("maxLines");
 		int maxDepthLines= opts.getInt("maxDepthLines");
+		int maxMethylLines= opts.getInt("maxMethylLines");
 		final int maxReadsStack= opts.getInt("maxReadsStack");
 		int f_incl= opts.getInt("f");
 		int F_excl= opts.getInt("F");
@@ -223,8 +214,7 @@ public class Main {
 		if((F_excl & 4) != 4){ // Always filter out read unmapped
 			F_excl += 4;
 		}
-		
-		
+			
 		if(fasta == null && bs == true){
 			System.err.println("Warning:\n"
 					+ "Bisulfite mode enabled without fasta reference. Methylated bases will not be shown.");
@@ -234,13 +224,13 @@ public class Main {
 		GenomicCoords gc= null;
 		if(region == null){ // Go to start of bam file
 			gc= Utils.getStartCoordsOfBAM(insam.get(0));
-			gc.setTo(gc.getFrom() + windowSize);
+			gc.setTo(gc.getFrom() + windowSize - 1);
 		} else {
 			gc= GenomicCoords.goToRegion(region, insam.get(0), windowSize);
 		}
 		
 		// -----------------------------------------
-		while(true){
+		while(true){ // Each loop processes the user's input.
 
 			/* Prepare filters */
 			List<SamRecordFilter> filters= FlagToFilter.flagToFilterList(f_incl, F_excl); // new ArrayList<SamRecordFilter>();
@@ -261,90 +251,144 @@ public class Main {
 				System.out.println(prettySeq);
 			}
 			
-			String prettyRuler= "";
-			for(int i= 0; i < insam.size(); i++){
+			for(int i= 0; i < insam.size(); i++){ // Iterate through each input file
 				String sam= insam.get(i);
 				
-				/* coverage track */
-				float maxDepth= -1;
-				double depthPerLine= -1;
-				String depthTrack= "";
-				float bpPerChar= -1;
-				if(maxDepthLines != 0){
-					CoverageViewer cw= new CoverageViewer(sam, gc.getChrom(), gc.getFrom(), gc.getTo(), 
+				/* Coverage and methylation track                         */
+				/* Coverage will be used for coverage and/or methylation  */
+				/* ****************************************************** */
+				CoverageViewer cw= null;
+				if(maxDepthLines != 0 || (bs && maxMethylLines != 0)){  
+					// Prepare if either coverage track or methylation track is required 
+					cw= new CoverageViewer(sam, gc.getChrom(), gc.getFrom(), gc.getTo(), 
 							windowSize, filters);
+				}
+				/* Prepare methylation track */
+				/* ========================= */
+				String methylProfile= ""; // This is all you need to print out the methylation track.
+				if(bs && maxMethylLines != 0){
+					MethylLoci ml= null; 
+					if(faSeq == null){
+						faSeq= prepareRefSeq(fasta, gc);
+					}
+					ml= new MethylLoci(cw, faSeq, gc.getFrom());
 					if(doCompress){
-						cw.compressCovergeViewer(windowSize);
-						prettyRuler= cw.ruler(RULER_BY);
+						ml.compressCovergeViewer(windowSize);	
+					}
+					/* Prepare printable methylation profile */
+					/* ------------------------------------- */
+					double depthPerMethylchar= (double)Math.round((float) ml.getMaxDepth() / maxMethylLines * 10d) / 10d;
+					depthPerMethylchar= (depthPerMethylchar < 1) ? 1 : depthPerMethylchar;
+					methylProfile += "Methylation depth; each '*.' = " + depthPerMethylchar + "x\n";
+					methylProfile += StringUtils.join(ml.getMethylProfileStrings(maxMethylLines, noFormat), "\n") + "\n";
+				}
+				/* Prepare printable coverage track */
+				/* ================================ */				
+				String coverageTrack= ""; // This is all you need to print out coverage track.
+				if(maxDepthLines != 0){
+					if(doCompress){
+						cw.compressCovergeViewer(windowSize);	
 					}
 					List<String> depthStrings= cw.getProfileStrings(maxDepthLines);
-					maxDepth= cw.getMaxDepth();
-					bpPerChar= cw.getBpPerChar();
-					depthPerLine= (double)Math.round((float) maxDepth / maxDepthLines * 10d) / 10d;
-					depthPerLine= (depthPerLine < 1) ? 1 : depthPerLine;
-					depthTrack= StringUtils.join(depthStrings, "\n") + "\n";
+					float maxDepth= cw.getMaxDepth();
+					double depthPerDot= (double)Math.round((float) maxDepth / maxDepthLines * 10d) / 10d;
+					depthPerDot= (depthPerDot < 1) ? 1 : depthPerDot;
+					coverageTrack= StringUtils.join(depthStrings, "\n");
+	
+					/* Coverage track Header */
+					String fname= new File(sam).getName();
+					String header= fname+ "; Max read depth: " + Math.round(maxDepth * 10d)/10d + "; Each . = " + depthPerDot + "x";
+					if(!noFormat){
+						header= "\033[0;34m" + header + "\033[0m";
+					}
+					coverageTrack= header + "\n"+ coverageTrack + "\n";
 				}
+				/*  ------------------------------------------------------------- */	
 
-				/* Prepare ruler */
-				if(!doCompress){
-					prettyRuler= ruler(gc.getFrom(), gc.getTo(), RULER_BY);
-				}
-				// System.out.println(prettyRuler);
-				
-				/* Header */
-				String fname= new File(sam).getName();
-				String header= fname+ "; Max read depth: " + Math.round(maxDepth * 10d)/10d + "; Each . = " + depthPerLine + "x, " + Math.round(bpPerChar * 10d)/10d + " bp";
-				if(!noFormat){
-					header= "\033[0;34m" + header + "\033[0m";
-				}
-				
 				/* Reads */
+				/* ***** */
 				String stackReadsStr= "";
 				if(maxLines != 0 && !doCompress){
 					List<List<TextRead>> stackReads= readAndStackSAMRecords(sam, gc, faSeq, filters, bs, maxReadsStack);
 					stackReadsStr= stackReadsToString(stackReads, maxLines, noFormat);	
 				}
+				
 				/* And print out... */
-				System.out.println(header);
-				System.out.print(depthTrack);
+				/* **************** */
+				System.out.print(coverageTrack);
+				System.out.print(methylProfile);
 				System.out.print(stackReadsStr);
-			}
+								
+			} // End loop through files 
+			
+			/* Footers and interactive prompt */
+			/* ****************************** */
+			
+			/* Sequence */
+			/* ======== */
 			if(!doCompress){
 				System.out.println(prettySeq);
 			}
-			System.out.println(prettyRuler);
-			
-			/* Footer */ 
-			String footer= gc.toString() + "; -q " + mapq  + " -f " + f_incl + " -F " + F_excl;
+			// Print ruler 
+			Ruler ruler= new Ruler(gc.getFrom(), gc.getTo(), windowSize);
+			System.out.println(ruler.printableRuler(RULER_BY));
+
+			/* Footer with window specs and filters*/ 
+			/* ==================================== */
+			String footer= gc.toString() + "; each char= " + Math.round(ruler.bpPerScreenColumn() * 10d)/10d + " bp; " 
+					+ "Filters: -q " + mapq  + " -f " + f_incl + " -F " + F_excl
+					+ "; " + getMemoryStat();
 			if(!noFormat){
 				System.out.println("\033[0;34m" + footer + "\033[0m; ");
 			} else {
 				System.out.println(footer);
 			}
 			/* Interactive input */
+			/* ================= */
 			if(!nonInteractive){
 				break;
 			}
-			System.err.print("[f]orward, [b]ack; Zoom in/out with [zi]/[zo]; Jump to pos -/+[int][k|m] e.g. +1m or -10k;\nSet cmd line short opts e.g. -F 16 -r <chr>:[from]; [q]uit: ");
-			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-			String rawInput= br.readLine().trim();
+			String cmdInput= "";
+			while(true){
+				System.err.print("[f]orward, [b]ack; [zi]/[zo] zoom in/out; move by -/+[int][k|m] bases; [h] for help and options: ");
+				BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+				cmdInput= br.readLine().trim();
+				if(cmdInput.equals("")){
+					// Nothing to do re-ask what to do.
+				} else if(cmdInput.equals("h")){
+					String inline= "\nNavigation options\n\n"
+							+ "[f]:       Move forward one window\n"
+							+ "[b]:       Move back one window\n"
+							+ "[zi]/[zo]: Zoom in / zoom out\n"
+							+ "+/- <int>: Move forward/backward this <int> number of bases. Suffixes k and m are allowed. E.g. '-2m' moves 2 Mbp back\n"
+							+ "[q]:       Quit\n"
+							+ "[h]:       Show this help";
+					// [f]orward, [b]ack; Zoom in/out with [zi]/[zo]; Jump to pos -/+[int][k|m]
+					System.out.println(inline);
+					System.out.println("\nFiltering and visualization options\n");
+					System.out.println(ArgParse.getDocstrings());
+				} else {
+					break;
+				}
+			}
 			/* Parse args */
-			if(rawInput.equals("q")){
+			/* ---------- */
+			if(cmdInput.equals("q")){
 				break;
 			}
-			if(rawInput.equals("f") 
-				|| rawInput.equals("b")
-				|| rawInput.matches("^\\-{0,1}\\d+.*") 
-				|| rawInput.matches("^\\+{0,1}\\d+.*")){ // No cmd line args either f/b ops or ints
-				rawInput= rawInput.matches("^\\+.*") ? rawInput.substring(1) : rawInput;
-				String newRegion= Utils.parseConsoleInput(rawInput, gc).trim();
+			if(cmdInput.equals("f") 
+				|| cmdInput.equals("b")
+				|| cmdInput.matches("^\\-{0,1}\\d+.*") 
+				|| cmdInput.matches("^\\+{0,1}\\d+.*")){ // No cmd line args either f/b ops or ints
+				cmdInput= cmdInput.matches("^\\+.*") ? cmdInput.substring(1) : cmdInput;
+				String newRegion= Utils.parseConsoleInput(cmdInput, gc).trim();
 				gc= GenomicCoords.goToRegion(newRegion, insam.get(0), windowSize);
-			} else if(rawInput.equals("zo")){
+			} else if(cmdInput.equals("zo")){
 				gc.zoomOut();
-			} else if(rawInput.equals("zi")){
+			} else if(cmdInput.equals("zi")){
 				gc.zoomIn();
 			} else {
-				List<String> clArgs= Arrays.asList(rawInput.split("\\s+"));
+				List<String> clArgs= Arrays.asList(cmdInput.split("\\s+"));
 				if(clArgs.indexOf("-r") != -1){
 					int i= clArgs.indexOf("-r") + 1;
 					gc= GenomicCoords.goToRegion(clArgs.get(i), insam.get(0), windowSize);
@@ -371,9 +415,13 @@ public class Main {
 				if(clArgs.indexOf("-d") != -1){
 					int i= clArgs.indexOf("-d") + 1;
 					maxDepthLines= Integer.parseInt(clArgs.get(i));
-				}				
+				}
+				if(clArgs.indexOf("-ml") != -1){
+					int i= clArgs.indexOf("-ml") + 1;
+					maxMethylLines= Integer.parseInt(clArgs.get(i));
+				}
 			} 
 			System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-		} // End while loop
+		} // End while loop keep going until quit or if no interactive input set
 	}
 }

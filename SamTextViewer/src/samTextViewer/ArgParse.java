@@ -1,5 +1,7 @@
 package samTextViewer;
 
+import java.util.LinkedHashMap;
+
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
@@ -11,6 +13,8 @@ public class ArgParse {
 	public static String PROG_NAME= "SamTextViewer";
 	public static String VERSION= "0.1.0";
 	
+	public static LinkedHashMap<String, String> docstrings= new LinkedHashMap<String, String>(); 
+	
 	/* Parse command line args */
 	public static Namespace argParse(String[] args){
 		ArgumentParser parser= ArgumentParsers
@@ -18,9 +22,8 @@ public class ArgParse {
 				.defaultHelp(true)
 				.version("${prog} " + VERSION)
 				.description("DESCRIPTION\n"
-+ "Text based viewer for sam/bam files, hopefully more convenient then samtools tview\n"
-+ " and with support for bisulfite converted reads.\n"
-+ "\n"
++ "Text based viewer for sam/bam files\n"
++ "Options marked by '*' can be set interactively.\n"
 + "See also home page at https://github.com/dariober/Java-cafe/tree/master/SamTextViewer"
 + "");	
 		parser.addArgument("--insam", "-i")
@@ -29,12 +32,11 @@ public class ArgParse {
 			.nargs("+")
 			.help("Input bam files, must be sorted and indexed.");
 		
+		docstrings.put("-r", "Go to region. Format 1-based: 'chrom:start-end' or 'chrom:start' or 'chrom'");
 		parser.addArgument("--region", "-r")
 			.type(String.class)
 			.required(false)
-			.help("Region to visualize and to collect reads from.\n"
-					+ "Format 1-based: chrom:start-end or chrom:start or chrom.\n"
-					+ "If not given the view will be at the start of the first read found.");
+			.help(docstrings.get("-r") + " *");
 
 		parser.addArgument("--windowSize", "-w")
 			.type(Integer.class)
@@ -46,42 +48,51 @@ public class ArgParse {
 			.help("Optional reference fasta reference file.\n"
 					+ "If given, must be indexed, e.g. with `samtools faidx ref.fa`");
 
+		docstrings.put("-f", "Required sam flags. Use 4096 for reads on top strand");
 		parser.addArgument("--f", "-f")
 			.type(Integer.class)
 			.setDefault(0)
-			.help("Required sam flags");
+			.help(docstrings.get("-f") + " *");
 		
+		docstrings.put("-F", "Filtering sam flags. Use 4096 for reads on top strand");
 		parser.addArgument("--F", "-F")
 			.type(Integer.class)
 			.setDefault(0)
-			.help("Filtering sam flags");
+			.help(docstrings.get("-f") + " *");
 
+		docstrings.put("-q", "Minumum mapping quality for a read to be considered");
 		parser.addArgument("--mapq", "-q")
 			.type(Integer.class)
 			.setDefault(0)
-			.help("Minumum mapping quality for a read to be printed (same as samtools view -q)");
+			.help(docstrings.get("-q") + " *");
 		
+		docstrings.put("-m", "Maximum number of lines to print for read tracks. No limit If < 0");
 		parser.addArgument("--maxLines", "-m")
 			.type(Integer.class)
-			.setDefault(-1)
-			.help("Maximum number of lines to print for each read track. No limit If <0.");
+			.setDefault(10)
+			.help(docstrings.get("-m") + " *");
 
+		docstrings.put("-d", "Maximum number of lines to print for coverage tracks. No limit if < 0");
 		parser.addArgument("--maxDepthLines", "-d")
 			.type(Integer.class)
 			.setDefault(10)
-			.help("Maximum number of lines to print for each coverage.");
+			.help(docstrings.get("-d") + " *");
+
+		docstrings.put("-ml", "Maximum number of lines to print for each methylation track. No limit if < 0");
+		parser.addArgument("--maxMethylLines", "-ml")
+			.type(Integer.class)
+			.setDefault(10)
+			.help(docstrings.get("-ml") + " *");
 
 		parser.addArgument("--maxReadsStack", "-M")
 			.type(Integer.class)
 			.setDefault(2000)
 			.help("Maximum number of reads to accumulate before printing. If more than this many reads map to the window\n"
 					+ "randomy select them");
-
 		
 		parser.addArgument("--BSseq", "-bs")
 			.action(Arguments.storeTrue())
 			.help("Bisulphite mode: Mark bases as methylated (M/m) or unmethylated (U/u).");
-
 		
 		parser.addArgument("--noFormat", "-nf")
 			.action(Arguments.storeTrue())
@@ -90,7 +101,6 @@ public class ArgParse {
 		parser.addArgument("--nonInteractive", "-ni")
 			.action(Arguments.storeFalse())
 			.help("Non interactive mode: Exit after having processed cmd line args.");
-
 		
 		parser.addArgument("--version", "-v").action(Arguments.version());
 		
@@ -103,6 +113,14 @@ public class ArgParse {
 			System.exit(1);
 		}		
 		return(opts);
+	}
+	
+	public static String getDocstrings(){
+		String docstring= "";
+		for(String h : docstrings.keySet()){
+			docstring += h + "\n    " + docstrings.get(h) + "\n";
+		}
+		return docstring;
 	}
 	
 }
