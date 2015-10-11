@@ -141,7 +141,7 @@ AAAAA
 			longList.add(x);
 		}
 		int nwinds= 3;
-		LinkedHashMap<Integer, Float> compressedList= Utils.compressListOfInts(longList, nwinds);
+		LinkedHashMap<Integer, Float> compressedList= Utils.compressNumericList(longList, nwinds);
 		Set<Integer> at= compressedList.keySet();
 		assertEquals("[0, 3, 6]", at.toString());
 		Collection<Float> depth= compressedList.values();
@@ -149,7 +149,7 @@ AAAAA
 
 		// No compression as more windows then elements
 		nwinds= 300; 
-		compressedList= Utils.compressListOfInts(longList, nwinds);
+		compressedList= Utils.compressNumericList(longList, nwinds);
 		assertEquals(longList, new ArrayList<Float>(compressedList.values()));
 		
 		// An odd division of #elements by #windows
@@ -161,7 +161,7 @@ AAAAA
 		System.out.println(longList);
 		nwinds= 17;
 		// System.out.println("Long list");
-		compressedList= Utils.compressListOfInts(longList, nwinds);
+		compressedList= Utils.compressNumericList(longList, nwinds);
 		// System.out.println("END Long list");
 		assertEquals(nwinds, compressedList.size());
 		assertEquals("[2.5, 8.5, 14.5, 20.5, 26.5, 32.5, 38.5, 44.5, 50.5, 56.5, 62.5, 68.5, 74.5, 80.5, 86.5, 92.5, 98.0]", 
@@ -171,24 +171,15 @@ AAAAA
 		// See also
 		// echo -e "chr1\t0\t100" | windowMaker -b - -n 70 | awk '{print $0, $3-$2, NR}'
 		nwinds= 70;
-		compressedList= Utils.compressListOfInts(longList, nwinds);
+		compressedList= Utils.compressNumericList(longList, nwinds);
 		assertEquals(compressedList.size(), longList.size()); // 
 		
 		// Empty input list return empty map. 
 		nwinds= 3; 
 		longList.clear();
-		compressedList= Utils.compressListOfInts(longList, nwinds);
+		compressedList= Utils.compressNumericList(longList, nwinds);
 		assertEquals(0, compressedList.size());
 	}
 	
-	@Test
-	public void canPrintRuler(){
-		int from= 1;
-		int to= 1000;
-		int by= 10;
-		int windowSize= 160;
-		String ruler= Utils.ruler(from, to, by, windowSize);
-		System.out.println("Ruler:");
-		System.out.println(ruler);
-	}
+
 }

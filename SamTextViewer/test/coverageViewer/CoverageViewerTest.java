@@ -25,7 +25,7 @@ public class CoverageViewerTest {
 		assertEquals(to - from + 1, cw.getDepth().size());
 		assertEquals("[4.0, 5.0, 6.0, 8.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 10.0]", cw.getDepth().toString());
 		assertEquals(10, cw.getMaxDepth(), 0.001);
-		assertEquals(5566781, (int)cw.getDepthAt().get(0));
+		assertEquals(5566781, (int)cw.getGenomicPositions().get(0));
 		
 		String expProfile= 
 "    ......:\n" +
@@ -77,9 +77,9 @@ public class CoverageViewerTest {
 		assertEquals(CoverageViewer.LOC_PER_WINDOW * windowSize, cw.getDepth().size(), 200);
 		
 		// Start sampling at approx start of coords
-		assertEquals(from, cw.getDepthAt().get(0), 50);
+		assertEquals(from, cw.getGenomicPositions().get(0), 50);
 		// Stop sampling at approx end of coords.
-		assertEquals(to, cw.getDepthAt().get(cw.getDepthAt().size()-1), 50);
+		assertEquals(to, cw.getGenomicPositions().get(cw.getGenomicPositions().size()-1), 50);
 	}
 	
 	@Test
@@ -93,8 +93,8 @@ public class CoverageViewerTest {
 		
 		CoverageViewer cw= new CoverageViewer(sam, chrom, from, to, windowSize, filters);
 		cw.compressCovergeViewer(windowSize);
-		assertEquals(from, cw.getDepthAt().get(0), 500);
-		assertEquals(to, cw.getDepthAt().get(cw.getDepthAt().size()-1), 500);
+		assertEquals(from, cw.getGenomicPositions().get(0), 500);
+		assertEquals(to, cw.getGenomicPositions().get(cw.getGenomicPositions().size()-1), 500);
 //		System.out.println(cw);
 	}	
 }
