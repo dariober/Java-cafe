@@ -127,12 +127,30 @@ AAAAA
 		
 		String rawInput= "-r chr10 -F 1024";
 		List<String> clArgs= Arrays.asList(rawInput.split("\\s+"));
-		// System.out.println(clArgs.indexOf("-R"));
-		
+		// System.out.println(clArgs.indexOf("-R"));		
 	}
 	
 	@Test
-	public void canCompressListOfInts(){
+	public void canParseColonOperator(){
+		// Test : operator
+		GenomicCoords gc= new GenomicCoords("chr7:100-200", samSeqDict);
+		assertEquals("chr7:200", Utils.parseConsoleInput(":200", gc));
+	}
+	
+	@Test
+	public void canparseConsoleInputOperator_f_b(){
+		// Test : operator
+		GenomicCoords gc= new GenomicCoords("chr7:100-200", samSeqDict);
+		assertEquals("chr7:110-210", Utils.parseConsoleInput("f", gc));
+		assertEquals("chr7:90-190", Utils.parseConsoleInput("b", gc));
+		// Smallest step is 1bp
+		gc= new GenomicCoords("chr7:100-102", samSeqDict);
+		assertEquals("chr7:101-103", Utils.parseConsoleInput("f", gc));
+		assertEquals("chr7:99-101", Utils.parseConsoleInput("b", gc));
+	}
+	
+	//@Test
+	/*public void canCompressListOfInts(){
 		
 		// N. windows is a multiple of N. elements
 		int[] intArr= {1, 2, 3, 10, 20, 30, 100, 200, 300};
@@ -141,7 +159,7 @@ AAAAA
 			longList.add(x);
 		}
 		int nwinds= 3;
-		LinkedHashMap<Integer, Float> compressedList= Utils.compressNumericList(longList, nwinds);
+		LinkedHashMap<Integer, Float> compressedList= Utils.compressNumericListTO_BE_DEPRECATED(longList, nwinds);
 		Set<Integer> at= compressedList.keySet();
 		assertEquals("[0, 3, 6]", at.toString());
 		Collection<Float> depth= compressedList.values();
@@ -149,7 +167,7 @@ AAAAA
 
 		// No compression as more windows then elements
 		nwinds= 300; 
-		compressedList= Utils.compressNumericList(longList, nwinds);
+		compressedList= Utils.compressNumericListTO_BE_DEPRECATED(longList, nwinds);
 		assertEquals(longList, new ArrayList<Float>(compressedList.values()));
 		
 		// An odd division of #elements by #windows
@@ -161,7 +179,7 @@ AAAAA
 		System.out.println(longList);
 		nwinds= 17;
 		// System.out.println("Long list");
-		compressedList= Utils.compressNumericList(longList, nwinds);
+		compressedList= Utils.compressNumericListTO_BE_DEPRECATED(longList, nwinds);
 		// System.out.println("END Long list");
 		assertEquals(nwinds, compressedList.size());
 		assertEquals("[2.5, 8.5, 14.5, 20.5, 26.5, 32.5, 38.5, 44.5, 50.5, 56.5, 62.5, 68.5, 74.5, 80.5, 86.5, 92.5, 98.0]", 
@@ -171,15 +189,15 @@ AAAAA
 		// See also
 		// echo -e "chr1\t0\t100" | windowMaker -b - -n 70 | awk '{print $0, $3-$2, NR}'
 		nwinds= 70;
-		compressedList= Utils.compressNumericList(longList, nwinds);
+		compressedList= Utils.compressNumericListTO_BE_DEPRECATED(longList, nwinds);
 		assertEquals(compressedList.size(), longList.size()); // 
 		
 		// Empty input list return empty map. 
 		nwinds= 3; 
 		longList.clear();
-		compressedList= Utils.compressNumericList(longList, nwinds);
+		compressedList= Utils.compressNumericListTO_BE_DEPRECATED(longList, nwinds);
 		assertEquals(0, compressedList.size());
-	}
+	} */
 	
 
 }

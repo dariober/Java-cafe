@@ -238,5 +238,25 @@ public class GenomicCoordsTest {
 		assertEquals(null, gc.getFrom());
 
 	}
+	
+	@Test
+	public void canPrepareRuler(){
+		GenomicCoords gc= new GenomicCoords("chr1:101-110", samSeqDict);
+		assertEquals(7, gc.getMapping(7).size());
+		assertEquals(101.0, gc.getMapping(7).get(0), 0.01);
+		assertEquals(102.5, gc.getMapping(7).get(1), 0.01);
+		assertEquals(102.5, gc.getMapping(7).get(1), 0.01);
+		assertEquals(1.42857142, gc.getBpPerScreenColumn(7), 0.01);
+	}
+	
+	@Test
+	public void canPrintRuler(){
+		GenomicCoords gc= new GenomicCoords("chr1:101-200", samSeqDict);
+		gc= new GenomicCoords("chr1:101-200", samSeqDict);
+		assertEquals(50, gc.printableRuler(50, 10).length());
+		//System.out.println(gc.printableRuler(50, 10));
+	
+	}
+	
 		
 }

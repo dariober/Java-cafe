@@ -124,10 +124,10 @@ public class IntervalFeature implements Comparable<IntervalFeature> {
 	 
 	/** 
 	 * Map interval to screen coordinates using the provided ruler.
-	 * @param rulerMap List typically obtained from Ruler.mapping of length equal to the screen 
+	 * @param rulerMap List typically obtained from Ruler_TO_BE_DEPRECTED.mapping of length equal to the screen 
 	 * width mapping genome coords to screen coords.
 	 * */
-	public void mapToScreen(List<Float> rulerMap) {
+	public void mapToScreen(List<Double> rulerMap) {
 
 		/*        |============| <- ruler
 		 *   ===                  ===  <- Interval(s) 

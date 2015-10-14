@@ -113,7 +113,7 @@ public class IntervalFeatureSet {
 	 * Assign to all features in set the matching positions on screen. -1 if feature is
 	 * not contained at all.
 	 * */
-	public void mapIntervalsToScreen(String chrom, List<Float> rulerMap){
+	public void mapIntervalsToScreen(String chrom, List<Double> rulerMap){
 		List<IntervalFeature> intervalsOnChrom= this.getIntervalMap().get(chrom);
 		for(IntervalFeature f : intervalsOnChrom){
 			f.mapToScreen(rulerMap);
@@ -123,7 +123,7 @@ public class IntervalFeatureSet {
 	/**
 	 * Return a string showing the mapping of this feature set to the given ruler.
 	 * This is what the user sees.*/
-	public String printableIntervals(String chrom, List<Float> rulerMap){
+	public String printableIntervals(String chrom, List<Double> rulerMap){
 		// First prepare an empty list of length rulerMap. Each entry
 		// Then map interval set to ruler and fill up the list where
 		// a mapping is found.

@@ -146,7 +146,7 @@ public class Utils {
 		SamReader samReader= ReadWriteBAMUtils.reader(bam, ValidationStringency.LENIENT);
 		Iterator<SAMRecord> sam= samReader.query(chrom, 0, 0, false);
 		
-		GenomicCoords gc= new GenomicCoords(null, null, null, samReader.getFileHeader().getSequenceDictionary());
+		GenomicCoords gc= new GenomicCoords(null, samReader.getFileHeader().getSequenceDictionary());
 		while(sam.hasNext()){
 			SAMRecord rec= sam.next();
 			if(!rec.getReadUnmappedFlag()){
@@ -201,18 +201,30 @@ public class Utils {
 		Integer to= gc.getTo();
 		
 		int windowSize= to - from + 1;
-		if(rawInput.trim().equals("") || rawInput.trim().equals("f")){				
+		if(rawInput.trim().equals("ff")){				
 			from += windowSize; 
 			to += windowSize; 
 			return chrom + ":" + from + "-" + to;
-		} else if(rawInput.trim().equals("b")) {
+		} else if(rawInput.trim().equals("bb")) {
 			from -= windowSize;
 			to -= windowSize; 
 			return chrom + ":" + from + "-" + to;
-		//} else if(rawInput.trim().startsWith("-r")) { // Go to chrom
-		//	region= rawInput.trim().substring(2).trim(); // Strip '-r'
-		//	return region;
-			
+		} else if(rawInput.trim().equals("f")){
+			int step= (int)Math.round(windowSize / 10d);
+			step= (step == 0) ? 1 : step;
+			from += step; 
+			to += step;
+			return chrom + ":" + from + "-" + to;
+		} else if(rawInput.trim().equals("b")){
+			int step= (int)Math.round(windowSize / 10d);
+			step= (step == 0) ? 1 : step;
+			from -= step; 
+			to -= step;
+			return chrom + ":" + from + "-" + to;
+		} else if(rawInput.trim().startsWith(":")) { // You might want to be more specific than just startsWith(:)
+			String pos= rawInput.trim().replaceFirst(":", "");
+			Integer.parseInt(pos); // Check you actually got an int.
+			return chrom + ":" + pos;
 		} else if(rawInput.trim().startsWith("+") 
 				|| rawInput.trim().startsWith("-") 
 				|| Character.isDigit(rawInput.trim().charAt(0))){
@@ -247,7 +259,7 @@ public class Utils {
 	 * Compress the input list of ints in a list of length nwinds by 
 	 * grouping elements and taking the mean of each group (or other summary stat).
 	 * 
-	 * **NB**: If you change the splitting algorithm here check also Ruler class is
+	 * **NB**: If you change the splitting algorithm here check also Ruler_TO_BE_DEPRECTED class is
 	 * consistent.
 	 * 
 	 * @param ints
@@ -255,12 +267,12 @@ public class Utils {
 	 * @return Map where key is index (0-based) of first element in original input 
 	 * and value is averaged of grouped elements. The keys can be used as ruler for the coverage track.  
 	 */
-	public static LinkedHashMap<Integer, Float> compressNumericList(List<Float> ints, int nwinds){
+	/*public static LinkedHashMap<Integer, Double> compressNumericListTO_BE_DEPRECATED(List<Double> ints, int nwinds){
 		
-		int grpSize= (int) Math.round(((float)ints.size() / nwinds));
+		int grpSize= (int) Math.round(((double)ints.size() / nwinds));
 		// After round() you get a remainder which goes in the last bin
-		LinkedHashMap<Integer, Float> zlist= new LinkedHashMap<Integer, Float>();
-		List<Float> sublist= new ArrayList<Float>();
+		LinkedHashMap<Integer, Double> zlist= new LinkedHashMap<Integer, Double>();
+		List<Double> sublist= new ArrayList<Double>();
 		// int i= 0;
 		int at= 0;
 		for(int i= 0; i < ints.size(); i++){
@@ -268,7 +280,7 @@ public class Utils {
 
 			if(sublist.size() == grpSize || grpSize < 1){ // < 1 is for num. of windows >num. elements. 
 														  // So no compression done 
-				float avg= calculateAverage(sublist);
+				double avg= calculateAverage(sublist);
 				zlist.put(at, avg);
 				sublist.clear();
 				at= i+1;
@@ -276,11 +288,11 @@ public class Utils {
 			}
 		}
 		if(sublist.size() > 0){
-			float avg= Math.round(calculateAverage(sublist));
+			double avg= Math.round(calculateAverage(sublist));
 			zlist.put(at, avg);			
 		}
 		return zlist;
-	} 
+	} */
 
 	
 	/**
@@ -292,36 +304,36 @@ public class Utils {
 	 * @param marks
 	 * @return
 	 */
-	private static Float calculateAverage(List <Float> x) {
+	public static Double calculateAverage(List<Double> list) {
 		double sum = 0;
 		long  N= 0;  
-		if(!x.isEmpty()) {
-			for (Float z : x) {
-				if(z  != null && !Float.isNaN(z)){
+		if(!list.isEmpty()) {
+			for (Double z : list) {
+				if(z  != null && !Double.isNaN(z)){
 					sum += z;
 					N++;
 				}
 			}
-			return (float)sum / N;
+			return (double)sum / N;
 		}
-		return Float.NaN;
+		return Double.NaN;
 	}
 
 	/**
 	 * Naive search to get the index position of the value in list closest to a given value.
 	 * 
-	 * @param value
-	 * @param list
+	 * @param genomePos
+	 * @param mapping
 	 * @return
 	 */
-	public static int getIndexOfclosestValue(float value, List<Float> list){
-		float bestDiff= Integer.MAX_VALUE;
+	public static int getIndexOfclosestValue(double genomePos, List<Double> mapping){
+		double bestDiff= Integer.MAX_VALUE;
 		int closest= -1;
-		for(int idx= 0; idx < list.size(); idx++){ 
+		for(int idx= 0; idx < mapping.size(); idx++){ 
 			// Iterate through entire list to find closest position on screen, it's a bit wasteful since
 			// the list is ordered, but it's ok.
-			float candidate= list.get(idx);
-			float diff= Math.abs(value - candidate);
+			double candidate= mapping.get(idx);
+			double diff= Math.abs(genomePos - candidate);
 			if(diff < bestDiff){
 				closest= idx;
 				bestDiff= diff;

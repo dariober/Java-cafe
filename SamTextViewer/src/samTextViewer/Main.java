@@ -232,6 +232,9 @@ public class Main {
 		// -----------------------------------------
 		while(true){ // Each loop processes the user's input.
 
+			/* Ruler_TO_BE_DEPRECTED maps genomic coordinates to screen coordinates */
+			// Ruler_TO_BE_DEPRECTED ruler= new Ruler_TO_BE_DEPRECTED(gc.getFrom(), gc.getTo(), windowSize);
+			
 			/* Prepare filters */
 			List<SamRecordFilter> filters= FlagToFilter.flagToFilterList(f_incl, F_excl); // new ArrayList<SamRecordFilter>();
 			filters.add(new MappingQualityFilter(mapq));
@@ -260,8 +263,8 @@ public class Main {
 				CoverageViewer cw= null;
 				if(maxDepthLines != 0 || (bs && maxMethylLines != 0)){  
 					// Prepare if either coverage track or methylation track is required 
-					cw= new CoverageViewer(sam, gc.getChrom(), gc.getFrom(), gc.getTo(), 
-							windowSize, filters);
+					cw= new CoverageViewer(sam, gc, windowSize, filters);
+					cw.getMappingToScreen(gc.getMapping(windowSize));
 				}
 				/* Prepare methylation track */
 				/* ========================= */
@@ -286,12 +289,12 @@ public class Main {
 				/* ================================ */				
 				String coverageTrack= ""; // This is all you need to print out coverage track.
 				if(maxDepthLines != 0){
-					if(doCompress){
-						cw.compressCovergeViewer(windowSize);	
-					}
+					//if(doCompress){
+					//	cw.compressCovergeViewer(windowSize);	
+					//}
 					List<String> depthStrings= cw.getProfileStrings(maxDepthLines);
-					float maxDepth= cw.getMaxDepth();
-					double depthPerDot= (double)Math.round((float) maxDepth / maxDepthLines * 10d) / 10d;
+					double maxDepth= cw.getMaxDepth();
+					double depthPerDot= (double)Math.round((double) maxDepth / maxDepthLines * 10d) / 10d;
 					depthPerDot= (depthPerDot < 1) ? 1 : depthPerDot;
 					coverageTrack= StringUtils.join(depthStrings, "\n");
 	
@@ -330,12 +333,11 @@ public class Main {
 				System.out.println(prettySeq);
 			}
 			// Print ruler 
-			Ruler ruler= new Ruler(gc.getFrom(), gc.getTo(), windowSize);
-			System.out.println(ruler.printableRuler(RULER_BY));
+			System.out.println(gc.printableRuler(windowSize, RULER_BY));
 
 			/* Footer with window specs and filters*/ 
 			/* ==================================== */
-			String footer= gc.toString() + "; each char= " + Math.round(ruler.bpPerScreenColumn() * 10d)/10d + " bp; " 
+			String footer= gc.toString() + "; each char= " + Math.round(gc.getBpPerScreenColumn(windowSize) * 10d)/10d + " bp; " 
 					+ "Filters: -q " + mapq  + " -f " + f_incl + " -F " + F_excl
 					+ "; " + getMemoryStat();
 			if(!noFormat){
@@ -357,9 +359,10 @@ public class Main {
 					// Nothing to do re-ask what to do.
 				} else if(cmdInput.equals("h")){
 					String inline= "\nNavigation options\n\n"
-							+ "[f]:       Move forward one window\n"
-							+ "[b]:       Move back one window\n"
+							+ "[f]/[b]:   Small step forward/backward (1/10 of a window)\n"
+							+ "[ff]/[bb]: Large step forward/backward (1 window)\n"
 							+ "[zi]/[zo]: Zoom in / zoom out\n"
+							+ "[:pos]:    Go to position <pos> on current chromosome\n" 
 							+ "+/- <int>: Move forward/backward this <int> number of bases. Suffixes k and m are allowed. E.g. '-2m' moves 2 Mbp back\n"
 							+ "[q]:       Quit\n"
 							+ "[h]:       Show this help";
@@ -378,6 +381,9 @@ public class Main {
 			}
 			if(cmdInput.equals("f") 
 				|| cmdInput.equals("b")
+				|| cmdInput.equals("ff") 
+				|| cmdInput.equals("bb")
+				|| cmdInput.startsWith(":")
 				|| cmdInput.matches("^\\-{0,1}\\d+.*") 
 				|| cmdInput.matches("^\\+{0,1}\\d+.*")){ // No cmd line args either f/b ops or ints
 				cmdInput= cmdInput.matches("^\\+.*") ? cmdInput.substring(1) : cmdInput;

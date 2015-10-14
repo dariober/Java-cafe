@@ -61,9 +61,9 @@ public class IntervalFeatureTest {
 	
 	@Test
 	public void canMapIntervalToRuler(){
-		List<Float> rulerMap= new ArrayList<Float>();
+		List<Double> rulerMap= new ArrayList<Double>();
 		for(int i= 10; i < 20; i += 2){
-			rulerMap.add((float)(i + 0.3));
+			rulerMap.add((double)(i + 0.3));
 		} // [10.3, 12.3, 14.3, 16.3, 18.3]
 		IntervalFeature f= new IntervalFeature("chrM\t10\t15", "bed");
 		f.mapToScreen(rulerMap);

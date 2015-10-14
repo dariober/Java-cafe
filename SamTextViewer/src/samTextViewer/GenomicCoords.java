@@ -1,16 +1,30 @@
 package samTextViewer;
 
+import java.io.IOException;
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 
 import org.apache.commons.lang3.StringUtils;
 
 import readWriteBAMUtils.ReadWriteBAMUtils;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReader;
 import htsjdk.samtools.ValidationStringency;
 
-/**Parse and store genomic coordinates 
- * TODO: Commas from ints are stripped, regardless of whether they are in the right place or not. 
+/**
+ * Class to set up the horizontal axis on screen. 
+ * 
+ * * Parse and check input genomic coordinates in input.
+ * * Map genomic coordinates to screen coordinates.
+ * * Display info about window: Ruler_TO_BE_DEPRECTED, coordinates, bp/column
+ * 
+ * TODO: Do not check chrom and upper limit if a SamFileHeader is not given, e.g.
+ * because ot was not loaded.
+ *  
  * @author berald01
  */
 public class GenomicCoords {
@@ -19,6 +33,7 @@ public class GenomicCoords {
 	private Integer from;
 	private Integer to;
 	private SAMSequenceDictionary samSeqDict;
+	// private List<Double> mapping= new ArrayList<Double>();
 	
 	/* Constructors */
 	public GenomicCoords(String region, SAMSequenceDictionary samSeqDict){
@@ -31,14 +46,15 @@ public class GenomicCoords {
 	}
 	
 	public GenomicCoords(String chrom, Integer from, Integer to, SAMSequenceDictionary samSeqDict){
-		this.samSeqDict= samSeqDict;
+		
 		this.chrom= chrom;
 		this.from= from;
-		this.to= to;
+		this.to= to;		
+		this.samSeqDict= samSeqDict;
 		makeGenomicCoordsValid();
 		correctCoordsAgainstSeqDict(samSeqDict);
+
 	}
-	
 	
 	/* Methods */
 	
@@ -214,7 +230,6 @@ public class GenomicCoords {
 	public String toString(){
 		int range= this.to - this.from + 1;
 		return this.chrom + ":" + this.from + "-" + this.to + "; " + NumberFormat.getNumberInstance(Locale.UK).format(range) + " bp";
-		// return this.chrom + ":" + NumberFormat.getNumberInstance(Locale.UK).format(this.from) + "-" + NumberFormat.getNumberInstance(Locale.UK).format(this.to);
 	}
 	
 	private int getMidpoint(){
@@ -271,7 +286,119 @@ public class GenomicCoords {
 		}
 	}
 	
+	/**
+	 * Same as R seq(from to, length.out). 
+	 * @param from
+	 * @param to
+	 * @param lengthOut Length of sequence, effectively the desired screen width.
+	 * @return
+	 */
+	private List<Double> seqFromToLenOut(int lengthOut){
+		
+		List<Double> mapping= new ArrayList<Double>();
+		
+		if(from < 1 || from > to){
+			System.err.println("Invalid genome coordinates: from " + from + " to " + to);
+			System.exit(1);
+		}
+		int span= to - from + 1;
+		// If the genomic span is less then screen size, reduce screen size to.
+		// If genomic span == screenSize then you have a mapping one to one.
+		if(span <= lengthOut){ 
+			for(int i= from; i <= to; i++){
+				mapping.add((double)i);
+			}
+			return mapping;
+		}
+		
+		double step= ((double)span - 1)/(lengthOut - 1);
+		mapping.add((double)from);
+		for(int i= 1; i < lengthOut; i++){
+			mapping.add((double)mapping.get(i-1)+step);
+		}
+		
+		// First check last point is close enough to expection. If so, replace last point with
+		// exact desired.
+		double diffTo= Math.abs(mapping.get(mapping.size() - 1) - to);
+		if(diffTo > ((float)to * 0.001)){
+			System.err.println("Error generating sequence:");
+			System.err.println("Last point: " + mapping.get(mapping.size() - 1));
+			System.err.println("To diff: " + diffTo);
+			System.err.println("Step: " + step);
+		} else {
+			mapping.set(mapping.size()-1, (double)to);
+		}
+		
+		double diffFrom= Math.abs(mapping.get(0) - from);		
+		if(diffFrom > 0.01 || mapping.size() != lengthOut){
+			System.err.println("Error generating sequence:");
+			System.err.println("Expected size: " + lengthOut + "; Effective: " + mapping.size());
+			System.err.println("From diff: " + diffFrom);
+			System.exit(1);
+		}
+		return mapping;
+	}
+	
+	public double getBpPerScreenColumn(int windowSize){
+		List<Double> mapping = seqFromToLenOut(windowSize);
+		double bpPerScreenColumn= (to - from + 1) / (double)mapping.size();
+		return bpPerScreenColumn;
+	}
+	
+	/**
+	 * Mapping of genome positions to screen. Screen position is
+	 * 0-based. I.e. first column has position 0. For genomic
+	 * spans only slightly larger then screen size the mapping might be
+	 * inaccurate due to rounding during preparation of windows. 
+	 * */
+	public int getScreenPositionAtGenomePosition(int windowSize, int genomePos){
+		List<Double> mapping = seqFromToLenOut(windowSize);
+		if(genomePos < from || genomePos > to){
+			return -1;
+		}
+		int closest= Utils.getIndexOfclosestValue((double)genomePos, mapping);
+		return closest;
+	}
+	
+	/** For debugging only */
+	public String toStringVerbose(int windowSize){
+		List<Double> mapping = seqFromToLenOut(windowSize);
+		String str= "Genome coords: " + from + "-" + to 
+				+ "; screen width: " + mapping.size()
+				+ "; scale: " + this.getBpPerScreenColumn(windowSize) + " bp/column" 
+				+ "; Mapping: " + mapping;
+		str += "\n";
+		str += this.toString();
+		return str;
+	}
+	
+	public String printableRuler(int windowSize, int markDist){
+		List<Double> mapping = seqFromToLenOut(windowSize);
+    	String numberLine= "";
+    	int prevLen= 0;
+    	int i= 0;
+		while(i < mapping.size()){
+			String posMark= String.valueOf(Math.round(mapping.get(i)));
+			if(i == 0){
+				numberLine= posMark;
+				i += posMark.length();
+			} else if((numberLine.length() - prevLen) >= markDist){
+				prevLen= numberLine.length();
+				numberLine= numberLine + posMark;
+				i += posMark.length();
+			} else {
+				numberLine= numberLine + " ";
+				i++;
+			}
+		}
+    	return numberLine;	
+    }
+	
 	/* Getters and setters */
+	
+	public List<Double> getMapping(int windowSize) {
+		return seqFromToLenOut(windowSize);
+	}	
 	
 	public String getChrom() {
 		return chrom;

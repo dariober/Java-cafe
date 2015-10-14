@@ -91,17 +91,6 @@ public class MethylLocus {
 
 		this.locus= locus;
 		this.populateMethylLocus();
-		//if(refBase == 'C'){
-		//	isCorGLocus= true;
-		//} else if(refBase == 'G'){
-		//	isCorGLocus= true;
-		//} else {
-		//	isCorGLocus= false;
-		//}
-		
-		//if(refBase == 'C' || refBase == 'G'){
-		//	this.populateMethylLocus();
-		//}
 	}
 
 	public String toString(){
@@ -127,25 +116,9 @@ public class MethylLocus {
 		return cntM;
 	}
 
-//	public void setCntM(int cntM) {
-//		this.cntM = cntM;
-//	}
-
 	public Integer getCntU() {
 		return cntU;
 	}
-
-//	public void setCntU(int cntU) {
-//		this.cntU = cntU;
-//	}
-
-//	public int getCntN() {
-//		return cntN;
-//	}
-//
-//	public void setCntN(int cntMism) {
-//		this.cntN = cntMism;
-//	}
 
 	public char getRefBase() {
 		return refBase;

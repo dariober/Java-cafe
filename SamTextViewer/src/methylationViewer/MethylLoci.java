@@ -207,9 +207,9 @@ public class MethylLoci{
     public void compressCovergeViewer(int windowSize){
 		/* Non C/G sites have NaN counts of course and should be ignored for compression */
     	// * Compress MDepth
-    	LinkedHashMap<Integer, Float> zMDepth= Utils.compressNumericList(this.getMDepth(), windowSize);
+    	LinkedHashMap<Integer, Float> zMDepth= Utils.compressNumericListTO_BE_DEPRECATED(this.getMDepth(), windowSize);
     	// * Compress UDepth
-    	LinkedHashMap<Integer, Float> zUDepth= Utils.compressNumericList(this.getUDepth(), windowSize);
+    	LinkedHashMap<Integer, Float> zUDepth= Utils.compressNumericListTO_BE_DEPRECATED(this.getUDepth(), windowSize);
     	
     	this.MDepth= new ArrayList<Float>(zMDepth.values()); // Summarized values for each group. This will be the y-axis
 		this.UDepth= new ArrayList<Float>(zUDepth.values());

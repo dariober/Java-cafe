@@ -11,6 +11,7 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 
 import readWriteBAMUtils.ReadWriteBAMUtils;
+import samTextViewer.GenomicCoords;
 import samTextViewer.SamLocusIterator;
 import samTextViewer.SamLocusIterator.LocusInfo;
 import samTextViewer.Utils;
@@ -20,39 +21,33 @@ import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-// import htsjdk.samtools.util.SamLocusIterator;
-// import htsjdk.samtools.util.SamLocusIterator.LocusInfo;
 
+/**
+ * This class should hold the information to display coverage and methylation profile
+ * for given genomic coordinates.
+ * 
+ * @author berald01
+ *
+ */
 public class CoverageViewer {
 
 	/** Max number of loci per window (column of text char). If you query 
 	 * large intervals, only some loci will be stored. This const define the density of
 	 * loci per window. */
-	final static int LOC_PER_WINDOW= 100;
-	//final static String DOT= "*";
+	final static int LOC_PER_WINDOW= 200;
+
 	final static public String FILL= " ";
 	
-	/** List of positions and corresponding depth. Each element need not to represent a single
-	 * genomic bp. An element might be an summary (e.g. mean) of a group of adjacent positions. */
-	// private List<Integer> depth= new ArrayList<Integer>();
-	private List<Float> depth= new ArrayList<Float>();
-
 	/** Max value in depth List */
-	private float maxDepth= 0;
+	private Double maxDepth= 0.0;
 	
-	/** Ruler: For each element in depth list say what position in genomic coordinates it corresponds to.
-	 * Need not to be an ungapped sequence since each element in depth might be a group positions. In
-	 * such case "genomicPositions" refers to the first base position of the group.*/
-	private List<Integer> genomicPositions= new ArrayList<Integer>();
+	/** For each element in depth list say what position in genomic coordinates it corresponds to. */
+	//private List<Double> depth= new ArrayList<Double>();
+	//private List<Integer> genomicPositions= new ArrayList<Integer>();
+
+	private LinkedHashMap<Integer, Integer> depthAtPosition= new LinkedHashMap<Integer, Integer>();
 	
-	private String chrom;
-	private int from;
-	private int to;
-	/**
-	 * Number of bases (bp) per character text on the screen. Set to 1 to start with
-	 * Increased as large genomci windows are compressed.
-	 * */
-	private float bpPerChar= 1;
+	private List<Double> mappingToScreen;
 	
 	ArrayList<LocusInfo> locusInfoList= new ArrayList<LocusInfo>();; // This is going to be useful for methylation calling 
 	
@@ -71,25 +66,21 @@ public class CoverageViewer {
 	 * @param windowSize
 	 * @param filters
 	 */
-	public CoverageViewer(String sam, String chrom, int from, int to, int windowSize, 
+	public CoverageViewer(String sam, GenomicCoords gc, int windowSize,
 			List<SamRecordFilter> filters){
 
-		this.chrom= chrom;
-		this.from= from;
-		this.to= to;
-		
-		int range= to -from + 1;
-		float density= 1/((float)range / ((float)windowSize * LOC_PER_WINDOW));
+		int range= gc.getTo() - gc.getFrom() + 1;
+		double density= 1/((double)range / ((double)windowSize * LOC_PER_WINDOW));
 		
 		SamReader samReader= ReadWriteBAMUtils.reader(sam, ValidationStringency.SILENT);
 		SAMFileHeader fh= samReader.getFileHeader();
 		
 		IntervalList il= new IntervalList(fh);
 		Random rand= new Random(); // Really you shouldn;t use rnd o filter loci.
-		for(int i= from; i <= to; i++){
+		for(int i= gc.getFrom(); i <= gc.getTo(); i++){
 			float p= rand.nextFloat();
 			if(p < density){
-				Interval interval= new Interval(chrom, i, i);
+				Interval interval= new Interval(gc.getChrom(), i, i);
 				il.add(interval);
 			}
 		}
@@ -100,11 +91,12 @@ public class CoverageViewer {
 		while(iter.hasNext()){
 			samTextViewer.SamLocusIterator.LocusInfo locusInfo= iter.next();
 			locusInfoList.add(locusInfo);
-			float curDepth= locusInfo.getRecordAndPositions().size();
-			this.depth.add(curDepth);
-			this.genomicPositions.add(locusInfo.getPosition());
+			int curDepth= locusInfo.getRecordAndPositions().size();
+			depthAtPosition.put(locusInfo.getPosition(), curDepth);
+			//this.depth.add((double) curDepth);
+			//this.genomicPositions.add(locusInfo.getPosition());
 			if(curDepth > this.maxDepth){
-				this.maxDepth= curDepth;
+				this.maxDepth= (double) curDepth;
 			}
 		}	
 	}
@@ -113,11 +105,11 @@ public class CoverageViewer {
 	 * Initialize coverage track directly with list.
 	 * @param depth
 	 */
-	public CoverageViewer(List<Float> depth, List<Integer> genomicPositions){
+	public CoverageViewer(List<Double> depth, List<Integer> genomicPositions){
 		this.depth= depth;
 		this.genomicPositions= genomicPositions;
-		float maxDepth= 0;
-		for(float x : depth){
+		Double maxDepth= 0.0;
+		for(Double x : depth){
 			if(x > maxDepth){
 				maxDepth= x;
 			}
@@ -133,6 +125,10 @@ public class CoverageViewer {
 	 * @return
 	 */
 	public List<String> getProfileStrings(int ymaxLines){
+		
+		// TODO? If the printable list is made only of zeros expand sites with decent number of
+		// counts. E.g. outlier windows don't get squashed to zero. 
+		// You could make the top 5% windows to be at least a . or a :
 		
 		ArrayList<String> depthStrings= new ArrayList<String>();
 		ArrayList<List<String>> profile= (ArrayList<List<String>>) getProfileList(this.depth, ymaxLines);
@@ -154,26 +150,26 @@ public class CoverageViewer {
 	 * Produce a representation of depth using text characters. 
 	 * Output is a list of lists where each inner list is a horizontal line of 
 	 * the coverage track. The vertical y-axis is scaled to be at most ymaxLines.
-	 * @param depth Depth along positions
+	 * @param depth2 Depth along positions
 	 * @param ymaxLines Max number of text lines to use. 
 	 * Values in depthArray will be rescaled accordingly. 0 or -ve to disable scaling.
 	 * @return
 	 */
-	private List<List<String>> getProfileList(List<Float> depth, int ymaxLines){
+	private List<List<String>> getProfileList(List<Double> depth2, int ymaxLines){
 		
 		ymaxLines= ymaxLines * 2; // Since we use : for 2x in a single line.
 		
 		if(ymaxLines > 0 && ymaxLines <= this.maxDepth){ // Rescale depth as required
-			for(int i= 0; i < depth.size(); i++){
-				float rescaled= (float) depth.get(i) / maxDepth * ymaxLines;
-				depth.set(i, rescaled);  
+			for(int i= 0; i < depth2.size(); i++){
+				double rescaled= (double) depth2.get(i) / maxDepth * ymaxLines;
+				depth2.set(i, rescaled);  
 			}
 		}
 		List<List<String>> profile= new ArrayList<List<String>>();
 		
-		for(int i= 0; i < depth.size(); i++){
+		for(int i= 0; i < depth2.size(); i++){
 			ArrayList<String> strDepth= new ArrayList<String>(); // This will be a vertical bar
-			float locDepth= depth.get(i);
+			double locDepth= depth2.get(i);
 			
 			if((int)Math.round(locDepth) == 0){ // For zero coverage
 				strDepth.add("_"); 
@@ -222,14 +218,51 @@ public class CoverageViewer {
         return ret;
     }
 
+
+   
+    /**
+     * Map flats in longList to the closest in referenceList. Elements mapping to the target
+     * are summarised by averaging or other stats.
+     * @param longList
+     * @param referenceList
+     * @return
+     */
+    public void setMappingToScreen(List<Double> screenMap){
+
+    	LinkedHashMap<Integer, List<Double>> zlist= new LinkedHashMap<Integer, List<Double>>();
+    	for(int i= 0; i < screenMap.size(); i++){
+    		zlist.put(i, new ArrayList<Double>());
+    	} 
+    	
+    	for(int i= 0; i < this.genomicPositions.size(); i++){
+    		int pos= this.genomicPositions.get(i);
+    		if(pos >= screenMap.get(0) && pos <= screenMap.get(screenMap.size()-1)){
+	    	// Do not consider data points outside screenMap.
+    			int j= Utils.getIndexOfclosestValue(pos, screenMap);
+    			zlist.get(j).add(this.depth.get(i));
+    		}
+    	}
+    	
+    	List<Double> compressed= new ArrayList<Double>();
+    	for(int i= 0; i < screenMap.size(); i++){
+    		compressed.add(Utils.calculateAverage(zlist.get(i)));
+    	}
+    	this.mappingToScreen= compressed;
+    }
+
+    public List<Double> getMappingToScreen(List<Double> screenMap){
+    	this.setMappingToScreen(screenMap);
+    	return this.mappingToScreen;
+    }
+    
     /**
      * Compress coverage viewer track to reduce it to number of elements given in "windowSize".
      * The new genomicPositions positions will correspond to the first position of each group of elements.  
      * @param windowSize Number of elements to reduce the track to. I.e. the number of chars to
      * display horizontally.
      */
-    public void compressCovergeViewer(int windowSize){
-		LinkedHashMap<Integer, Float> zcw= Utils.compressNumericList(this.getDepth(), windowSize);
+   /* public void compressCovergeViewer(int windowSize){
+		LinkedHashMap<Integer, Float> zcw= Utils.compressNumericListTO_BE_DEPRECATED(this.getDepth(), windowSize);
 		this.depth= new ArrayList<Float>(zcw.values()); // Summarized values for each group. This will be the y-axis
 		ArrayList<Integer> zidx= new ArrayList<Integer>(zcw.keySet()); // Indexes of the first element of each group.
 		List<Integer> newDepthAt= new ArrayList<Integer>();
@@ -242,9 +275,9 @@ public class CoverageViewer {
 		}
 		this.bpPerChar= (float)(this.to - this.from + 1) / zcw.size(); 
 		this.genomicPositions= newDepthAt;
-    }
+    } */
         
-    public String ruler(int markDist){
+    /* public String ruler(int markDist){
     	String numberLine= "";
     	int prevLen= 0;
     	int i= 0;
@@ -263,7 +296,7 @@ public class CoverageViewer {
 			}
 		}
     	return numberLine;
-    }
+    } */
     
     public String toString(){
     	StringBuilder sb= new StringBuilder();
@@ -275,11 +308,11 @@ public class CoverageViewer {
 
     /* Setters and setters */
     
-	public List<Float> getDepth(){
+	public List<Double> getDepth(){
 		return this.depth;
 	}
     
-	public float getMaxDepth() {
+	public double getMaxDepth() {
 		return maxDepth;
 	}
 
@@ -289,14 +322,6 @@ public class CoverageViewer {
 
 	public void setGenomicPositions(List<Integer> depthAt) {
 		this.genomicPositions = depthAt;
-	}
-
-	public float getBpPerChar() {
-		return bpPerChar;
-	}
-
-	public void setBpPerChar(float bpPerChar) {
-		this.bpPerChar = bpPerChar;
 	}
 
 	public ArrayList<LocusInfo> getLocusInfoList() {
