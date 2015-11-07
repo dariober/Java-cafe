@@ -2,11 +2,14 @@ package filter;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.util.List;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.filter.AlignedFilter;
 import htsjdk.samtools.filter.SamRecordFilter;
@@ -17,8 +20,6 @@ import htsjdk.samtools.util.SamLocusIterator.LocusInfo;
 import htsjdk.samtools.util.SamLocusIterator.RecordAndOffset;
 
 import org.junit.Test;
-
-import readWriteBAMUtils.ReadWriteBAMUtils;
 
 public class FilterTest {
 
@@ -136,7 +137,8 @@ public class FilterTest {
 		int from= 1;
 		int to= 100;
 		
-		SamReader samReader= ReadWriteBAMUtils.reader("test_data/mjb050_oxBS.bam", ValidationStringency.SILENT);	
+		SamReaderFactory srf=SamReaderFactory.make();
+		SamReader samReader= srf.open(new File("test_data/mjb050_oxBS.bam"));
 		SAMFileHeader fh= samReader.getFileHeader();
 		IntervalList il= new IntervalList(fh);
 		Interval interval= new Interval(chrom, from, to);
@@ -166,7 +168,9 @@ public class FilterTest {
 		int from= 1;
 		int to= 1;
 		
-		SamReader samReader= ReadWriteBAMUtils.reader("test_data/mjb050_oxBS.bam", ValidationStringency.SILENT);
+		SamReaderFactory srf=SamReaderFactory.make();
+		SamReader samReader= srf.open(new File("test_data/mjb050_oxBS.bam"));
+		
 		SAMFileHeader fh= samReader.getFileHeader();
 		IntervalList il= new IntervalList(fh);
 		Interval interval= new Interval(chrom, from, to);

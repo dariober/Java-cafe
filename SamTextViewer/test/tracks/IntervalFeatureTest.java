@@ -1,15 +1,14 @@
-package coverageViewer;
+package tracks;
 
 import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.commons.lang3.math.NumberUtils;
 import org.junit.Test;
 
-import samTextViewer.Utils;
+import tracks.IntervalFeature;
 
 public class IntervalFeatureTest {
 
@@ -26,19 +25,31 @@ public class IntervalFeatureTest {
 		assertFalse(NumberUtils.isNumber(""));
 		assertFalse(NumberUtils.isNumber("001.1"));
 	}
-
+	
+	@Test
+	public void canCreateIntervalFromGtfString(){
+		String gtfLine= "chr1\tunknown\texon\t11874\t12227\t.\t+\t.\tgene_id \"DDX11L1\"; transcript_id \"NR_046018_1\"; gene_name \"DDX11L1\"; tss_id \"TSS14523\";";
+		IntervalFeature f= new IntervalFeature(gtfLine, "gtf");
+		assertEquals(11874, f.getFrom());
+		assertEquals(12227, f.getTo());
+		assertEquals("exon", f.getFeature());
+		System.out.println(f.toString());
+	}
+	
 	@Test
 	public void canCreateIntervalFromString() {
 		String bedLine= "chr1\t0\t1";
 		IntervalFeature f= new IntervalFeature(bedLine, "bed");
 		assertEquals("chr1", f.getChrom());
 		assertEquals(1, f.getFrom()); // Note start augmented by 1.
-
+		
 		bedLine= "chr1\t0\t1\tgene\t0.1\t+";
 		f= new IntervalFeature(bedLine, "bed");
 		assertEquals("gene", f.getName());
 		assertEquals('+', f.getStrand());
 
+		System.out.println(f.toString());
+		
 		bedLine= " chr1\t0\t1";
 		f= new IntervalFeature(bedLine, "bed"); 
 		assertEquals("chr1", f.getChrom()); // NB: spaces in chrom stripped.
