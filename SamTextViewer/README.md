@@ -1,5 +1,6 @@
 # SamTextViewer 
 
+
 ```SamTextViewer``` is a command line genome viewer to visualize sequence alignment and annotation files
 on console screen. It aims to be similar to ```samtools tview``` but with the flexibility of
 GUI genome viewers like IGV.
@@ -11,7 +12,7 @@ Features that attempt to combine text based viewers (```tview```) with GUI viewe
 * Support for BS-Seq alignent files.
 * Navigation and search options
 
-![ex3](https://github.com/dariober/Java-cafe/tree/master/SamTextViewer/figs/ex3.png)
+ ![ex3](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/figs/ex3.png)
 
 # Installation
 
@@ -37,11 +38,8 @@ Display a bam file together with a gtf annotation file, go straight to position 
 
     SamTextViewer -r chr7:5566640-5569055 ds051.actb.bam hg19.gencode_genes_v19.gtf.gz
 
-![folder](/Users/berald01/svn_git/Java-cafe/trunk/SamTextViewer/figs/ex1.png)
+![ex1](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/figs/ex1.png)
 
-<!---
-<img src="/Users/berald01/svn_git/Java-cafe/trunk/SamTextViewer/figs/ex2.jpg" width="500px" />
--->
 
 The header line:
 
