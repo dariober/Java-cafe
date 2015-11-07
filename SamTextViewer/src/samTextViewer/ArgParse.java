@@ -15,6 +15,7 @@ public class ArgParse {
 	
 	public static LinkedHashMap<String, String> docstrings= new LinkedHashMap<String, String>(); 
 	
+	
 	/* Parse command line args */
 	public static Namespace argParse(String[] args){
 		ArgumentParser parser= ArgumentParsers
@@ -22,21 +23,23 @@ public class ArgParse {
 				.defaultHelp(true)
 				.version("${prog} " + VERSION)
 				.description("DESCRIPTION\n"
-+ "Text based viewer for sam/bam files\n"
-+ "Options marked by '*' can be set interactively.\n"
-+ "See also home page at https://github.com/dariober/Java-cafe/tree/master/SamTextViewer"
++ "Text viewer for genome alignment and annotation files.\n"
++ "For details see https://github.com/dariober/Java-cafe/tree/master/SamTextViewer\n"
++ "Example\n"
++ "java /.../SamTextViewer.jar -r chr18:1000-2000 reads.bam ann.gtf.gz"
 + "");	
-		parser.addArgument("--insam", "-i")
+		parser.addArgument("insam")
 			.type(String.class)
-			.required(true)
-			.nargs("+")
-			.help("Input bam files, must be sorted and indexed.");
+			.required(false)
+			.nargs("*")
+			.help("Input files. bam/cram must be sorted and indexed. Large bed/gtf files should be indexed with tabix.");
 		
-		docstrings.put("-r", "Go to region. Format 1-based: 'chrom:start-end' or 'chrom:start' or 'chrom'");
+		docstrings.put("-r", "Go to region. Format 1-based as 'chrom:start-end' or 'chrom:start' or 'chrom'");
 		parser.addArgument("--region", "-r")
 			.type(String.class)
 			.required(false)
-			.help(docstrings.get("-r") + " *");
+			.setDefault("")
+			.help(docstrings.get("-r"));
 
 		parser.addArgument("--windowSize", "-w")
 			.type(Integer.class)
@@ -52,37 +55,43 @@ public class ArgParse {
 		parser.addArgument("--f", "-f")
 			.type(Integer.class)
 			.setDefault(0)
-			.help(docstrings.get("-f") + " *");
+			.help(docstrings.get("-f"));
 		
 		docstrings.put("-F", "Filtering sam flags. Use 4096 for reads on top strand");
 		parser.addArgument("--F", "-F")
 			.type(Integer.class)
 			.setDefault(0)
-			.help(docstrings.get("-f") + " *");
+			.help(docstrings.get("-f"));
 
 		docstrings.put("-q", "Minumum mapping quality for a read to be considered");
 		parser.addArgument("--mapq", "-q")
 			.type(Integer.class)
 			.setDefault(0)
-			.help(docstrings.get("-q") + " *");
+			.help(docstrings.get("-q"));
 		
 		docstrings.put("-m", "Maximum number of lines to print for read tracks. No limit If < 0");
 		parser.addArgument("--maxLines", "-m")
 			.type(Integer.class)
 			.setDefault(10)
-			.help(docstrings.get("-m") + " *");
+			.help(docstrings.get("-m"));
 
+		docstrings.put("-rpm", "Toggle on/off the normalization of Reads Per Million for bam input. Default off");
+		parser.addArgument("--rpm", "-rpm")
+			.action(Arguments.storeTrue())
+			.help(docstrings.get("-rpm"));
+
+		
 		docstrings.put("-d", "Maximum number of lines to print for coverage tracks. No limit if < 0");
 		parser.addArgument("--maxDepthLines", "-d")
 			.type(Integer.class)
 			.setDefault(10)
-			.help(docstrings.get("-d") + " *");
+			.help(docstrings.get("-d"));
 
 		docstrings.put("-ml", "Maximum number of lines to print for each methylation track. No limit if < 0");
 		parser.addArgument("--maxMethylLines", "-ml")
 			.type(Integer.class)
 			.setDefault(10)
-			.help(docstrings.get("-ml") + " *");
+			.help(docstrings.get("-ml"));
 
 		parser.addArgument("--maxReadsStack", "-M")
 			.type(Integer.class)
@@ -92,7 +101,7 @@ public class ArgParse {
 		
 		parser.addArgument("--BSseq", "-bs")
 			.action(Arguments.storeTrue())
-			.help("Bisulphite mode: Mark bases as methylated (M/m) or unmethylated (U/u).");
+			.help("Bisulphite mode: Mark bases as methylated (M/m) or unmethylated (U/u). Requires -fa");
 		
 		parser.addArgument("--noFormat", "-nf")
 			.action(Arguments.storeTrue())

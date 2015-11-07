@@ -1,126 +1,313 @@
 package samTextViewer;
 
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
-import org.apache.commons.lang3.StringUtils;
-
-import readWriteBAMUtils.ReadWriteBAMUtils;
+import org.broad.igv.bbfile.BBFileReader;
+import org.broad.igv.tdf.TDFReader;
+import exceptions.InvalidGenomicCoordsException;
+import tracks.IntervalFeatureSet;
 
 /**
  * @author berald01
  *
  */
 public class Utils {
-	/**
-	 * Input: 
-	  	- Outer list: Lines of output
-	  	- Inner list: List of TextRead obj to be printe on same line
-	 NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
-	 AAAAAAAAAAAA
-	  CCCCCCCCCCCC
-	              TTTTTTTTTTT
-	                           GGGGGGGGGGG
-	                                   AAAAAAAA
-     NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
-	 AAAAAAAAAAAA TTTTTTTTTTT  GGGGGGGGGGG       
-	  CCCCCCCCCCCC                     AAAAAAAA
-	 */
-	public static List<List<TextRead>> stackReads(List<TextRead> textReads){
-		
-		List<List<TextRead>> listOfLines= new ArrayList<List<TextRead>>();
-		if(textReads.size() == 0){
-			return listOfLines;
-		}
-		List<TextRead> line= new ArrayList<TextRead>();
-		line.add(textReads.get(0)); 
-		textReads.remove(0);
-		listOfLines.add(line);
-		while(true){
-			ArrayList<TextRead> trToRemove= new ArrayList<TextRead>();
-			// Find a read in input whose start is greater then end of current
-			for(int i=0; i < textReads.size(); i++){
-				TextRead tr= textReads.get(i);
-				if(tr.getTextStart() > line.get(line.size()-1).getTextEnd()+2){ // +2 because we want some space between adjacent reads
-					listOfLines.get(listOfLines.size()-1).add(tr); // Append to the last line. 
-					trToRemove.add(tr);
-					//textReads.remove(i); // If found remove from input 
+	
+	/** Get the first chrom string from first line of input file. As you add support for more filetypes you should update 
+	 * this function. This method is very dirty and shouldn't be trusted 100% */
+	public static String initRegionFromFile(String x) throws IOException{
+		String region= "";
+		if(x.toLowerCase().endsWith(".bam") || x.toLowerCase().endsWith(".cram")){
+			SamReaderFactory srf=SamReaderFactory.make();
+			srf.validationStringency(ValidationStringency.SILENT);
+			SamReader samReader = srf.open(new File(x));
+			region= samReader.getFileHeader().getSequence(0).getSequenceName();
+			samReader.close();
+			return region;
+		} else if(x.toLowerCase().endsWith(".bigwig") || x.toLowerCase().endsWith(".bw")){
+			BBFileReader reader= new BBFileReader(x);
+			region= reader.getChromosomeNames().get(0);
+			reader.close();
+			return region;
+		} else if(x.toLowerCase().endsWith(".tdf")){
+			Iterator<String> iter = TDFReader.getReader(x).getChromosomeNames().iterator();
+			while(iter.hasNext()){
+				region= iter.next();
+				if(!region.equals("All")){
+					return region;
 				}
-			} // At the end of the loop you have put in line as many reads as you can. 
-			for(TextRead tr : trToRemove){ 
-				textReads.remove(textReads.indexOf(tr));
+			} 
+			System.err.println("Cannot initialize from " + x);
+			throw new RuntimeException();
+		} else if(x.toLowerCase().endsWith(".gz")){
+			InputStream fileStream = new FileInputStream(x);
+			GZIPInputStream gzipStream = new GZIPInputStream(fileStream);
+			Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
+			BufferedReader br = new BufferedReader(decoder);
+			while(true){
+				region= br.readLine().trim();
+				if(region == null){
+					break;
+				}
+				region= (region.split("\t")[0]).trim();
+				if(region.startsWith("#") || region.isEmpty()){
+					continue;
+				} else {
+					br.close();
+					return region;
+				}
 			}
-			// Create a new line, add the first textRead in list
-			if(textReads.size() > 0){
-				line= new ArrayList<TextRead>();
-				line.add(textReads.get(0));
-				listOfLines.add(line);
-				textReads.remove(0);
-			} else {
-				break;
+			br.close();
+			return region;
+		} else {
+			BufferedReader br = new BufferedReader(new FileReader(x));
+			while(true){
+				region= br.readLine().trim();
+				if(region == null){
+					break;
+				}
+				region= (region.split("\t")[0]).trim();
+				if(region.startsWith("#") || region.isEmpty()){
+					continue;
+				} else {
+					br.close();
+					return region;
+				}
 			}
+			br.close();
+			return region;
 		}
-		return listOfLines;
 	}
+	
+	public static boolean bamHasIndex(String bam) throws IOException{
 
-	/** Prepare a printable string of each output line. 
-	 * @param textReads List reads to print out on the same line.
-	 * @param fmt Should fomratting be applied? E.g. 2nd in pair bold.
-	 * @return
-	 */
-	public static String linePrinter(List<TextRead> textReads, boolean noFormat){
-		StringBuilder sb= new StringBuilder();
-		int curPos= 0;
-		for(TextRead tr : textReads){
-			int nspaces= (tr.getTextStart()-1) - curPos;
-			curPos += nspaces;
-			sb.append(StringUtils.repeat(" ", nspaces));
-				
-			for(int i= 0; i < tr.getTextRead().length; i++){
-				String fx= (char)tr.getTextRead()[i] + "";
-				if(!noFormat){
-					// For formatting see http://misc.flogisoft.com/bash/tip_colors_and_formatting
-					// and http://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux
-					String fmt= "\033["; // Start format 
-					if(tr.rec.getReadPairedFlag() && tr.rec.getSecondOfPairFlag()){
-						fmt += "4;"; // Underline 2nd n pair
-					}					
-					if(fx.toUpperCase().equals("M")){
-						fmt += "97;101";
-					} else if(fx.toUpperCase().equals("U")){
-						fmt += "97;104";
-					} else if(fx.toUpperCase().equals("A")){
-						fmt += "1;107;34";  //1: bold; 107: white bg
-					} else if(fx.toUpperCase().equals("C")) {
-						fmt += "1;107;31";
-					} else if(fx.toUpperCase().equals("G")) {
-						fmt += "1;107;32";
-					} else if(fx.toUpperCase().equals("T")) {
-						fmt += "1;107;33";
-					}
-					// The formatted string will look like `echo -e "\033[4;1;107;31mACTGnnnnnACTG\033[0m"`
-					fx= fmt + "m" + fx + "\033[0m"; // Clear all formatting
+		SamReaderFactory srf=SamReaderFactory.make();
+		srf.validationStringency(ValidationStringency.SILENT);
+		SamReader samReader = srf.open(new File(bam));
+		boolean hasIndex= samReader.hasIndex();
+		samReader.close();
+		return hasIndex;
+		
+	}
+	
+	public static GenomicCoords findNextStringOnFile(String string, String filename, GenomicCoords curGc,
+			Map<String, IntervalFeatureSet> intervalFiles ) throws InvalidGenomicCoordsException, IOException{
+
+		String chosenFn= "";
+		if(filename.isEmpty() && intervalFiles.size() == 1){ // Only one file to chose from: Get that one
+			chosenFn= new ArrayList<String>(intervalFiles.keySet()).get(0);
+		} else {
+			// Try to match file perfectly as it was added from cli, including path if any
+			for(String fn : intervalFiles.keySet()){
+				if(fn.equals(filename)){
+					chosenFn = fn;
 				}
-				sb.append(fx);
-				curPos++;
+			}
+			if(chosenFn.isEmpty()){
+				// Or try to match only file name.
+				for(String fn : intervalFiles.keySet()){ // Do not look for a perfect match since the original input might contain path. 
+					String onlyName= new File(fn).getName();
+					if(onlyName.equals(filename)){
+						chosenFn = fn;
+					}
+				}
 			}
 		}
-		return sb.toString();
+		if(chosenFn.isEmpty()){
+			System.err.println("File " + filename + " not found in file set\n" + intervalFiles.keySet());
+			return curGc;
+		}
+		return intervalFiles.get(chosenFn).findNextString(curGc, string);
 	}
+	
+	public static GenomicCoords goToNextFeatureOnFile(String filename, GenomicCoords curGc, 
+			Map<String, IntervalFeatureSet> intervalFiles ) throws InvalidGenomicCoordsException, IOException{
+
+		String chosenFn= "";
+		if(filename.isEmpty() && intervalFiles.size() == 1){ // Only one file to chose from: Get that one
+			chosenFn= new ArrayList<String>(intervalFiles.keySet()).get(0);
+		} else {
+			// Try to match file perfectly as it was added from cli, including path if any
+			for(String fn : intervalFiles.keySet()){
+				if(fn.equals(filename)){
+					chosenFn = fn;
+				}
+			}
+			if(chosenFn.isEmpty()){
+				// Or try to match only file name.
+				for(String fn : intervalFiles.keySet()){ // Do not look for a perfect match since the original input might contain path. 
+					String onlyName= new File(fn).getName();
+					if(onlyName.equals(filename)){
+						chosenFn = fn;
+					}
+				}
+			}
+		}
+		if(chosenFn.isEmpty()){
+			System.err.println("File " + filename + " not found in file set\n" + intervalFiles.keySet());
+			return curGc;
+		}
+		return intervalFiles.get(chosenFn).coordsOfNextFeature(curGc);
+	}
+	 
+	
+	public static String getFileTypeFromName(String fileName){
+		fileName= fileName.toLowerCase();
+		
+		if(    fileName.endsWith(".bed") 
+		    || fileName.endsWith(".bed.gz") 
+		    || fileName.endsWith(".bed.gz.tbi")){
+			return "bed";
+		} else if( fileName.endsWith(".gtf") 
+				|| fileName.endsWith(".gtf.gz")
+				|| fileName.endsWith(".gtf.gz.tbi")
+				|| fileName.endsWith(".gff") 
+				|| fileName.endsWith(".gff.gz") 
+				|| fileName.endsWith(".gff.gz.tbi")){
+			return "gff";
+		} else if(fileName.endsWith(".bam") || fileName.endsWith(".cram")){
+			return "bam";
+		} else if(fileName.endsWith(".bigwig") || fileName.endsWith(".bw")) {
+			return "bigWig";
+		} else if(fileName.endsWith(".tdf")) {
+			return "tdf";
+		} else if(fileName.endsWith(".bedgraph.gz") || fileName.endsWith(".bedgraph")) {
+			return "bedGraph";
+		} else {
+			// System.err.println("Unsopported file: " + fileName);
+			return "bed";
+		}
+	}
+	
+	public static LinkedHashMap<String, IntervalFeatureSet> createIntervalFeatureSets(List<String> fileNames) throws IOException{
+		LinkedHashMap<String, IntervalFeatureSet> ifsets= new LinkedHashMap<String, IntervalFeatureSet>();
+		for(String x : fileNames){
+			File f= new File(x);
+			if(getFileTypeFromName(x).equals("bed") || getFileTypeFromName(x).equals("gff")){
+				if(!ifsets.containsKey(x)){ // If the input has duplicates, do not reload duplicates!
+					IntervalFeatureSet ifs= new IntervalFeatureSet(f);
+					ifsets.put(x, ifs);
+				}
+			}
+		}
+		return ifsets;
+	}
+	
+    /** 
+     * Transpose list of list as if they were a table. No empty cells should be present. 
+     * See http://stackoverflow.com/questions/2941997/how-to-transpose-listlist
+     * FROM
+     * [[a, b, c, d], [a, b, c, d], [a, b, c, d]] 
+     * TO
+     * [[a, a, a, a],
+     *  [b, b, b, b],
+     *  [c, c, c, c]]
+     * @param table Table like list of lists, no empty cells.
+     * @return
+     */
+    public static <T> List<List<T>> transpose(List<List<T>> table) {
+    	List<List<T>> ret = new ArrayList<List<T>>();
+        final int N = table.get(0).size();
+        for (int i = 0; i < N; i++) {
+            List<T> col = new ArrayList<T>();
+            for (List<T> row : table) {
+                col.add(row.get(i));
+            }
+            ret.add(col);
+        }
+        return ret;
+    }
+	
+    /**
+     * Map list of values mapping top genomic positions to a smaller list of positions by averaging 
+     * values mapped to the same reference position. These averages are the values that will be used on the 
+     * y-axis.
+     * @param values Values to collapse
+     * @param valuePositions Genomic position of the values
+     * @param referencePositions Arrival positions. I.e. where the valuePositions should be mapped to. 
+     * Typically this is obtained from GenomicCoords.getMapping();  
+     * @return
+     */
+    public static List<Double> collapseValues(List<Double> values, List<Integer> valuePositions, 
+    		List<Double> referencePositions){
+
+    	// First store here all the values mapping to each reference position, then take the average.
+    	LinkedHashMap<Integer, List<Double>> zlist= new LinkedHashMap<Integer, List<Double>>();
+    	for(int i= 0; i < referencePositions.size(); i++){
+    		zlist.put(i, new ArrayList<Double>());
+    	} 
+    	
+    	for(int i= 0; i < valuePositions.size(); i++){
+    		if(values.get(i) == null){
+    			continue;
+    		}
+    		int pos= valuePositions.get(i);
+    		if(pos >= referencePositions.get(0) && pos <= referencePositions.get(referencePositions.size()-1)){
+	    	// Do not consider data points outside screenMap.
+    			int j= Utils.getIndexOfclosestValue(pos, referencePositions);
+    			zlist.get(j).add((double)values.get(i));
+    		}
+    	}
+    	
+    	List<Double> compressed= new ArrayList<Double>();
+    	for(int i= 0; i < referencePositions.size(); i++){
+    		compressed.add(Utils.calculateAverage(zlist.get(i)));
+    	}
+    	return compressed;
+    }
+
+	/**
+	 * Get sequence as byte[] for the given genomic coords.
+	 * @param fasta
+	 * @param gc
+	 * @return
+	 * @throws IOException
+	 */
+	public static byte[] prepareRefSeq(String fasta, GenomicCoords gc) throws IOException{
+
+		byte[] faSeq= null;
+		if(fasta != null){
+			IndexedFastaSequenceFile faSeqFile = null;
+			try {
+				faSeqFile = new IndexedFastaSequenceFile(new File(fasta));
+				try{
+					faSeq= faSeqFile.getSubsequenceAt(gc.getChrom(), gc.getFrom(), gc.getTo()).getBases();
+				} catch (NullPointerException e){
+					System.err.println("Cannot fetch sequence " + gc.toString());
+					e.printStackTrace();
+				}
+				faSeqFile.close();
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			}
+		}
+		return faSeq;
+	}     
 	
 	/** Get the coordinates of the first mapped read in bam file and put it
 	 * in GenomicCoords obj.
 	 * @param bam
 	 */
-	public static GenomicCoords getStartCoordsOfBAM(String bam){
+	/*public static GenomicCoords getStartCoordsOfBAM(String bam){
 		SamReader samReader= ReadWriteBAMUtils.reader(bam, ValidationStringency.SILENT);
 		String pos= "";
 		for(SAMRecord rec: samReader){
@@ -140,9 +327,8 @@ public class Utils {
 			e.printStackTrace();
 		}
 		return gc;
-	}
-	
-	public static GenomicCoords getStartCoordsOfBAM(String bam, String chrom){
+	}*/
+	/*public static GenomicCoords getStartCoordsOfBAM(String bam, String chrom){
 		SamReader samReader= ReadWriteBAMUtils.reader(bam, ValidationStringency.LENIENT);
 		Iterator<SAMRecord> sam= samReader.query(chrom, 0, 0, false);
 		
@@ -164,8 +350,7 @@ public class Utils {
 			e.printStackTrace();
 		}
 		return gc;		
-	}
-	
+	}*/	
 	
 	private static int parseStringToIntWithUnits(String x){
 		x= x.trim();
@@ -201,26 +386,57 @@ public class Utils {
 		Integer to= gc.getTo();
 		
 		int windowSize= to - from + 1;
+		int halfWindow= (int)Math.rint(windowSize / 2d);
 		if(rawInput.trim().equals("ff")){				
-			from += windowSize; 
-			to += windowSize; 
+			from += halfWindow; 
+			to += halfWindow;
+			if(!gc.getSamSeqDict().isEmpty()){
+				int chromLen= gc.getSamSeqDict().getSequence(chrom).getSequenceLength();
+				if(to > chromLen){
+					to= chromLen;
+					from= to - gc.getUserWindowSize() + 1;
+				}
+			}			
 			return chrom + ":" + from + "-" + to;
 		} else if(rawInput.trim().equals("bb")) {
-			from -= windowSize;
-			to -= windowSize; 
+			from -= halfWindow;
+			to -= halfWindow; 
+			if(from < 1){
+				from= 1;
+				to= from + gc.getUserWindowSize() - 1;
+			}
 			return chrom + ":" + from + "-" + to;
 		} else if(rawInput.trim().equals("f")){
-			int step= (int)Math.round(windowSize / 10d);
-			step= (step == 0) ? 1 : step;
+			int step= (int)Math.rint(windowSize / 10d);
+
 			from += step; 
 			to += step;
+			if(!gc.getSamSeqDict().isEmpty()){
+				int chromLen= gc.getSamSeqDict().getSequence(chrom).getSequenceLength();
+				if(to > chromLen){
+					to= chromLen;
+					from= to - gc.getUserWindowSize() + 1;
+				}
+			}			
 			return chrom + ":" + from + "-" + to;
+			//step= (step == 0) ? 1 : step;
+			//from += step; 
+			//to += step;
+			//return chrom + ":" + from + "-" + to;
 		} else if(rawInput.trim().equals("b")){
-			int step= (int)Math.round(windowSize / 10d);
-			step= (step == 0) ? 1 : step;
-			from -= step; 
-			to -= step;
+			int step= (int)Math.rint(windowSize / 10d);
+			from -= step;
+			to -= step; 
+			if(from < 1){
+				from= 1;
+				to= from + gc.getUserWindowSize() - 1;
+			}
 			return chrom + ":" + from + "-" + to;
+			//int step= (int)Math.rint(windowSize / 10d);
+			//step= (step == 0) ? 1 : step;
+			//from -= step; 
+			//to -= step;
+			//return chrom + ":" + from + "-" + to;
 		} else if(rawInput.trim().startsWith(":")) { // You might want to be more specific than just startsWith(:)
 			String pos= rawInput.trim().replaceFirst(":", "");
 			Integer.parseInt(pos); // Check you actually got an int.
@@ -230,7 +446,12 @@ public class Utils {
 				|| Character.isDigit(rawInput.trim().charAt(0))){
 			int offset= parseStringToIntWithUnits(rawInput.trim());
 			from += offset;
-			to += offset;
+			if(from <= 0){
+				from= 1;
+				to= gc.getGenomicWindowSize();
+			} else {
+				to += offset;
+			}
 			return chrom + ":" + from + "-" + to;
 		}else if (rawInput.equals("q")) {
 			System.exit(0);	
@@ -255,46 +476,6 @@ public class Utils {
 	    return true;
 	}
 
-	/**
-	 * Compress the input list of ints in a list of length nwinds by 
-	 * grouping elements and taking the mean of each group (or other summary stat).
-	 * 
-	 * **NB**: If you change the splitting algorithm here check also Ruler_TO_BE_DEPRECTED class is
-	 * consistent.
-	 * 
-	 * @param ints
-	 * @param nwinds
-	 * @return Map where key is index (0-based) of first element in original input 
-	 * and value is averaged of grouped elements. The keys can be used as ruler for the coverage track.  
-	 */
-	/*public static LinkedHashMap<Integer, Double> compressNumericListTO_BE_DEPRECATED(List<Double> ints, int nwinds){
-		
-		int grpSize= (int) Math.round(((double)ints.size() / nwinds));
-		// After round() you get a remainder which goes in the last bin
-		LinkedHashMap<Integer, Double> zlist= new LinkedHashMap<Integer, Double>();
-		List<Double> sublist= new ArrayList<Double>();
-		// int i= 0;
-		int at= 0;
-		for(int i= 0; i < ints.size(); i++){
-			sublist.add(ints.get(i));
-
-			if(sublist.size() == grpSize || grpSize < 1){ // < 1 is for num. of windows >num. elements. 
-														  // So no compression done 
-				double avg= calculateAverage(sublist);
-				zlist.put(at, avg);
-				sublist.clear();
-				at= i+1;
-			
-			}
-		}
-		if(sublist.size() > 0){
-			double avg= Math.round(calculateAverage(sublist));
-			zlist.put(at, avg);			
-		}
-		return zlist;
-	} */
-
-	
 	/**
 	 * Average of ints in array x. Adapted from:
 	 * http://stackoverflow.com/questions/10791568/calculating-average-of-an-array-list
@@ -344,6 +525,79 @@ public class Utils {
 			System.exit(1);
 		}
 		return closest;
+	}
+	
+	public static List<Double> seqFromToLenOut(double from, double to, int lengthOut){
+		
+		List<Double> mapping= new ArrayList<Double>();
+		
+		double span= to - from + 1;
+		double step= ((double)span - 1)/(lengthOut - 1);
+		mapping.add((double)from);
+		for(int i= 1; i < lengthOut; i++){
+			mapping.add((double)mapping.get(i-1)+step);
+		}
+		
+		double diffTo= Math.abs(mapping.get(mapping.size() - 1) - to);
+		if(diffTo > (to * 0.001)){
+			String msg= "Error generating sequence:\n" +
+					     "Last point: " + mapping.get(mapping.size() - 1) + "\n" +
+					     "To diff: " + diffTo + "\n" +
+					     "Step: " + step;
+			throw new RuntimeException(msg);
+		} else {
+			mapping.set(mapping.size()-1, (double)to);
+		}
+		
+		double diffFrom= Math.abs(mapping.get(0) - from);		
+		if(diffFrom > 0.01 || mapping.size() != lengthOut){
+			String msg= "Error generating sequence:\n" +
+					    "Expected size: " + lengthOut + "; Effective: " + mapping.size() + "\n" + 
+					    "From diff: " + diffFrom;
+			throw new RuntimeException(msg);
+		}
+		return mapping;
+	}
+	
+	/**
+	 * Generate sequence of doubles of desired length. Same as R seq(from, to, length.out)
+	 * @param from
+	 * @param to
+	 * @param lengthOut
+	 * @return
+	 */
+	public static List<Double> seqFromToLenOut(int from, int to, int lengthOut){
+		
+		List<Double> mapping= new ArrayList<Double>();
+		
+		int span= to - from + 1;
+		double step= ((double)span - 1)/(lengthOut - 1);
+		mapping.add((double)from);
+		for(int i= 1; i < lengthOut; i++){
+			mapping.add((double)mapping.get(i-1)+step);
+		}
+		
+		// First check last point is close enough to expection. If so, replace last point with
+		// exact desired.
+		double diffTo= Math.abs(mapping.get(mapping.size() - 1) - to);
+		if(diffTo > (to * 0.001)){
+			String msg= "Error generating sequence:\n" +
+					     "Last point: " + mapping.get(mapping.size() - 1) + "\n" +
+					     "To diff: " + diffTo + "\n" +
+					     "Step: " + step;
+			throw new RuntimeException(msg);
+		} else {
+			mapping.set(mapping.size()-1, (double)to);
+		}
+		
+		double diffFrom= Math.abs(mapping.get(0) - from);		
+		if(diffFrom > 0.01 || mapping.size() != lengthOut){
+			String msg= "Error generating sequence:\n" +
+					    "Expected size: " + lengthOut + "; Effective: " + mapping.size() + "\n" + 
+					    "From diff: " + diffFrom;
+			throw new RuntimeException(msg);
+		}
+		return mapping;
 	}
 		
 }
