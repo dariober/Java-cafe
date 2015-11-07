@@ -11,7 +11,7 @@ Features that attempt to combine text based viewers (```tview```) with GUI viewe
 * Support for BS-Seq alignent files.
 * Navigation and search options
 
-![folder](/Users/berald01/svn_git/Java-cafe/trunk/SamTextViewer/figs/ex3.png)
+![ex3](https://github.com/dariober/Java-cafe/tree/master/SamTextViewer/figs/ex3.png)
 
 # Installation
 
