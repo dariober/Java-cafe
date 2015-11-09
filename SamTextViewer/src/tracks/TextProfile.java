@@ -103,6 +103,8 @@ class TextProfile {
 		int pos= y0;
 		double currentScore= 0;
 		while(true){
+			if(pos >= strDepth.size()) break;
+			
 			if((yValue - currentScore) > scorePerDot * 1.5){ // Add double
 				strDepth.set(pos, this.strFor2u);
 				currentScore += 2 * scorePerDot;
@@ -130,7 +132,8 @@ class TextProfile {
 			currentScore= 1 * scorePerDot;
 			pos= y0-1;
 		}
-		while(pos >= 0){
+		while(true){
+			if(pos < 0) break;
 			
 			if((-yValue - currentScore) > scorePerDot * 1.5){ // Add double
 				strDepth.set(pos, this.strFor2u);

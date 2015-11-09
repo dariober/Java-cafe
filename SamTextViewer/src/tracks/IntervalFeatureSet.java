@@ -190,6 +190,9 @@ public class IntervalFeatureSet {
 		orderedChroms.addAll(chroms);
 		Collections.sort(orderedChroms);
 		int idx= orderedChroms.indexOf(startChrom);
+		if(idx == -1){ // If startChrom is not present at all in the bed/gtf file.
+			return orderedChroms;
+		}
 		List<String> chromsStartingAt= new ArrayList<String>();
 		chromsStartingAt.addAll(orderedChroms.subList(idx, orderedChroms.size()));
 		chromsStartingAt.addAll(orderedChroms.subList(0, idx));

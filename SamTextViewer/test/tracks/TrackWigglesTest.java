@@ -15,6 +15,24 @@ import samTextViewer.Utils;
 
 public class TrackWigglesTest {
 
+	@Test
+	public void testCloseToBorder() throws InvalidGenomicCoordsException, IOException{
+		String url= "test_data/test.bedGraph.gz";
+		int yMaxLines= 10;
+		int windowSize= 160;
+		GenomicCoords gc= new GenomicCoords("chr1:1-800", null, windowSize, null);
+		TrackWiggles tw= new TrackWiggles(url, gc);
+		String prof= tw.printToScreen(yMaxLines);
+		System.out.println("START");
+		System.out.println(prof);
+		System.out.println(tw.getMaxDepth());
+		System.out.println(tw.getScorePerDot());
+		System.out.println("DONE");
+		assertEquals(5, tw.getMaxDepth(), 0.01);
+		// assertEquals(1, tw.getScorePerDot(), 0.01);
+	} 
+	
+	
 	@Test 
 	public void canPrintBedGraph() throws InvalidGenomicCoordsException, IOException{
 		
