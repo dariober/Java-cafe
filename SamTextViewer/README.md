@@ -12,7 +12,7 @@ Features that attempt to combine text based viewers (```tview```) with GUI viewe
 * Support for BS-Seq alignent files.
 * Navigation and search options
 
- ![ex3](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/figs/ex3.png)
+ ![ex3](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/screenshots/ex3.png)
 
 # Installation
 
@@ -38,7 +38,7 @@ Display a bam file together with a gtf annotation file, go straight to position 
 
     SamTextViewer -r chr7:5566640-5569055 ds051.actb.bam hg19.gencode_genes_v19.gtf.gz
 
-![ex1](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/figs/ex1.png)
+![ex1](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/screenshots/ex1.png)
 
 
 The header line:
