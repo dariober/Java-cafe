@@ -12,17 +12,17 @@ Features that attempt to combine text based viewers (```tview```) with GUI viewe
 * Support for BS-Seq alignent files.
 * Navigation and search options
 
- ![ex3](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/screenshots/ex3.png)
+![ex3](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/screenshots/ex3.png)
 
 # Installation
 
 There is virtually no installation needed as ```SamTextViewer.jar``` is pure Java. 
-Download the compile jar file from [releases](https://github.com/dariober/Java-cafe/releases) and execute with
+Download the zip file `SamTextViewer-x.x.x.zip` from [releases](https://github.com/dariober/Java-cafe/releases), unzip it and execute the jar file with
 
     java -jar /path/to/SamTextViewer.jar --help
 
-To avoid typing ```java -jar ...``` every time, you can put the helper 
-file [SamTextViewer](https://github.com/dariober/Java-cafe/SamTextViewer/) and the jar file ```SamTextViewer.jar``` in a directory in your PATH and execute with:
+To avoid typing ```java -jar ...``` every time, you can put both the helper 
+file `SamTextViewer` and the jar file ```SamTextViewer.jar``` in a directory in your PATH and execute with:
 
 	SamTextViewer [options]
 
