@@ -18,8 +18,9 @@ public class TextProfileTest {
 		yValues.add((double)0);
 		yValues.add((double)0);
 		
-		TextProfile tp= new TextProfile(yValues, 10);
+		TextProfile tp= new TextProfile(yValues, 10, Double.NaN, Double.NaN);
 		System.out.println(tp.getProfile().size());
+		System.out.println(tp.getProfile());
 	}
 
 }

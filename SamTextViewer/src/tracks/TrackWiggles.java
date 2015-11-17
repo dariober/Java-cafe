@@ -2,10 +2,7 @@ package tracks;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
 import org.apache.commons.lang3.StringUtils;
 import org.broad.igv.bbfile.BBFileReader;
 import org.broad.igv.bbfile.BigWigIterator;
@@ -21,10 +18,9 @@ import samTextViewer.Utils;
 
 /** Process wiggle file formats. Mostly using IGV classes. 
  * bigBed, bigWig, */
-public class TrackWiggles {
+public class TrackWiggles extends Track {
 
-	private List<Double> screenScores= new ArrayList<Double>(); 
-	private GenomicCoords gc;
+	// private List<Double> screenScores= new ArrayList<Double>(); 
 	// private double scorePerDot;   
 	// private double maxDepth;
 	private double maxDepth;
@@ -39,7 +35,7 @@ public class TrackWiggles {
 	 * @throws IOException */
 	public TrackWiggles(String url, GenomicCoords gc) throws IOException{
 
-		this.gc= gc;
+		this.setGc(gc);
 		
 		if(Utils.getFileTypeFromName(url).equals("bigWig")){
 			BBFileReader reader=new BBFileReader(url); // or url for remote access.
@@ -55,7 +51,7 @@ public class TrackWiggles {
 			for(ScreenWiggleLocusInfo x : screenWiggleLocusInfoList){
 				screenScores.add((double)x.getMeanScore());
 			}
-			this.screenScores= screenScores;		
+			this.setScreenScores(screenScores);		
 		} else if(Utils.getFileTypeFromName(url).equals("bedGraph")){
 			bedGraphToScores(url);
 		} else {
@@ -70,15 +66,15 @@ public class TrackWiggles {
 
 		// List of length equal to screen size. Each inner map contains info about the screen locus 
 		List<ScreenWiggleLocusInfo> screenWiggleLocusInfoList= new ArrayList<ScreenWiggleLocusInfo>();
-		for(int i= 0; i < gc.getUserWindowSize(); i++){
+		for(int i= 0; i < getGc().getUserWindowSize(); i++){
 			screenWiggleLocusInfoList.add(new ScreenWiggleLocusInfo());
 		}
 		
-		BigWigIterator iter = reader.getBigWigIterator(gc.getChrom(), gc.getFrom(), gc.getChrom(), gc.getTo(), false);
+		BigWigIterator iter = reader.getBigWigIterator(getGc().getChrom(), getGc().getFrom(), getGc().getChrom(), getGc().getTo(), false);
 		while(iter.hasNext()){
 			WigItem bw = iter.next();
 			for(int i= bw.getStartBase(); i <= bw.getEndBase(); i++){
-				int idx= Utils.getIndexOfclosestValue(i, gc.getMapping()); // Where should this position be mapped on screen?
+				int idx= Utils.getIndexOfclosestValue(i, getGc().getMapping()); // Where should this position be mapped on screen?
 				screenWiggleLocusInfoList.get(idx).increment(bw.getWigValue());
 			} 
 		}
@@ -87,32 +83,35 @@ public class TrackWiggles {
 		for(ScreenWiggleLocusInfo x : screenWiggleLocusInfoList){
 			screenScores.add((double)x.getMeanScore());
 		}
-		this.screenScores= screenScores;		
+		this.setScreenScores(screenScores);		
 	}
 	
-	private void bedGraphToScores(String fileName){
+	private void bedGraphToScores(String fileName) throws IOException{
 		
 		List<ScreenWiggleLocusInfo> screenWiggleLocusInfoList= new ArrayList<ScreenWiggleLocusInfo>();
-		for(int i= 0; i < gc.getUserWindowSize(); i++){
+		for(int i= 0; i < getGc().getUserWindowSize(); i++){
 			screenWiggleLocusInfoList.add(new ScreenWiggleLocusInfo());
 		}
+		
+		// LineIterator it = FileUtils.lineIterator(new File(fileName), "UTF-8");
+	
 		try {
 			TabixReader tabixReader= new TabixReader(fileName);
-			Iterator qry= tabixReader.query(this.gc.getChrom(), this.gc.getFrom()-1, this.gc.getTo());
+			Iterator qry= tabixReader.query(this.getGc().getChrom(), this.getGc().getFrom()-1, this.getGc().getTo());
 			while(true){
 				String q = qry.next();
 				if(q == null){
 					break;
 				}
 				String[] tokens= q.split("\t");
-				int screenFrom= Utils.getIndexOfclosestValue(Integer.valueOf(tokens[1])+1, this.gc.getMapping());
-				int screenTo= Utils.getIndexOfclosestValue(Integer.valueOf(tokens[2]), this.gc.getMapping());
+				int screenFrom= Utils.getIndexOfclosestValue(Integer.valueOf(tokens[1])+1, this.getGc().getMapping());
+				int screenTo= Utils.getIndexOfclosestValue(Integer.valueOf(tokens[2]), this.getGc().getMapping());
 				float value= Float.valueOf(tokens[3]);
 				for(int i= screenFrom; i <= screenTo; i++){
 					screenWiggleLocusInfoList.get(i).increment(value);
 				}
 			}
-		} catch (IOException e) {
+		} catch (IOException e) {			
 			e.printStackTrace();
 			System.err.println("Could not open tabix file: " + fileName);
 			System.err.println("Is the file sorted and indexed? After sorting by position (sort e.g. -k1,1 -k2,2n), compress with bgzip and index with e.g.:");
@@ -123,13 +122,16 @@ public class TrackWiggles {
 		for(ScreenWiggleLocusInfo x : screenWiggleLocusInfoList){
 			screenScores.add((double)x.getMeanScore());
 		}
-		this.screenScores= screenScores;
+		this.setScreenScores(screenScores);
 		return;
 	}
 	
-	public String printToScreen(int yMaxLines){
+	@Override
+	public String printToScreen(){ // int yMaxLines, Double ymin, Double ymax
 		
-		TextProfile textProfile= new TextProfile(this.screenScores, yMaxLines);
+		if(this.getyMaxLines() == 0){return "";}
+		
+		TextProfile textProfile= new TextProfile(this.getScreenScores(), this.getyMaxLines(), this.getYmin(), this.getYmax());
 		
 		this.scorePerDot= textProfile.getScorePerDot();
 		this.maxDepth= textProfile.getMaxDepth();
@@ -137,16 +139,17 @@ public class TrackWiggles {
 		ArrayList<String> lineStrings= new ArrayList<String>();
 		for(int i= (textProfile.getProfile().size() - 1); i >= 0; i--){
 			List<String> xl= textProfile.getProfile().get(i);
-			Set<String> unique= new HashSet<String>(xl);
-			if(unique.size() == 1 && unique.contains(textProfile.getStrForFill())){ // Do not print blank lines
-				continue;
-			} else {
-				lineStrings.add(StringUtils.join(xl, ""));
-			}
+			// Set<String> unique= new HashSet<String>(xl);
+			lineStrings.add(StringUtils.join(xl, ""));
+			//if(unique.size() == 1 && unique.contains(textProfile.getStrForFill())){ // Do not print blank lines
+			//	continue;
+			//} else {
+			//	lineStrings.add(StringUtils.join(xl, ""));
+			//}
 		}
 		return Joiner.on("\n").join(lineStrings);
 	}
-	
+		
 	/*   S e t t e r s   and   G e t t e r s */
 	
 	public double getMaxDepth() {
@@ -157,5 +160,10 @@ public class TrackWiggles {
 		return scorePerDot;
 	}
 
-
+	@Override
+	public String getTitle(){
+		return this.getFilename() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
+				Math.rint((this.maxDepth)*100)/100 + "; .= " + Math.rint((this.scorePerDot)) + ";\n";
+	}
+	
 }

@@ -24,7 +24,8 @@ import samTextViewer.GenomicCoords;
 import samTextViewer.SamLocusIterator;
 import samTextViewer.Utils;
 
-public class TrackCoverage {
+@SuppressWarnings("deprecation")
+public class TrackCoverage extends Track {
 
 	/* A t t r i b u t e s */
 	
@@ -40,11 +41,7 @@ public class TrackCoverage {
 	 * score in the input. Typically this "reads per dot". */
 	private double scorePerDot;   
 	private double maxDepth;
-	private String inputBam;
-
-	/** Store collected loci in the region of interest */
-	//@Deprecated
-	//final private ArrayList<LocusInfo> locusInfoList= new ArrayList<LocusInfo>();
+	// private String inputBam;
 	
 	/* C o n s t r u c t o r */
 	
@@ -61,7 +58,8 @@ public class TrackCoverage {
 	public TrackCoverage(String bam, GenomicCoords gc,
 			List<SamRecordFilter> filters, boolean bs) throws IOException{
 		
-		this.inputBam= bam;
+		this.setGc(gc);
+		this.setFilename(bam);
 		SamReaderFactory srf=SamReaderFactory.make();
 		srf.validationStringency(ValidationStringency.SILENT);
 		SamReader samReader= srf.open(new File(bam));
@@ -100,19 +98,21 @@ public class TrackCoverage {
 	 * @param rpm Should read counts be normalized by library size as Reads Per Million
 	 * @return HashMapwith with keys/values the printable characteristics of the track. 
 	 */
-	public String printToScreen(List<Double> screenToGenomeMap, int yMaxLines, boolean rpm){
+	@Override
+	public String printToScreen(){
+		
+		if(this.getyMaxLines() == 0){return "";}
 		
 		List<Double> yValues= new ArrayList<Double>();
 		for(ScreenLocusInfo x : screenLocusInfoList){
 			yValues.add(x.getMeanDepth());
 		}
-		
-		TextProfile textProfile= new TextProfile(yValues, yMaxLines);
-
+		TextProfile textProfile= new TextProfile(yValues, this.getyMaxLines(), this.getYmin(), this.getYmax());
+				
 		this.maxDepth= textProfile.getMaxDepth();
 		this.scorePerDot= textProfile.getScorePerDot();
-		if(rpm){
-			long libSize= getAlignedReadCount(new File(this.inputBam));
+		if(this.isRpm()){
+			long libSize= getAlignedReadCount(new File(this.getFilename()));
 			this.maxDepth= this.maxDepth / libSize * 1000000;
 			this.scorePerDot= this.scorePerDot / libSize * 1000000;
 		}
@@ -121,43 +121,15 @@ public class TrackCoverage {
 		for(int i= (textProfile.getProfile().size() - 1); i >= 0; i--){
 			List<String> xl= textProfile.getProfile().get(i);
 			Set<String> unique= new HashSet<String>(xl);
-			if(unique.size() == 1 && unique.contains(textProfile.getStrForFill())){ // Do not print blank lines
-				continue;
-			} else {
-				lineStrings.add(StringUtils.join(xl, ""));
-			}
+			lineStrings.add(StringUtils.join(xl, ""));
 		}
 		return Joiner.on("\n").join(lineStrings);
 	}
-	
-	/**
-	 * Sample loci in the GenomciCoords interval so that they are evenly spaced given
-	 * the screen windowSize.
-	 * @param fh
-	 * @param gc
-	 * @param windowSize
-	 * @return
-	 */
-	//private IntervalList locusSampler(SAMFileHeader fh, GenomicCoords gc){
-	//	int range= gc.getTo() - gc.getFrom() + 1;
-	//	// If this ration is >1 then every single locus in the interval is sampled
-	//	double density= ((double)gc.getUserWindowSize() * LOC_PER_WINDOW) / range;  
-	//	
-	//	IntervalList il= new IntervalList(fh);
-	//	for(int i= gc.getFrom(); i <= gc.getTo(); i++){
-	//		Random rand= new Random(); // Really you shouldn't use rnd to filter loci.
-	//		float p= rand.nextFloat();
-	//		if(p < density){
-	//			Interval interval= new Interval(gc.getChrom(), i, i);
-	//			il.add(interval);
-	//		}
-	//	}
-	//	return il;
-	//}
         
     private long getAlignedReadCount(File bam){
 
     	SAMFileReader.setDefaultValidationStringency(ValidationStringency.SILENT);
+		@SuppressWarnings("resource")
 		BAMIndex sr= new SAMFileReader(bam).getIndex();
 		long alnCount= 0; 
 		int i= 0;
@@ -181,82 +153,16 @@ public class TrackCoverage {
     	return this.scorePerDot;
     }
     public double getMaxDepth(){
+    	this.printToScreen(); //  It's silly to call this just to set maxDepth.
     	return this.maxDepth;
     }    
     public List<ScreenLocusInfo> getScreenLocusInfoList(){
     	return screenLocusInfoList;
     }
-    //public List<LocusInfo> getLocusInfoList(){
-    //	return this.locusInfoList;
-    //}
+
+	@Override
+	public String getTitle(){
+		return this.getFilename() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
+				Math.rint((this.getMaxDepth())*100)/100 + "; .= " + Math.rint((this.scorePerDot)) + ";\n";
+	}
 }
-
-/**
- * Produce a representation of depth using text characters. 
- * Output is a list of lists where each inner list is a horizontal line of 
- * the coverage track. The vertical y-axis is scaled to be at most ymaxLines.
- * @param yValues Depth along positions
- * @param yMaxLines Max number of text lines to use. 
- * Values in depthArray will be rescaled accordingly. 0 or -ve to disable scaling.
- * @return
- */
-/*protected List<List<String>> getProfileList(List<Double> yValues, int yMaxLines){
-	
-	double maxDepth= 0;
-	for(double y : yValues){
-		if(y > maxDepth){
-			maxDepth= y;
-		}
-	}
-	this.maxDepth= maxDepth;
-	yMaxLines= yMaxLines * 2; // Since we use ':' for 2x in a single line.
-	this.scorePerDot= (double)maxDepth/yMaxLines;
-	
-	// Rescale depth as required
-	List<Double> yRescaled= new ArrayList<Double>();
-	for(int i= 0; i < yValues.size(); i++){
-		yRescaled.add(i, (double) yValues.get(i) / maxDepth * yMaxLines);  
-	}
-	
-	List<List<String>> profile= new ArrayList<List<String>>();
-	for(int i= 0; i < yRescaled.size(); i++){
-		ArrayList<String> strDepth= new ArrayList<String>(); // This will be a vertical bar
-		double locDepth= yRescaled.get(i);
-		
-		if((int)Math.rint(locDepth) == 0){ // For zero coverage
-			strDepth.add("_"); 
-		}
-		int nDouble= ((int)locDepth) / 2; // how many :
-		for(int j= 0; j < nDouble; j++){
-			strDepth.add(":");
-		} 
-		int diff= (int)Math.rint(locDepth- (nDouble*2)); // Get remainder
-		if(diff == 2){
-			strDepth.add(":");
-		} else if(diff == 1) {
-			strDepth.add(".");
-		} else if(diff == 0){
-			//
-		} else {
-			System.err.println("Unexpected division");
-			System.exit(1);
-		}
-		// Fill up list with blanks
-		while(strDepth.size() < yMaxLines){
-			strDepth.add(FILL);
-	    }
-		profile.add(strDepth);
-	}
-	return Utils.transpose(profile);
-}*/
-
-/**
- * Return map of positions and depth as extracted from the list of LocusInfo
- * */
-/*private LinkedHashMap<Integer, Integer> getPositionsAndDepth(){   	
-	LinkedHashMap<Integer, Integer> posAndDepth= new LinkedHashMap<Integer, Integer>();
-	for(LocusInfo loc : this.locusInfoList){
-		posAndDepth.put(loc.getPosition(), loc.getRecordAndPositions().size());
-	}
-	return posAndDepth;
-}*/

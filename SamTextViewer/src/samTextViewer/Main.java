@@ -6,9 +6,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.StrTokenizer;
 
+import exceptions.InvalidCommandLineException;
 import exceptions.InvalidGenomicCoordsException;
 import net.sourceforge.argparse4j.inf.Namespace;
 import filter.FlagToFilter;
@@ -18,6 +22,7 @@ import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import jline.console.ConsoleReader;
 import jline.console.completer.StringsCompleter;
+import tracks.Track;
 import tracks.IntervalFeatureSet;
 import tracks.TrackCoverage;
 import tracks.TrackIntervalFeature;
@@ -37,7 +42,7 @@ public class Main {
 		return memStats;
 	}
 	/* ------------------- M A I N ------------------- */
-	public static void main(String[] args) throws IOException, InvalidGenomicCoordsException {
+	public static void main(String[] args) throws IOException, InvalidGenomicCoordsException, InvalidCommandLineException {
 		
 		/* Start parsing arguments * 
 		 * *** If you change something here change also in console input ***/
@@ -59,7 +64,6 @@ public class Main {
 		boolean noFormat= opts.getBoolean("noFormat");
 		boolean nonInteractive= opts.getBoolean("nonInteractive");
 		boolean withReadName= false; // FIXME: Add to parser?
-		
 		if((F_excl & 4) != 4){ // Always filter out read unmapped
 			F_excl += 4;
 		}
@@ -86,6 +90,9 @@ public class Main {
 			System.exit(1);
 		}
 		
+		/* File list to set ylimits */
+		String yLimits= ".* NA NA :ylim";
+
 		/* Prepare genomics coordinates to fetch */
 		if(region.isEmpty()){
 			for(String x : insam){
@@ -105,7 +112,7 @@ public class Main {
 		GenomicCoordsHistory gch= new GenomicCoordsHistory();
 		SAMSequenceDictionary samSeqDict = GenomicCoords.getSamSeqDictFromAnyFile(insam, fasta);
 		gch.add(new GenomicCoords(region, samSeqDict, windowSize, fasta));
-		
+	
 		/* Files to parse as features (bed, gtf, etc) */
 		LinkedHashMap<String, IntervalFeatureSet> intervalFiles= Utils.createIntervalFeatureSets(insam); 
 		
@@ -116,11 +123,12 @@ public class Main {
 		
 		boolean printIntervalFeatures= false;
 		while(true){ // Each loop processes the user's input.
-			
+
 			/* Prepare filters */
 			List<SamRecordFilter> filters= FlagToFilter.flagToFilterList(f_incl, F_excl); // new ArrayList<SamRecordFilter>();
 			filters.add(new MappingQualityFilter(mapq));
 			
+			List<Track> tracks= new ArrayList<Track>();
 			for(int i= 0; i < insam.size(); i++){ // Iterate through each input file
 				
 				String sam= insam.get(i);
@@ -131,61 +139,79 @@ public class Main {
 					String printableTrackMethylation= "";
 					if(maxDepthLines > 0 || bs){
 						TrackCoverage trackCoverage= new TrackCoverage(sam, gch.current(), filters, bs);
+						trackCoverage.setFilename(sam);
 						if(maxDepthLines > 0){
-							String printable= trackCoverage.printToScreen(gch.current().getMapping(), maxDepthLines, rpm);
+							trackCoverage.setyMaxLines(maxDepthLines);
+							trackCoverage.setRpm(rpm);
+							// String printable= trackCoverage.printToScreen(gch.current().getMapping(), rpm);
+							String printable= trackCoverage.printToScreen();
 							title += "Each . = " + Math.rint(trackCoverage.getScorePerDot()*100)/100 +  "; max depth: " + Math.rint(trackCoverage.getMaxDepth()*100)/100 + "x; ";
+							trackCoverage.setTitle(title + "\n");
 							printableTrackCoverage += printable + "\n";
+							tracks.add(trackCoverage);				
 						}
 						if(bs && maxMethylLines > 0){
 							TrackMethylation trackMethylation= new TrackMethylation(trackCoverage.getScreenLocusInfoList());
-							printableTrackMethylation += trackMethylation.printToScreen(maxMethylLines, noFormat) + "\n";
+							trackMethylation.setFilename(sam);
+							trackMethylation.setyMaxLines(maxMethylLines);
+							printableTrackMethylation += trackMethylation.printToScreen() + "\n";
 							title += "BS[each */. = " + Math.rint(trackMethylation.getScorePerDot()*100)/100 + "x; " + 
 									"max depth: " + Math.rint(trackMethylation.getMaxDepth()*100)/100 + "x" + "]; ";
+							trackMethylation.setTitle(title + "\n");
+							tracks.add(trackMethylation);
 						}
 					}
-					
+										
 					/* Reads */
 					String printableTrackReads= "";
 					if(maxLines != 0){
 						TrackReads trackReads= new TrackReads(sam, gch.current(), filters, maxReadsStack);
-						printableTrackReads += trackReads.printToScreen(maxLines, bs, noFormat, withReadName) + "\n";
+						trackReads.setFilename(sam);
+						trackReads.setyMaxLines(maxLines);
+						trackReads.setBs(bs);
+						trackReads.setWithReadName(withReadName);
+						printableTrackReads += trackReads.printToScreen() + "\n";
+						tracks.add(trackReads);
 					}								
-					
-					/* Print to screen */
-					if(noFormat){
-						System.out.println(title);
-					} else {
-						System.out.println("\033[0;34m" + title + "\033[0m");
-					}
-					System.out.print(printableTrackCoverage);
-					System.out.print(printableTrackMethylation);
-					System.out.print(printableTrackReads);
 				} // End processing bam file
+				
 				if(intervalFiles.containsKey(sam)){
 					TrackIntervalFeature tif= new TrackIntervalFeature(intervalFiles.get(sam), gch.current());
-					String printableIntervalTrack= tif.printToScreen(noFormat);
-					System.out.println(new File(sam).getName());
-					System.out.println(printableIntervalTrack);
-					if(printIntervalFeatures){
-						System.out.println(tif.toString());
-					}
+					tif.setFilename(sam);
+					tif.printToScreen();
+					tif.setTitle(new File(sam).getName() + "\n");
+					tracks.add(tif);
 				} 
 				if(Utils.getFileTypeFromName(sam).equals("bigWig") 
 						|| Utils.getFileTypeFromName(sam).equals("tdf")
 						|| Utils.getFileTypeFromName(sam).equals("bedGraph")){
 					TrackWiggles tw= new TrackWiggles(sam, gch.current());
-					String printable= tw.printToScreen(maxDepthLines);
-					//	title += "Each . = " + Math.rint(trackCoverage.getScorePerDot()*100)/100 +  "; max depth: " + Math.rint(trackCoverage.getMaxDepth()*100)/100 + "x; ";
-					title += "Each . = " + Math.rint(tw.getScorePerDot()*1000)/1000 +  "; max score: " + Math.rint(tw.getMaxDepth()*1000)/1000 + "; ";
-					if(noFormat){
-						System.out.println(title);
-					} else {
-						System.out.println("\033[0;34m" + title + "\033[0m");
-					}
-					System.out.println(printable);
+					tw.setFilename(sam);
+					tw.setyMaxLines(maxDepthLines);
+					tw.printToScreen();
+					title += "Each . = " + Math.rint(tw.getScorePerDot()*1000)/1000 +  "; max score: " 
+							+ Math.rint(tw.getMaxDepth()*1000)/1000 + "; ";
+					tw.setTitle(title + "\n");
+					tracks.add(tw);
 				}
 			} // End loop through files 
-			
+
+			/* Print tracks */
+			/* ************ */
+			Utils.setTrackYlimitsForRegex(yLimits, tracks);
+			for(Track tr : tracks){
+				tr.setNoFormat(noFormat);
+				if(tr.isNoFormat()){
+					System.out.print(tr.getTitle());
+				} else {
+					System.out.print("\033[0;34m" + tr.getTitle() + "\033[0m");
+				}
+				System.out.println(tr.printToScreen());
+				if(printIntervalFeatures){ //  && tr instanceof TrackIntervalFeature
+					System.out.print(tr.printFeatures());
+				}
+			}
+
 			/* Footers and interactive prompt */
 			/* ****************************** */
 			System.out.print(gch.current().printableRefSeq(noFormat));
@@ -220,6 +246,7 @@ public class Main {
 							+ "+/-<int>\n        Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m\n"
 							+ "<filename> [:n]\n        Move to the next feature in <filename> on current chromosome\n"
 							+ "<filename> <string> [:find]\n        Find the next record in file containing string. Use single quotes for strings containing spaces.\n"
+							+ "<regex> <ymin> <ymax> [:ylim]\n       Set limits for y axis to all file names captured by regex"
 							+ "[print]\n        Turn on/off the printing of bed/gtf features in current interval\n"
 							+ "[rNameOn]/[rNameOff]\n        Show/Hide read names\n"
 							+ "[history]\n        Show visited positions\n"
@@ -248,6 +275,18 @@ public class Main {
 						cmdInput= cmdInput.matches("^\\+.*") ? cmdInput.substring(1) : cmdInput;
 						String newRegion= Utils.parseConsoleInput(cmdInput, gch.current()).trim();
 						gch.add(new GenomicCoords(newRegion, samSeqDict, windowSize, fasta));
+					
+					} else if(cmdInput.endsWith(" :ylim")){
+						try{
+							Utils.setTrackYlimitsForRegex(cmdInput, tracks); // Executed only to validate cmdInput.
+							yLimits= cmdInput;
+						} catch(InvalidCommandLineException e){
+							cmdInput= "";
+							continue;
+						} catch(PatternSyntaxException e) {
+							cmdInput= "";
+				        	continue;
+						}
 					} else if (cmdInput.equals("p")) {
 						gch.previous();
 					} else if (cmdInput.equals("n")) {
@@ -276,7 +315,6 @@ public class Main {
 						GenomicCoords gc= (GenomicCoords)gch.current().clone();
 						gch.add(Utils.goToNextFeatureOnFile(cmdInput.replaceAll(":n$", "").trim(), gc, intervalFiles));
 					} else if(cmdInput.endsWith(" :find")) {  
-					
 						StrTokenizer str= new StrTokenizer(cmdInput);
 						str.setQuoteChar('\'');
 						List<String> tokens= str.getTokenList();
@@ -287,7 +325,6 @@ public class Main {
 						}
 						GenomicCoords gc= (GenomicCoords)gch.current().clone();
 						gch.add(Utils.findNextStringOnFile(tokens.get(1), tokens.get(0), gc, intervalFiles));
-					
 					} else { // Command line options from Argparse
 						List<String> clArgs= Arrays.asList(cmdInput.split("\\s+"));
 						if(clArgs.indexOf("-r") != -1){

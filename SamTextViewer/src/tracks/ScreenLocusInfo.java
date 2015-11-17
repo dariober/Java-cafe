@@ -1,7 +1,6 @@
 package tracks;
 
 import filter.ReadFromTopStrandFilter;
-import samTextViewer.GenomicCoords;
 import samTextViewer.SamLocusIterator.LocusInfo;
 import samTextViewer.SamLocusIterator.RecordAndOffset;
 
@@ -23,6 +22,9 @@ class ScreenLocusInfo {
 	/** Increment attributes using locusInfo and refSeq. refSeq can be null which means
 	 * some attributes are not updated */
 	protected void increment(LocusInfo locusInfo, byte refBase, boolean bs){
+
+		refBase= (byte) Character.toUpperCase(refBase);
+		
 		cntGenomicLoci++;
 		depth += locusInfo.getRecordAndPositions().size();
 		if(! bs){ 
@@ -58,10 +60,11 @@ class ScreenLocusInfo {
 				}  
 			} else {
 				System.err.println("Unexpected strand or base!");
-				System.exit(1);
+				throw new RuntimeException();
 			}
 		} //end iterating locusInfo
 	}
+	
 	public String toString(){
 		String str= "cntGenomicLoci: " + this.cntGenomicLoci + "; depth: " + 
 				this.depth + "; cntM: " + this.cntM + "; cntU: " + this.cntU;
@@ -76,7 +79,7 @@ class ScreenLocusInfo {
 		return (double)this.cntM / this.cntGenomicLoci; 
 	}
 	protected Double getMeanCntU(){
-		return (double)this.cntM / this.cntGenomicLoci; 
+		return (double)this.cntU / this.cntGenomicLoci; 
 	}
 	protected int getCntM(){
 		return cntM; 

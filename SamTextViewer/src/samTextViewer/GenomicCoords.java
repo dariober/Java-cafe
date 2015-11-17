@@ -117,6 +117,7 @@ public class GenomicCoords implements Cloneable {
 			e.printStackTrace();
 		}
 	}
+	
 	public byte[] getRefSeq(){
 		return this.refSeq;
 	}
@@ -166,33 +167,6 @@ public class GenomicCoords implements Cloneable {
 		return xgc;
 	} 
 
-	/**
-	 * Make sure that the string after ":" in chr:start-end is valid. 
-	 * @param x
-	 * @return
-	 */
-	/*private boolean fromToRegionIsValid(String x){
-		x= x.trim();
-		if(x.length() == 0){
-			return false;
-		} else if(x.startsWith("-")){
-			return false;
-		} else if(StringUtils.countMatches(x, "-") > 1){
-			return false;
-		} else {
-			x= x.replaceAll("\\s*\\-\\s*", "");
-			for(int i=0; i < x.length(); i++){
-				if( ! Character.isDigit(x.charAt(i))){
-					return false;
-				}
-			}
-			if(x.replaceAll("0", "") == ""){ // Region is not only zeros!
-				return false;
-			}
-		}
-		return true;
-	} */
-	
 	public void correctCoordsAgainstSeqDict(SAMSequenceDictionary samSeqDict){
 		
 		if(this.chrom == null){ // Nothing to do
@@ -397,6 +371,7 @@ public class GenomicCoords implements Cloneable {
 	
 	/** Ref sequence usable for print on screen. */
 	public String printableRefSeq(boolean noFormat){
+
 		if(this.refSeq == null){
 			return "";
 		} else if(noFormat){

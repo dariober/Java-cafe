@@ -11,8 +11,11 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import tracks.Track;
+
 import org.junit.Test;
 
+import exceptions.InvalidCommandLineException;
 import exceptions.InvalidGenomicCoordsException;
 
 public class UtilsTest {
@@ -22,6 +25,21 @@ public class UtilsTest {
 	public static SAMSequenceDictionary samSeqDict= samReader.getFileHeader().getSequenceDictionary();
 	
 	public static String fastaFile= "test_data/chr7.fa";
+
+	@Test
+	public void canSetYlimits() throws InvalidCommandLineException{
+		String cmdInput= ".*.gz$ 0 10 :ylim";
+		List<Track> tracks= new ArrayList<Track>();
+		Track t1= new Track(); t1.setFilename("foo.gz"); tracks.add(t1);
+		Track t2= new Track(); t2.setFilename("foo.txt"); tracks.add(t2);
+		Track t3= new Track(); t3.setFilename("bla.gz"); tracks.add(t3);
+
+		Utils.setTrackYlimitsForRegex(cmdInput, tracks);
+		
+		assertEquals(0, tracks.get(0).getYmin(), 0.001);
+		assertEquals(10, tracks.get(0).getYmax(), 0.001);
+		assertEquals(Double.NaN, tracks.get(1).getYmax(), 0.001);
+	}
 	
 	@Test
 	public void canGetFileTypeFromName(){
@@ -68,6 +86,10 @@ public class UtilsTest {
 		Utils.seqFromToLenOut(17, 15, 13);
 		Utils.seqFromToLenOut(15, 26, 13).size();
 		Utils.seqFromToLenOut(15, 15, 13);
+		
+		// Length of 1 returns "from" like R seq(0, 10, length.out= 1) -> 0
+		assertEquals(1, Utils.seqFromToLenOut(0, 10, 1).size());
+		assertEquals(0, Utils.seqFromToLenOut(0, 10, 1).get(0), 0.00001);		
 	}
 	
 	@Test

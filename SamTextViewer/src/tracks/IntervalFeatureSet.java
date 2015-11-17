@@ -112,7 +112,7 @@ public class IntervalFeatureSet {
 			Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
 			br = new BufferedReader(decoder);
 		} else {
-			br = new BufferedReader(new FileReader(infile));		
+			br = new BufferedReader(new FileReader(infile));
 		}
 		String line;
 		while ((line = br.readLine()) != null) {

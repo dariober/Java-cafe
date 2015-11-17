@@ -22,10 +22,12 @@ import samTextViewer.Utils;
  * @author berald01
  *
  */
-public class TrackReads {
+public class TrackReads extends Track{
 
 	private List<List<TextRead>> readStack;
-	private GenomicCoords gc;
+	private boolean bs= false;
+	private boolean withReadName= false;
+
 	/* C o n s t r u c t o r s */
 	/**
 	 * Create read track
@@ -36,13 +38,13 @@ public class TrackReads {
 	 * @throws IOException 
 	 */
 	public TrackReads(String bam, GenomicCoords gc, List<SamRecordFilter> filters, int maxReadsStack) throws IOException{
-		
+
 		if(!Utils.bamHasIndex(bam)){
 			System.err.println("\nAlignment file " + bam + " has no index.\n");
 			throw new RuntimeException();
 		}
 		
-		this.gc= gc;
+		this.setGc(gc);
 
 		SamReaderFactory srf=SamReaderFactory.make();
 		srf.validationStringency(ValidationStringency.SILENT);
@@ -73,9 +75,10 @@ public class TrackReads {
 	
 	/** 
 	 * Printable track on screen. This is what should be called by Main */
-	public String printToScreen(int yMaxLines, boolean bs, boolean noFormat, boolean withReadName){
+	@Override
+	public String printToScreen(){
 		
-		yMaxLines= (yMaxLines < 0) ? Integer.MAX_VALUE : yMaxLines;
+		int yMaxLines= (this.getyMaxLines() < 0) ? Integer.MAX_VALUE : this.getyMaxLines();;
 		
 		// If there are more lines (inner lists) than desired lines of output (yMaxLines), get a representative sample
 		List<Double> keep= new ArrayList<Double>();
@@ -86,10 +89,10 @@ public class TrackReads {
 		} else {
 			keep= Utils.seqFromToLenOut(0, this.readStack.size()-1, this.readStack.size());
 		}
-		String printable= "";	
+		String printable= "";
 		for(Double idx : keep){
 			List<TextRead> line= this.readStack.get((int)Math.rint(idx));
-			printable += linePrinter(line, bs, noFormat, withReadName) + "\n";
+			printable += linePrinter(line, bs, this.isNoFormat(), withReadName) + "\n";
 		}
 		return printable.replaceAll("\n$", "");
 	}
@@ -122,7 +125,7 @@ public class TrackReads {
 			// Find a read in input whose start is greater then end of current
 			for(int i=0; i < textReads.size(); i++){
 				TextRead tr= textReads.get(i);
-				int gap= (gc.getBpPerScreenColumn() > 1) ? 0 : 1; // If reads are very compressed, do not add space between adjacent ones.
+				int gap= (this.getGc().getBpPerScreenColumn() > 1) ? 0 : 1; // If reads are very compressed, do not add space between adjacent ones.
 				if(tr.getTextStart() > line.get(line.size()-1).getTextEnd()+gap){ // +2 because we want some space between adjacent reads
 					listOfLines.get(listOfLines.size()-1).add(tr); // Append to the last line. 
 					trToRemove.add(tr);
@@ -193,6 +196,24 @@ public class TrackReads {
 			e.printStackTrace();
 		}
 		return cnt;
+	}
+	
+	/* S e t t e r s   and   G e t t e r s */
+	
+	public boolean isBs() {
+		return bs;
+	}
+
+	public void setBs(boolean bs) {
+		this.bs = bs;
+	}
+
+	public boolean isWithReadName() {
+		return withReadName;
+	}
+
+	public void setWithReadName(boolean withReadName) {
+		this.withReadName = withReadName;
 	}
 	
 }

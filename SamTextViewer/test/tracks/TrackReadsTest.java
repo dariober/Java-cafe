@@ -40,18 +40,23 @@ public class TrackReadsTest {
 		GenomicCoords gc= new GenomicCoords("chr7", from, to, samSeqDict, windowSize, null);
 			
 		TrackReads tr= new TrackReads(bam, gc, filters, 1000);
-
+		tr.setBs(bs);
+		tr.setNoFormat(noFormat);
 		String exp= 
 		"AAAAAAAAAA           GGGGGGGGGG TTTTTTTTTT\n"+
 		"          CCCCCCCCCC";
-		assertEquals(exp, tr.printToScreen(yMaxLines, bs, noFormat, false));
+		tr.setyMaxLines(yMaxLines);
+		assertEquals(exp, tr.printToScreen());
 		
-		System.out.println(tr.printToScreen(yMaxLines, bs, noFormat, false));
+		System.out.println(tr.printToScreen());
 		
 		windowSize= 99;
 		gc= new GenomicCoords("chr7", from, to, samSeqDict, windowSize, null);
 		tr= new TrackReads(bam, gc, filters, 1000);
-		assertEquals(">>>>>>>>>>>>>>>>>>>> >>>>>>>>>> >>>>>>>>>>", tr.printToScreen(yMaxLines, bs, noFormat, false));
+		tr.setBs(bs);
+		tr.setNoFormat(noFormat);
+		tr.setyMaxLines(yMaxLines);
+		assertEquals(">>>>>>>>>>>>>>>>>>>> >>>>>>>>>> >>>>>>>>>>", tr.printToScreen());
 	}
 	String exp= "AAAAAAAAAA           GGGGGGGGGG TTTTTTTTTT\n"+
 	"          CCCCCCCCCC";
@@ -68,7 +73,10 @@ public class TrackReadsTest {
 		GenomicCoords gc= new GenomicCoords("chr7", from, to, samSeqDict, windowSize, fastaFile);
 			
 		TrackReads tr= new TrackReads(bam, gc, filters, maxReadsStack);
-		System.out.println(tr.printToScreen(yMaxLines, bs, noFormat, false));
+		tr.setBs(bs);
+		tr.setNoFormat(noFormat);
+		tr.setyMaxLines(yMaxLines);
+		System.out.println(tr.printToScreen());
 	}
 
 	@Test
@@ -84,7 +92,10 @@ public class TrackReadsTest {
 		GenomicCoords gc= new GenomicCoords("chr7", from, to, samSeqDict, windowSize, fastaFile);
 			
 		TrackReads tr= new TrackReads(bam, gc, filters, maxReadsStack);
-		System.out.println(tr.printToScreen(yMaxLines, bs, noFormat, false));
+		tr.setyMaxLines(yMaxLines);
+		tr.setBs(bs);
+		tr.setNoFormat(noFormat);
+		System.out.println(tr.printToScreen());
 	}
 	
 }

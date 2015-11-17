@@ -10,8 +10,6 @@ import java.util.List;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
-
 import org.junit.Test;
 
 import exceptions.InvalidGenomicCoordsException;
@@ -23,6 +21,14 @@ public class GenomicCoordsTest {
 	public static SAMSequenceDictionary samSeqDict= samReader.getFileHeader().getSequenceDictionary();
 	
 	public static String fastaFile= "test_data/chr7.fa";
+	
+	@Test
+	public void printRefSeq() throws InvalidGenomicCoordsException, IOException{
+		GenomicCoords gc= new GenomicCoords("chr7", 5540580, 5540590, null, 100, "test_data/chr7.fa");
+		System.out.println("START");
+		System.out.println(gc.printableRefSeq(true));
+		System.out.println("DONE");
+	}
 	
 	@Test
 	public void canTestForEqualCoords() throws InvalidGenomicCoordsException, IOException{

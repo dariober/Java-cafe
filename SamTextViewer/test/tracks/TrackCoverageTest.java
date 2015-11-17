@@ -11,19 +11,15 @@ import java.util.List;
 import org.junit.Test;
 
 import exceptions.InvalidGenomicCoordsException;
-import htsjdk.samtools.BAMIndex;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileReader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import samTextViewer.GenomicCoords;
 import samTextViewer.SamLocusIterator;
-import samTextViewer.Utils;
 import tracks.TrackCoverage;
 
 public class TrackCoverageTest {
@@ -84,7 +80,8 @@ public class TrackCoverageTest {
 
 		GenomicCoords gc= new GenomicCoords("chr7", 5566770, 5566870, samSeqDict, windowSize, fastaFile);
 		TrackCoverage tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, false);
-		tc.printToScreen(gc.getMapping(), yMaxLines, true);
+		tc.setyMaxLines(yMaxLines);
+		tc.setRpm(true);
 		assertEquals(1000000, tc.getMaxDepth(), 0.1);
 	}
 	
@@ -95,8 +92,9 @@ public class TrackCoverageTest {
 
 		GenomicCoords gc= new GenomicCoords("chr7", 5566770, 5566870, samSeqDict, windowSize, fastaFile);
 		TrackCoverage tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, false);
+		tc.setyMaxLines(yMaxLines);
 		System.out.println(gc.toString());
-		System.out.println(tc.printToScreen(gc.getMapping(), yMaxLines, false));
+		System.out.println(tc.printToScreen());
 		System.out.println(tc.getScorePerDot());
 	}
 
@@ -105,7 +103,8 @@ public class TrackCoverageTest {
 		
 		GenomicCoords  gc= new GenomicCoords("chr7", 1, 1000, samSeqDict, 20, null);
 		TrackCoverage tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, false);
-		assertEquals("____________________", tc.printToScreen(gc.getMapping(), 10, false));
+		tc.setyMaxLines(10);
+		assertEquals("____________________", tc.printToScreen());
 	}
 
 	@Test
@@ -115,8 +114,9 @@ public class TrackCoverageTest {
 
 		GenomicCoords gc= new GenomicCoords("chr7:5568363-5568390", samSeqDict, windowSize, fastaFile);
 		TrackCoverage tc= new TrackCoverage("test_data/ds051.actb.bam", gc, filters, false);
+		tc.setyMaxLines(yMaxLines);
 		System.out.println(gc.toString());
-		System.out.println(tc.printToScreen(gc.getMapping(), yMaxLines, false));
+		System.out.println(tc.printToScreen());
 		System.out.println(tc.getScorePerDot());
 	}
 }

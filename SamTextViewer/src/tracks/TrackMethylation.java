@@ -10,15 +10,13 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
 
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import samTextViewer.Utils;
-import samTextViewer.SamLocusIterator.LocusInfo;
 
 /**
  * Create printable methylation track from list of LocusInfo and matched reference sequence.
  * @author berald01
  */
-public class TrackMethylation {
+public class TrackMethylation extends Track {
 
 	List<ScreenLocusInfo> screenLocusInfoList; 
 	private double scorePerDot;
@@ -29,18 +27,22 @@ public class TrackMethylation {
 	}
 	
 	/* M e t h o d s */
-	
-	public String printToScreen(int yMaxLines, boolean noFormat){
+	@Override
+	public String printToScreen(){
+		
+		if(this.getyMaxLines() == 0){return "";}
 		
 		// Get list of mean M and U
 		List<Double> mValues= new ArrayList<Double>();
 		List<Double> uValues= new ArrayList<Double>();
+		
 		for(ScreenLocusInfo x : this.screenLocusInfoList){
 			mValues.add(x.getMeanCntM());
 			uValues.add(x.getMeanCntU());
-		}		
+		}
+
 		ArrayList<List<String>> profile= (ArrayList<List<String>>) getMethylProfileList(
-				mValues, uValues, yMaxLines, noFormat);
+				mValues, uValues, this.getyMaxLines(), this.isNoFormat());
 		
 		ArrayList<String> lineStrings= new ArrayList<String>();
 		for(int i= (profile.size() - 1); i >= 0; i--){
@@ -74,17 +76,18 @@ public class TrackMethylation {
 	 */
 	private List<List<String>> getMethylProfileList(List<Double> mValues, List<Double> uValues, 
 			int yMaxLines, boolean noFormat){
-		
+
 		if(mValues.size() != uValues.size()){ // Sanity check
 			System.err.println("Number of M-values does not equal number of U-values");
 			System.err.println("M-values: " + mValues);
 			System.err.println("U-values: " + uValues);
-			System.exit(1);
+			throw new RuntimeException();
 		}
 		
 		String charForM= (noFormat) ? "*" : "\033[31m*\033[0m"; // 107: white bg; 31: red text
 		String charForU= (noFormat) ? "." : "\033[34m.\033[0m"; // 107: white bg; 34: blue text
-		String charForZero= (noFormat) ? "_" : "\033[_\033[0m"; // 107: white bg
+		// String charForZero= (noFormat) ? "_" : "\033[_\033[0m"; // 107: white bg
+		String charForZero= "_";
 		String charForNonCyt= " ";
 		String charForFill= " ";
 		
@@ -132,7 +135,7 @@ public class TrackMethylation {
 				System.err.println("Input rescaled uValues: " + rescaledU);
 				System.err.println("Input uValues: " + uValues);
 				System.err.println("Expected height: " + yMaxLines + "; Got: " + locDepth);
-				System.exit(1);
+				throw new RuntimeException();
 			}
 			profile.add(strDepth);
 		}
@@ -157,54 +160,11 @@ public class TrackMethylation {
 	public double getScorePerDot(){
 		return scorePerDot;
 	}
+	
+	@Override
+	public String getTitle(){
+		return this.getFilename() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
+				Math.rint((this.getMaxDepth())*100)/100 + "; .= " + Math.rint((this.scorePerDot)) + ";\n";
+	}
 }
 
-/*
- 	public String printToScreen(List<Double> screenToGenomeMap, int yMaxLines, boolean noFormat){
-		
-		// Need to convert list of integer to double
-		List<Double> mValues= new ArrayList<Double>();
-		List<Double> uValues= new ArrayList<Double>();
-		for(int i= 0; i < this.cntM.size(); i++){
-			if(this.cntM.get(i) == null){
-				mVal.add(null);
-			} else {
-				mVal.add((double)this.cntM.get(i));
-			}
-			if(this.cntU.get(i) == null){
-				uVal.add(null);
-			} else {
-				uVal.add((double)this.cntU.get(i));
-			}
-		}			
-		List<Double> mValues= Utils.collapseValues(mVal, this.positions, screenToGenomeMap);
-		List<Double> uValues= Utils.collapseValues(uVal, this.positions, screenToGenomeMap);
-		
-		ArrayList<List<String>> profile= (ArrayList<List<String>>) getMethylProfileList(
-				mValues, uValues, yMaxLines, noFormat);
-		
-		ArrayList<String> lineStrings= new ArrayList<String>();
-		for(int i= (profile.size() - 1); i >= 0; i--){
-			List<String> xl= profile.get(i);
-			Set<String> unique= new HashSet<String>(xl);
-			if(unique.size() == 1 && unique.contains(" ")){ // Do not print blank lines
-				continue;
-			} else {
-				lineStrings.add(StringUtils.join(xl, ""));
-			}
-		}
-		return Joiner.on("\n").join(lineStrings);
-		
-	}	
-
- 	public TrackMethylation(List<LocusInfo> locusInfoList, IndexedFastaSequenceFile faSeqFile){
-
-		for(LocusInfo loc : locusInfoList){
-			positions.add(loc.getPosition());
-			MethylLocus ml= new MethylLocus(loc, faSeqFile);
-			cntM.add(ml.getCntM());
-			cntU.add(ml.getCntU());
-		}
-	}
-
- * */

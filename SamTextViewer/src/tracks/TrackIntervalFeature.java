@@ -8,10 +8,10 @@ import org.apache.commons.lang3.StringUtils;
 
 import samTextViewer.GenomicCoords;
 
-public class TrackIntervalFeature {
+public class TrackIntervalFeature extends Track {
  
 	private List<IntervalFeature> intervalFeatureList= new ArrayList<IntervalFeature>();  
-	private GenomicCoords gc; 
+	// private GenomicCoords gc; 
 	
 	/* Constructor */
 	public TrackIntervalFeature(IntervalFeatureSet ifs, GenomicCoords gc) throws IOException {
@@ -20,18 +20,19 @@ public class TrackIntervalFeature {
 		for(IntervalFeature ift : intervalFeatureList){
 			ift.mapToScreen(gc.getMapping());
 		}
-		this.gc= gc;
+		this.setGc(gc);
 	}
 
 	/* Methods */
-	public String printToScreen(boolean noFormat) {
+	@Override
+	public String printToScreen() {
 		
 		String fwd= ">";
 		String rev= "<";
 		String na= "|";
 		
 		List<String> printable= new ArrayList<String>();
-		for(int i= 0; i < gc.getMapping().size(); i++){ // First create empty track
+		for(int i= 0; i < this.getGc().getMapping().size(); i++){ // First create empty track
 			printable.add(" ");
 		}
 		for(IntervalFeature intervalFeature : intervalFeatureList){
@@ -41,11 +42,11 @@ public class TrackIntervalFeature {
 			for(int j= intervalFeature.getScreenFrom(); j <= intervalFeature.getScreenTo(); j++){
 				String x= "";
 				if(intervalFeature.getStrand() == '+'){
-					x= (noFormat) ? fwd : "\033[48;5;147;38;5;240m" + fwd + "\033[0m";
+					x= (this.isNoFormat()) ? fwd : "\033[48;5;147;38;5;240m" + fwd + "\033[0m";
 				} else if(intervalFeature.getStrand() == '-'){
-					x= (noFormat) ? rev : "\033[48;5;225;38;5;240m" + rev + "\033[0m";
+					x= (this.isNoFormat()) ? rev : "\033[48;5;225;38;5;240m" + rev + "\033[0m";
 				} else {
-					x= (noFormat) ? na : "\033[48;5;250;38;5;240m" + na + "\033[0m";
+					x= (this.isNoFormat()) ? na : "\033[48;5;250;38;5;240m" + na + "\033[0m";
 				}
 				printable.set(j, x);
 			}
@@ -53,13 +54,14 @@ public class TrackIntervalFeature {
 		return StringUtils.join(printable, "");
 	}
 	
-	public String toString(){
+	@Override
+	public String printFeatures(){
 		StringBuilder sb= new StringBuilder();
 		for(IntervalFeature ift : intervalFeatureList){
 			sb.append(ift.getRaw());
 			sb.append("\n");
 		}
-		return sb.toString().replaceAll("\n$", "");
+		return sb.toString(); // NB: Leave last trailing /n
 	}
 
 //	public String printGtfFeatures() {

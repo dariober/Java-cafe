@@ -1,7 +1,6 @@
 package tracks;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import samTextViewer.Utils;
@@ -9,7 +8,8 @@ import samTextViewer.Utils;
 /** Text representation of a continuous profile along the screen positions */
 class TextProfile {
 	
-	private double maxDepth;   // Store the max depth of the track
+	private Double maxDepth= Double.NaN;   // Store the max depth of the track
+	private Double minDepth= Double.NaN;
 	private double scorePerDot; // Store the scaling factor: Each dot in the profile cooresponds to
 	                            // this many units of yValues. 
 	// Text representation of yValues scled by yMaxLines. Each inner list is a line on screen.
@@ -28,32 +28,43 @@ class TextProfile {
 	/**
 	 * @param yValues Values on the y-axis. Should be of the same length as the windowSize
 	 * @param yMaxLines The yValues will be rescaled to fit this many lines of text.
+	 * @param ymim, ymax Min and max values for y-axis. 
 	 */
-	public TextProfile(List<Double> yValues, int yMaxLines){
+	public TextProfile(List<Double> yValues, int yMaxLines, Double ymin, Double ymax){
 		
-		this.maxDepth= Integer.MIN_VALUE;;
-        double minDepth= Integer.MAX_VALUE; 
-		for(double y : yValues){
-			if(y > this.maxDepth){
-				this.maxDepth= y;
+		if(ymin.isNaN() != ymax.isNaN()){
+			throw new RuntimeException("ymin and ymax must be both defined or both NaN");
+		}
+		if(ymin >= ymax){
+			throw new RuntimeException("Cannot have ymin >= ymax. Got ymin= " + ymin + "; ymax= " + ymax);
+		}
+		
+		if(ymax.isNaN()){
+			this.maxDepth= (double) Integer.MIN_VALUE;;
+	        this.minDepth= (double) Integer.MAX_VALUE; 
+			for(double y : yValues){
+				if(y > this.maxDepth){
+					this.maxDepth= y;
+				}
+				if(y < minDepth){
+					minDepth= y;
+				}
 			}
-			if(y < minDepth){
-				minDepth= y;
+			if(minDepth > 0){
+				minDepth= 0.0;
 			}
+			if(maxDepth < 0){
+			 	maxDepth= 0.0;
+			}
+		} else {
+			this.maxDepth= ymax;
+			this.minDepth= ymin;
 		}
-		if(minDepth > 0){
-			minDepth= 0;
-		}
-		if(maxDepth < 0){
-		 	maxDepth= 0;
-		}
-
 		this.scorePerDot= (double)(this.maxDepth - minDepth) / (yMaxLines * 2); // * 2 because we use ':' for 2 units in a single line.
 		
 		// Locate zero on y axis. It's silly to generate a sequence just to find the index closest to zero. But anyway...
 		List<Double> yAxis = Utils.seqFromToLenOut(minDepth, maxDepth, yMaxLines);
 		int y0= Utils.getIndexOfclosestValue(0, yAxis);
-
 		List<List<String>> profile= new ArrayList<List<String>>();
 		for(int i= 0; i < yValues.size(); i++){
 			double y= yValues.get(i);
@@ -72,14 +83,14 @@ class TextProfile {
 	 * @return
 	 */
 	private List<String> prepareYColumn(double yValue, int yMaxLines, int y0, double scorePerDot){
-
+	
 		Double yPosDotU= Math.abs(yValue / scorePerDot); // Y positions in dot units, not line units. 
 		if((int)Math.rint(yPosDotU) == 0){ // For zero coverage
 			ArrayList<String> strDepth= new ArrayList<String>();
 			for(int j= 0; j < yMaxLines; j++){
 				strDepth.add(strForFill);
 			}			
-			if(y0 < yMaxLines-1){
+			if(y0 < yMaxLines-1 || yMaxLines == 1){
 				strDepth.set(y0, this.strForZero);
 			} else {
 				strDepth.set(y0, this.strForZeroTop);
@@ -95,7 +106,7 @@ class TextProfile {
 	}
 	
 	private List<String> pileForPositive(double yValue, int yMaxLines, int y0, double scorePerDot){
-		
+
 		ArrayList<String> strDepth= new ArrayList<String>(); // This will be a vertical bar
 		for(int j= 0; j < yMaxLines; j++){
 			strDepth.add(this.strForFill);
@@ -104,7 +115,6 @@ class TextProfile {
 		double currentScore= 0;
 		while(true){
 			if(pos >= strDepth.size()) break;
-			
 			if((yValue - currentScore) > scorePerDot * 1.5){ // Add double
 				strDepth.set(pos, this.strFor2u);
 				currentScore += 2 * scorePerDot;
@@ -154,12 +164,12 @@ class TextProfile {
 		if(yValue < 0){ // -ve vlaue: Scan positive semi-axis and check there are no chars other than filling.
 			for(int i= y0; i < strDepth.size()-1; i++){
 				String x= strDepth.get(i);
-				if(i == y0 && !x.equals(this.strFor1stNegU)){ // Only allowed char for zero line
-					String msg= "Unexpected char in column bar. Got \"" 
+				if(i == y0 && !(x.equals(this.strFor1stNegU) ||  x.equals(this.strForZero))){ // Only allowed char for zero line
+					String msg= "y0= " + y0 + "; yValue= " + yValue +"; Unexpected char in column bar. Got \"" 
 							+ x + "\"; expected \"" + this.strFor1stNegU + "\". Bar:\n" + strDepth;
 					throw new RuntimeException(msg);
 				} else if(i > y0 && !x.equals(this.strForFill)){
-					String msg= "Unexpected char in column bar. Got \"" + x 
+					String msg= "y0= " + y0 + "; yValue= " + yValue + "; Unexpected char in column bar. Got \"" + x 
 							+ "\"; expected \"" + this.strForFill 
 							+ "\". Bar:\n" + strDepth;
 					throw new RuntimeException(msg);
@@ -170,68 +180,16 @@ class TextProfile {
 				String x= strDepth.get(i);
 				if(i == y0){
 					if(!x.equals(this.strForZero) && !x.equals(this.strFor1u) && !x.equals(this.strFor2u)){
-						String msg= "Unexpected char in column bar. Got \"" + x + "\"" + "; Bar:\n" + strDepth;
+						String msg= "y0= " + y0 + "; yValue= " + yValue + "; Unexpected char in column bar. Got \"" + x + "\"" + "; Bar:\n" + strDepth;
 						throw new RuntimeException(msg);
 					}
 				} else if(!x.equals(this.strForFill)){
-					String msg= "Unexpected char in column bar. Got \"" + x + "\"" + "; Bar:\n" + strDepth;
+					String msg= "y0= " + y0 + "; yValue= " + yValue + "; Unexpected char in column bar. Got \"" + x + "\"" + "; Bar:\n" + strDepth;
 					throw new RuntimeException(msg);
 				}
 				
 			}
 		}
-	}
-
-	
-	@Deprecated
-	public void TextProfileOld(List<Double> yValues, int yMaxLines){
-		
-		this.maxDepth= Integer.MIN_VALUE;;
-        double minDepth= Integer.MAX_VALUE; 
-		for(double y : yValues){
-			if(y > this.maxDepth){
-				this.maxDepth= y;
-			}
-			if(y < minDepth){
-				minDepth= y;
-			}
-		}
-		if(minDepth > 0){
-			minDepth= 0;
-		}
-
-		this.scorePerDot= (double)(this.maxDepth - minDepth)/ (yMaxLines * 2); // * 2 because we use ':' for 2 units in a single line.
-		// Locate zero on y axis:
-		int y0= (int) Math.rint((double)(0 - minDepth) / (this.scorePerDot*2));
-		List<List<String>> profile= new ArrayList<List<String>>();
-		for(int i= 0; i < yValues.size(); i++){
-			ArrayList<String> strDepth= new ArrayList<String>(); // This will be a vertical bar
-			Double locDepth= (yValues.get(i) - minDepth) / this.scorePerDot; // yRescaled.get(i);
-			
-			if((int)Math.rint(locDepth) == 0){ // For zero coverage
-				strDepth.add(this.strForZero); 
-			}
-			int nDouble= (int) ((Math.rint(locDepth)) / 2); // how many :
-			for(int j= 0; j < nDouble; j++){
-				strDepth.add(this.strFor2u);
-			} 
-			int diff= (int)Math.rint(locDepth- (nDouble*2)); // Get remainder
-			if(diff == 2){
-				strDepth.add(strFor2u);
-			} else if(diff == 1) {
-				strDepth.add(strFor1u);
-			} else if(diff == 0){
-				//
-			} else {
-				throw new RuntimeException("Unexpected division");
-			}
-			// Fill up list with blanks
-			while(strDepth.size() < yMaxLines * 2){
-				strDepth.add(strForFill);
-		    }
-			profile.add(strDepth);
-		}
-		this.profile= Utils.transpose(profile);
 	}
 	
 	/*  G e t t e r s  */

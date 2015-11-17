@@ -41,7 +41,9 @@ public class TrackMethylationTest {
 		int yMaxLines= 5;
 		TrackCoverage tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, true);
 		TrackMethylation tm= new TrackMethylation(tc.getScreenLocusInfoList());
-		String tmProfile= tm.printToScreen(yMaxLines, true);
+		tm.setyMaxLines(yMaxLines);
+		tm.setNoFormat(true);
+		String tmProfile= tm.printToScreen();
 		System.out.println(tmProfile);
 		System.out.println(tm.getScorePerDot());
 	
@@ -50,7 +52,9 @@ public class TrackMethylationTest {
 		gc= new GenomicCoords("chr7", 5566770, 5566870, samSeqDict, windowSize, fastaFile);
 		tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, true);
 		tm= new TrackMethylation(tc.getScreenLocusInfoList());
-		tmProfile= tm.printToScreen(yMaxLines, true);
+		tm.setyMaxLines(yMaxLines);
+		tm.setNoFormat(true);
+		tmProfile= tm.printToScreen();
 		System.out.println(tmProfile);
 		System.out.println(tm.getScorePerDot());
 	

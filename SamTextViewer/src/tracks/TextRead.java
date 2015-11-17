@@ -324,9 +324,9 @@ class TextRead {
 			return this.getConsRead();
 		}
 		
-		for(int i=0; i < this.gc.getRefSeq().length; i++){ // Make ref uppercase
-			this.gc.getRefSeq()[i]= (byte) Character.toUpperCase(this.gc.getRefSeq()[i]);
-		}
+		// for(int i=0; i < this.gc.getRefSeq().length; i++){ // Make ref uppercase
+		// 	this.gc.getRefSeq()[i]= (byte) Character.toUpperCase(this.gc.getRefSeq()[i]);
+		// }
 		
 		// For convenience extract flags from sam record
 		boolean isSecondOfPair= false;
@@ -338,6 +338,7 @@ class TextRead {
 		List<Character> textReadBS= this.getConsRead(); // Iterate through each base to set methyl state
 		for(int i= 0; i < textReadBS.size(); i++){
 			char ref= (char) this.gc.getRefSeq()[i + this.textStart - 1];
+			ref= Character.toUpperCase(ref);
 			char read= textReadBS.get(i);
 			if( ( isForwardStrand && !isSecondOfPair ) || ( !isForwardStrand && isSecondOfPair )){
 				// Look for C on the reference

@@ -43,14 +43,15 @@ public class TrackIntervalFeatureTest {
 		IntervalFeatureSet ifs= new IntervalFeatureSet(new File(intervalFileName)); 
 		GenomicCoords gc= new GenomicCoords("chr1:1-70", null, 70, null);
 		TrackIntervalFeature tif= new TrackIntervalFeature(ifs, gc);
-             		           		 
+		tif.setNoFormat(true);           		 
 		String exp= "||||||||||          ||||||||||                                        ";
-		assertEquals(exp, tif.printToScreen(true));
+		assertEquals(exp, tif.printToScreen());
 
 		gc= new GenomicCoords("chr1:1-70", null, 35, null);
 		tif= new TrackIntervalFeature(ifs, gc);
+		tif.setNoFormat(true);
 		exp= "|||||     |||||                    ";
-		assertEquals(exp, tif.printToScreen(true));	
+		assertEquals(exp, tif.printToScreen());	
 	}
 
 	@Test

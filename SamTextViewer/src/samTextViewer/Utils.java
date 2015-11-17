@@ -19,12 +19,19 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.zip.GZIPInputStream;
 
+import org.apache.commons.lang3.text.StrTokenizer;
 import org.broad.igv.bbfile.BBFileReader;
 import org.broad.igv.tdf.TDFReader;
+
+import exceptions.InvalidCommandLineException;
 import exceptions.InvalidGenomicCoordsException;
 import tracks.IntervalFeatureSet;
+import tracks.Track;
+import tracks.TrackReads;
 
 /**
  * @author berald01
@@ -529,6 +536,10 @@ public class Utils {
 	
 	public static List<Double> seqFromToLenOut(double from, double to, int lengthOut){
 		
+		if(lengthOut < 1){
+			String msg= "Invalid lenght of sequence: Cannot be < 1. Got " + lengthOut;
+			throw new RuntimeException(msg);
+		}
 		List<Double> mapping= new ArrayList<Double>();
 		
 		double span= to - from + 1;
@@ -537,10 +548,15 @@ public class Utils {
 		for(int i= 1; i < lengthOut; i++){
 			mapping.add((double)mapping.get(i-1)+step);
 		}
+
+		if(lengthOut == 1){ // Consistent with R seq(from, to, length.out= 1) -> from
+		//	mapping.add((double)from);
+			return mapping;
+		}
 		
 		double diffTo= Math.abs(mapping.get(mapping.size() - 1) - to);
-		if(diffTo > (to * 0.001)){
-			String msg= "Error generating sequence:\n" +
+		if(diffTo > Math.abs((to + 1e-9))){
+			String msg= "Error generating sequence from " + from + " to " + to + " length " + lengthOut + "\n" +
 					     "Last point: " + mapping.get(mapping.size() - 1) + "\n" +
 					     "To diff: " + diffTo + "\n" +
 					     "Step: " + step;
@@ -559,6 +575,55 @@ public class Utils {
 		return mapping;
 	}
 	
+	/** From cmdInput extract regex and ylimits then iterate through the tracks list to set 
+	 * the ylimits in the tracks whose filename matches the regex.
+	 * The input list is updated in place! 
+	*/
+	public static List<Track> setTrackYlimitsForRegex(String cmdInput, List<Track> tracks) throws InvalidCommandLineException{
+
+		StrTokenizer str= new StrTokenizer(cmdInput);
+		str.setQuoteChar('\'');
+		List<String> tokens= str.getTokenList();
+		if(tokens.size() != 4){
+			System.err.println("Error in :ylim subcommand. Expected 4 args got: " + cmdInput);
+			throw new InvalidCommandLineException();
+		}
+		String ylimRegex= tokens.get(0);
+		
+		try{
+			Pattern.compile(ylimRegex); // Validate regex
+		} catch(PatternSyntaxException e){
+	    	System.err.println("Invalid regex in: " + cmdInput);
+	    	System.err.println(e.getDescription());
+		}
+		
+		double ymin= Double.NaN;
+        double ymax= Double.NaN;
+		try{
+			ymin= Double.parseDouble(tokens.get(1));
+			ymax= Double.parseDouble(tokens.get(2));
+		} catch(NumberFormatException e){
+			ymin= Double.NaN;
+			ymax= Double.NaN;
+		}
+		if(ymin >= ymax){
+			System.err.println("Warning ymin >= ymax. Resetting to default.");
+			ymin= Double.NaN;
+			ymax= Double.NaN;							
+		}
+		for(Track tr : tracks){
+			if(tr.getFilename().matches(ylimRegex)){
+				tr.setYmin(ymin);
+				tr.setYmax(ymax);
+				//if(!(tr instanceof TrackReads)){
+				//	String title= tr.getTitle().trim() + " ymin: " + tr.getYmin() + "; ymax: " + tr.getYmax() + ";\n";
+				//	tr.setTitle(title);
+				//}
+			}
+		}
+		return tracks;
+	}
+	
 	/**
 	 * Generate sequence of doubles of desired length. Same as R seq(from, to, length.out)
 	 * @param from
@@ -566,9 +631,19 @@ public class Utils {
 	 * @param lengthOut
 	 * @return
 	 */
-	public static List<Double> seqFromToLenOut(int from, int to, int lengthOut){
+	/* public static List<Double> seqFromToLenOut(int from, int to, int lengthOut){
+		
+		if(lengthOut < 1){
+			String msg= "Invalid lenght of sequence: Cannot be < 1. Got " + lengthOut;
+			throw new RuntimeException(msg);
+		}
 		
 		List<Double> mapping= new ArrayList<Double>();
+		
+		if(lengthOut == 1){ // Consistent with R seq(from, to, length.out= 1) -> from
+			mapping.add((double)from);
+			return mapping;
+		}
 		
 		int span= to - from + 1;
 		double step= ((double)span - 1)/(lengthOut - 1);
@@ -581,10 +656,12 @@ public class Utils {
 		// exact desired.
 		double diffTo= Math.abs(mapping.get(mapping.size() - 1) - to);
 		if(diffTo > (to * 0.001)){
-			String msg= "Error generating sequence:\n" +
+			String msg= "Error generating sequence from " + from + " to " + to + " with length " + lengthOut + "\n" + 
 					     "Last point: " + mapping.get(mapping.size() - 1) + "\n" +
 					     "To diff: " + diffTo + "\n" +
-					     "Step: " + step;
+					     "Step: " + step + "\n"
+					     + "Sequence: " + mapping;
+			
 			throw new RuntimeException(msg);
 		} else {
 			mapping.set(mapping.size()-1, (double)to);
@@ -598,6 +675,6 @@ public class Utils {
 			throw new RuntimeException(msg);
 		}
 		return mapping;
-	}
+	} */
 		
 }
