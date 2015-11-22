@@ -3,20 +3,24 @@ package tracks;
 import java.util.ArrayList;
 import java.util.List;
 
+import htsjdk.samtools.filter.SamRecordFilter;
 import samTextViewer.GenomicCoords;
 
 public class Track {
 
 	private String title= "";
 	private int yMaxLines= 10;
-	private String filename= "N/A";
+	private String filename= "N/A"; // File name as given in input
+	private String fileTag= "N/A"; // File name for title
 	private List<Double> screenScores= new ArrayList<Double>();
 	private GenomicCoords gc;
 	private boolean rpm= false;
 	private boolean noFormat= false; 
 	private double ymin= Double.NaN; // Same as R ylim()
 	private double ymax= Double.NaN;
-
+	private List<SamRecordFilter> filters= new ArrayList<SamRecordFilter>();
+	private boolean bs; 
+	
 //	public Track(){}
 	
 	/* Printers */
@@ -51,6 +55,10 @@ public class Track {
 	public void setFilename(String filename) {
 		this.filename = filename;
 	}
+
+	public String getFileTag() { return fileTag; }
+	public void setFileTag(String fileTag) { this.fileTag = fileTag; }
+	
 	protected List<Double> getScreenScores() {
 		return screenScores;
 	}
@@ -58,11 +66,11 @@ public class Track {
 		this.screenScores = screenScores;
 	}
 
-	protected GenomicCoords getGc() {
+	public GenomicCoords getGc() {
 		return gc;
 	}
 
-	protected void setGc(GenomicCoords gc) {
+	public void setGc(GenomicCoords gc) {
 		this.gc = gc;
 	}
 
@@ -82,6 +90,12 @@ public class Track {
 
 	public double getYmax() { return ymax; }
 	public void setYmax(double ymax) { this.ymax = ymax; }
+
+	public List<SamRecordFilter> getFilters() { return filters; }
+	public void setFilters(List<SamRecordFilter> filters) { this.filters = filters; }
+
+	public boolean isBs() { return bs; }
+	public void setBs(boolean bs) { this.bs = bs; }
 
 }
 

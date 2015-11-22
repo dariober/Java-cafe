@@ -1,5 +1,6 @@
 package tracks;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,19 +12,27 @@ import samTextViewer.GenomicCoords;
 public class TrackIntervalFeature extends Track {
  
 	private List<IntervalFeature> intervalFeatureList= new ArrayList<IntervalFeature>();  
-	// private GenomicCoords gc; 
+	private IntervalFeatureSet intervalFeatureSet;
 	
 	/* Constructor */
-	public TrackIntervalFeature(IntervalFeatureSet ifs, GenomicCoords gc) throws IOException {
-
-		this.intervalFeatureList = ifs.getFeaturesInInterval(gc.getChrom(), gc.getFrom(), gc.getTo());
-		for(IntervalFeature ift : intervalFeatureList){
-			ift.mapToScreen(gc.getMapping());
-		}
+	
+	public TrackIntervalFeature(String filename, GenomicCoords gc) throws IOException{
 		this.setGc(gc);
+		this.setFilename(filename);
+		this.intervalFeatureSet= new IntervalFeatureSet(new File(filename));
+		this.update();
 	}
-
+	
 	/* Methods */
+	
+	public void update() throws IOException{
+		this.intervalFeatureList = this.intervalFeatureSet.getFeaturesInInterval(
+				this.getGc().getChrom(), this.getGc().getFrom(), this.getGc().getTo());
+		for(IntervalFeature ift : intervalFeatureList){
+			ift.mapToScreen(this.getGc().getMapping());
+		}
+	}
+	
 	@Override
 	public String printToScreen() {
 		
@@ -63,12 +72,12 @@ public class TrackIntervalFeature extends Track {
 		}
 		return sb.toString(); // NB: Leave last trailing /n
 	}
+	
+	@Override
+	public String getTitle(){
+		return this.getFileTag() + ";\n";
+	}
+	
+	protected IntervalFeatureSet getIntervalFeatureSet() { return intervalFeatureSet; }
 
-//	public String printGtfFeatures() {
-//		StringBuilder sb= new StringBuilder();
-//		for(IntervalFeature x : this.intervalFeatureList){
-//			sb.append(x.toGtfString()).append("\n");
-//		}
-//		return sb.toString().replaceAll("\n$", "");
-//	}	
 }

@@ -34,7 +34,7 @@ public class IntervalFeatureSet {
 	private Map <String, List<IntervalFeature>> intervalMap; // new HashMap <String, List<IntervalFeature>>(); 
 	private TabixReader tabixReader= null;
 	private boolean isTabix= false;
-	private String type;
+	private TrackFormat type;
 	
 	/* Constructor */
 	/** Construct from bed or gtf file.
@@ -43,7 +43,7 @@ public class IntervalFeatureSet {
 		
 		this.type= Utils.getFileTypeFromName(infile.getName());
 		
-		if(new File(infile.getAbsolutePath() + ".tbi").exists()){
+		if(Utils.hasTabixIndex(infile.getAbsolutePath())){
 			this.tabixReader= new TabixReader(infile.getAbsolutePath());
 			this.isTabix= true;
 		} else {
@@ -98,6 +98,20 @@ public class IntervalFeatureSet {
 		}
 	}
 	
+	public static boolean isValidBedLine(String line){
+		String[] bdg= line.split("\t");
+		if(bdg.length < 3){
+			return false;
+		}
+		try{
+			Integer.parseInt(bdg[1]);
+			Integer.parseInt(bdg[2]);
+		} catch(NumberFormatException e){
+			return false;
+		}
+		return true;
+	}
+	
 	private Map <String, List<IntervalFeature>> loadFileIntoIntervalMap(File infile) throws IOException{
 		
 		System.err.print("Reading file '" + infile.getName() + "'...");
@@ -115,9 +129,17 @@ public class IntervalFeatureSet {
 			br = new BufferedReader(new FileReader(infile));
 		}
 		String line;
+		boolean isFirst= true;
 		while ((line = br.readLine()) != null) {
 			if(line.trim().startsWith("#")){
 				continue;
+			}
+			if(isFirst && this.type.equals(TrackFormat.BED)){
+				isFirst= false;
+				if(!isValidBedLine(line)){ // Allow first line to fail: Might be header.
+					System.err.print("First line skipped. ");
+					continue;
+				}
 			}
 			IntervalFeature f= new IntervalFeature(line, this.type);
 			if(intervalMap.containsKey(f.getChrom())){
@@ -201,7 +223,7 @@ public class IntervalFeatureSet {
 	
 	/** Search chrom to find the *next* feature matching the given string. The search will 
 	 * wrap around the chrom if not found in the chunk following "from". */
-	protected IntervalFeature findNextStringOnChrom(String string, String chrom, int from) throws IOException{
+	protected IntervalFeature findNextStringOnChrom(String regex, String chrom, int from) throws IOException{
 		
 		if(this.intervalMap != null){
 	
@@ -214,7 +236,8 @@ public class IntervalFeatureSet {
 				
 				List<IntervalFeature> featuresList = this.intervalMap.get(curChrom);
 				for(IntervalFeature x : featuresList){
-					if(x.getFrom() > startingPoint && x.getRaw().toLowerCase().contains(string.toLowerCase())){
+					//if(x.getFrom() > startingPoint && x.getRaw().toLowerCase().contains(regex.toLowerCase())){
+					if(x.getFrom() > startingPoint && x.getRaw().matches(regex)){
 						return x;
 					}
 				}
@@ -233,7 +256,7 @@ public class IntervalFeatureSet {
 				while(true){
 					String line= iter.next();
 					if(line == null) break;
-					if(line.toLowerCase().contains(string.toLowerCase())){
+					if(line.matches(regex)){
 						IntervalFeature x= new IntervalFeature(line, this.type);
 						if(x.getFrom() > startingPoint){
 							return x;

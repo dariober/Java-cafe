@@ -3,6 +3,7 @@ package tracks;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 import org.broad.igv.tdf.TDFUtils;
@@ -14,12 +15,33 @@ import samTextViewer.GenomicCoords;
 public class TrackWigglesTest {
 
 	@Test
+	public void canGetDataColumnIndexForBedGraph() throws IOException, NoSuchAlgorithmException, InvalidGenomicCoordsException{
+		
+		String url= "test_data/test.bedGraph";
+		int windowSize= 160;
+		GenomicCoords gc= new GenomicCoords("chr1:1-30", null, windowSize, null);
+		TrackWiggles tw= new TrackWiggles(url, gc, 5);
+		assertEquals(0, tw.getScreenScores().get(0), 0.0001);
+	}
+	
+	
+	@Test
+	public void canParseNonBGZFFile() throws IOException, NoSuchAlgorithmException, InvalidGenomicCoordsException{
+		
+		String url= "test_data/test2.bedGraph";
+		int windowSize= 160;
+		GenomicCoords gc= new GenomicCoords("chr1:1-30", null, windowSize, null);
+		TrackWiggles tw= new TrackWiggles(url, gc, 4);
+				
+	}
+	
+	@Test
 	public void testYLimits() throws InvalidGenomicCoordsException, IOException{
 
 		String url= "test_data/test.bedGraph.gz";
 		int windowSize= 160;
 		GenomicCoords gc= new GenomicCoords("chr1:1-30", null, windowSize, null);
-		TrackWiggles tw= new TrackWiggles(url, gc);
+		TrackWiggles tw= new TrackWiggles(url, gc, 4);
 		tw.setYmax(10.0);
 		tw.setYmin(-10.0);
 		tw.setyMaxLines(10);
@@ -36,7 +58,7 @@ public class TrackWigglesTest {
 		int yMaxLines= 10;
 		int windowSize= 160;
 		GenomicCoords gc= new GenomicCoords("chr1:1-800", null, windowSize, null);
-		TrackWiggles tw= new TrackWiggles(url, gc);
+		TrackWiggles tw= new TrackWiggles(url, gc, 4);
 		tw.setYmax(Double.NaN);
 		tw.setYmin(Double.NaN);
 		tw.setyMaxLines(yMaxLines);
@@ -56,7 +78,7 @@ public class TrackWigglesTest {
 		int yMaxLines= 5;
 		int windowSize= 22;
 		GenomicCoords gc= new GenomicCoords("chr1", 1, 22, null, windowSize, null);
-		TrackWiggles tw= new TrackWiggles(url, gc);
+		TrackWiggles tw= new TrackWiggles(url, gc, 4);
 		tw.setYmax(Double.NaN);
 		tw.setYmin(Double.NaN);
 		tw.setyMaxLines(yMaxLines);
@@ -65,7 +87,7 @@ public class TrackWigglesTest {
 		assertEquals(5, tw.getMaxDepth(), 0.01);
 		assertEquals(1, tw.getScorePerDot(), 0.01);
 		
-		tw= new TrackWiggles("test_data/positive.bedGraph.gz", gc);
+		tw= new TrackWiggles("test_data/positive.bedGraph.gz", gc, 4);
 		tw.setYmax(Double.NaN);
 		tw.setYmin(Double.NaN);
 		tw.setyMaxLines(5);
@@ -74,7 +96,7 @@ public class TrackWigglesTest {
 		assertEquals(5, tw.getMaxDepth(), 0.01);
 		assertEquals(0.5, tw.getScorePerDot(), 0.01);
 		
-		tw= new TrackWiggles("test_data/negative.bedGraph.gz", gc);
+		tw= new TrackWiggles("test_data/negative.bedGraph.gz", gc, 4);
 		tw.setYmax(Double.NaN);
 		tw.setYmin(Double.NaN);
 		tw.setyMaxLines(5);
@@ -85,7 +107,7 @@ public class TrackWigglesTest {
 		assertEquals(0.5, tw.getScorePerDot(), 0.01);
 		
 		gc= new GenomicCoords("chr1", 1, 52, null, 52, null);
-		tw= new TrackWiggles("test_data/posNeg.bedGraph.gz", gc);
+		tw= new TrackWiggles("test_data/posNeg.bedGraph.gz", gc, 4);
 		tw.setYmax(Double.NaN);
 		tw.setYmin(Double.NaN);
 		tw.setyMaxLines(14);
@@ -106,7 +128,7 @@ public class TrackWigglesTest {
 		int windowSize= 101;
 		GenomicCoords gc= new GenomicCoords("chrM", 1, 1000, null, windowSize, null);
 		
-		TrackWiggles tw= new TrackWiggles(url, gc);
+		TrackWiggles tw= new TrackWiggles(url, gc, 4);
 		// System.out.println(tw.printToScreen(yMaxLines));
 		
 		//System.out.println(tw.getMaxDepth());
@@ -133,7 +155,7 @@ public class TrackWigglesTest {
 			i++;
 		}
 
-		TrackWiggles tw= new TrackWiggles(tdfFile, gc);
+		TrackWiggles tw= new TrackWiggles(tdfFile, gc, 4);
 		tw.setYmax(Double.NaN);
 		tw.setYmin(Double.NaN);
 		tw.setyMaxLines(40);

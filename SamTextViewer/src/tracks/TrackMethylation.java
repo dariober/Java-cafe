@@ -27,6 +27,7 @@ public class TrackMethylation extends Track {
 	}
 	
 	/* M e t h o d s */
+	
 	@Override
 	public String printToScreen(){
 		
@@ -163,8 +164,13 @@ public class TrackMethylation extends Track {
 	
 	@Override
 	public String getTitle(){
-		return this.getFilename() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
+		return this.getFileTag() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
 				Math.rint((this.getMaxDepth())*100)/100 + "; .= " + Math.rint((this.scorePerDot)) + ";\n";
 	}
+	
+	public List<ScreenLocusInfo> getScreenLocusInfoList() { return screenLocusInfoList; }
+	public void setScreenLocusInfoList(List<ScreenLocusInfo> screenLocusInfoList) { this.screenLocusInfoList = screenLocusInfoList; }
+
+
 }
 

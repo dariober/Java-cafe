@@ -29,19 +29,12 @@ public class TrackCoverage extends Track {
 
 	/* A t t r i b u t e s */
 	
-	/** Max number of loci per window (column of text char). If you query 
-	 * large intervals, only some loci will be stored. This const define the density of
-	 * loci per window. */
-	// final static int LOC_PER_WINDOW= 200;
-	
-	
 	private List<ScreenLocusInfo> screenLocusInfoList= new ArrayList<ScreenLocusInfo>(); 
 
 	/** Each dot in the screen output track corresponds to this many units of 
 	 * score in the input. Typically this "reads per dot". */
 	private double scorePerDot;   
 	private double maxDepth;
-	// private String inputBam;
 	
 	/* C o n s t r u c t o r */
 	
@@ -60,37 +53,44 @@ public class TrackCoverage extends Track {
 		
 		this.setGc(gc);
 		this.setFilename(bam);
+		this.setFilters(filters);
+		this.setBs(bs);
+		this.update();
+	}
+	
+	/* M e t h o d s */
+
+	public void update() throws IOException{
+
 		SamReaderFactory srf=SamReaderFactory.make();
 		srf.validationStringency(ValidationStringency.SILENT);
-		SamReader samReader= srf.open(new File(bam));
+		SamReader samReader= srf.open(new File(this.getFilename()));
 		
-		// SAMFileHeader fh= samReader.getFileHeader();
-		//IntervalList il= locusSampler(fh, gc);
 		IntervalList il= new IntervalList(samReader.getFileHeader());
-		il.add(new Interval(gc.getChrom(), gc.getFrom(), gc.getTo()));
+		il.add(new Interval(this.getGc().getChrom(), this.getGc().getFrom(), this.getGc().getTo()));
 		SamLocusIterator samLocIter= new SamLocusIterator(samReader, il, true);
-		samLocIter.setSamFilters(filters);
+		samLocIter.setSamFilters(this.getFilters());
 		Iterator<samTextViewer.SamLocusIterator.LocusInfo> iter= samLocIter.iterator();
 	
-		for(int i= 0; i < gc.getMapping().size(); i++){
+		screenLocusInfoList= new ArrayList<ScreenLocusInfo>();
+		for(int i= 0; i < this.getGc().getMapping().size(); i++){
 			screenLocusInfoList.add(new ScreenLocusInfo());	
 		}
 		
 		while(iter.hasNext()){			
 			samTextViewer.SamLocusIterator.LocusInfo locusInfo= iter.next();
-			int screenPos= Utils.getIndexOfclosestValue(locusInfo.getPosition(), gc.getMapping());
+			int screenPos= Utils.getIndexOfclosestValue(locusInfo.getPosition(), this.getGc().getMapping());
 			byte refBase= '\0';
-			if(gc.getRefSeq() != null){
-				refBase= gc.getRefSeq()[screenPos];
+			if(this.getGc().getRefSeq() != null){
+				refBase= this.getGc().getRefSeq()[screenPos];
 			}
-			screenLocusInfoList.get(screenPos).increment(locusInfo, refBase, bs);
+			screenLocusInfoList.get(screenPos).increment(locusInfo, refBase, this.isBs());
 		}
 		samLocIter.close();
 		samReader.close();
+		
 	}
 	
-	/* M e t h o d s */
-
 	/**
 	 * Printable coverage track. The height of the track in lines is `yMaxLines`.
 	 * @param screenToGenomeMap List of genomic positions corresponding to each column on screen.
@@ -162,7 +162,8 @@ public class TrackCoverage extends Track {
 
 	@Override
 	public String getTitle(){
-		return this.getFilename() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
+		return this.getFileTag() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
 				Math.rint((this.getMaxDepth())*100)/100 + "; .= " + Math.rint((this.scorePerDot)) + ";\n";
 	}
+	
 }

@@ -4,6 +4,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.tribble.readers.TabixReader;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -19,6 +20,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.zip.GZIPInputStream;
@@ -31,7 +33,10 @@ import exceptions.InvalidCommandLineException;
 import exceptions.InvalidGenomicCoordsException;
 import tracks.IntervalFeatureSet;
 import tracks.Track;
+import tracks.TrackFormat;
+import tracks.TrackIntervalFeature;
 import tracks.TrackReads;
+import tracks.TrackSet;
 
 /**
  * @author berald01
@@ -39,23 +44,38 @@ import tracks.TrackReads;
  */
 public class Utils {
 	
+	/** Return true if fileName has a valid tabix index. 
+	 * @throws IOException 
+	 * */
+	public static boolean hasTabixIndex(String fileName) throws IOException{
+		try{
+			TabixReader tabixReader= new TabixReader(fileName);
+			tabixReader.readLine();
+			tabixReader.close();
+			return true;
+		} catch (Exception e){
+			return false;
+		}
+	}
+	
 	/** Get the first chrom string from first line of input file. As you add support for more filetypes you should update 
 	 * this function. This method is very dirty and shouldn't be trusted 100% */
 	public static String initRegionFromFile(String x) throws IOException{
 		String region= "";
-		if(x.toLowerCase().endsWith(".bam") || x.toLowerCase().endsWith(".cram")){
+		TrackFormat fmt= Utils.getFileTypeFromName(x); 
+		if(fmt.equals(TrackFormat.BAM)){
 			SamReaderFactory srf=SamReaderFactory.make();
 			srf.validationStringency(ValidationStringency.SILENT);
 			SamReader samReader = srf.open(new File(x));
 			region= samReader.getFileHeader().getSequence(0).getSequenceName();
 			samReader.close();
 			return region;
-		} else if(x.toLowerCase().endsWith(".bigwig") || x.toLowerCase().endsWith(".bw")){
+		} else if(fmt.equals(TrackFormat.BIGWIG)){
 			BBFileReader reader= new BBFileReader(x);
 			region= reader.getChromosomeNames().get(0);
 			reader.close();
 			return region;
-		} else if(x.toLowerCase().endsWith(".tdf")){
+		} else if(fmt.equals(TrackFormat.TDF)){
 			Iterator<String> iter = TDFReader.getReader(x).getChromosomeNames().iterator();
 			while(iter.hasNext()){
 				region= iter.next();
@@ -71,15 +91,15 @@ public class Utils {
 			Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
 			BufferedReader br = new BufferedReader(decoder);
 			while(true){
-				region= br.readLine().trim();
 				if(region == null){
 					break;
 				}
-				region= (region.split("\t")[0]).trim();
-				if(region.startsWith("#") || region.isEmpty()){
+				region= br.readLine().trim();
+				if(region.startsWith("#") || region.isEmpty() || !IntervalFeatureSet.isValidBedLine(region)){
 					continue;
 				} else {
 					br.close();
+					region= (region.split("\t")[0]).trim();
 					return region;
 				}
 			}
@@ -88,15 +108,16 @@ public class Utils {
 		} else {
 			BufferedReader br = new BufferedReader(new FileReader(x));
 			while(true){
-				region= br.readLine().trim();
+				region= br.readLine();
 				if(region == null){
 					break;
 				}
-				region= (region.split("\t")[0]).trim();
-				if(region.startsWith("#") || region.isEmpty()){
+				region= region.trim();
+				if(region.startsWith("#") || region.isEmpty() || !IntervalFeatureSet.isValidBedLine(region)){
 					continue;
 				} else {
 					br.close();
+					region= (region.split("\t")[0]).trim();
 					return region;
 				}
 			}
@@ -116,7 +137,7 @@ public class Utils {
 		
 	}
 	
-	public static GenomicCoords findNextStringOnFile(String string, String filename, GenomicCoords curGc,
+	/*public static GenomicCoords findNextStringOnFile(String string, String filename, GenomicCoords curGc,
 			Map<String, IntervalFeatureSet> intervalFiles ) throws InvalidGenomicCoordsException, IOException{
 
 		String chosenFn= "";
@@ -144,64 +165,33 @@ public class Utils {
 			return curGc;
 		}
 		return intervalFiles.get(chosenFn).findNextString(curGc, string);
-	}
+	} */
 	
-	public static GenomicCoords goToNextFeatureOnFile(String filename, GenomicCoords curGc, 
-			Map<String, IntervalFeatureSet> intervalFiles ) throws InvalidGenomicCoordsException, IOException{
-
-		String chosenFn= "";
-		if(filename.isEmpty() && intervalFiles.size() == 1){ // Only one file to chose from: Get that one
-			chosenFn= new ArrayList<String>(intervalFiles.keySet()).get(0);
-		} else {
-			// Try to match file perfectly as it was added from cli, including path if any
-			for(String fn : intervalFiles.keySet()){
-				if(fn.equals(filename)){
-					chosenFn = fn;
-				}
-			}
-			if(chosenFn.isEmpty()){
-				// Or try to match only file name.
-				for(String fn : intervalFiles.keySet()){ // Do not look for a perfect match since the original input might contain path. 
-					String onlyName= new File(fn).getName();
-					if(onlyName.equals(filename)){
-						chosenFn = fn;
-					}
-				}
-			}
-		}
-		if(chosenFn.isEmpty()){
-			System.err.println("File " + filename + " not found in file set\n" + intervalFiles.keySet());
-			return curGc;
-		}
-		return intervalFiles.get(chosenFn).coordsOfNextFeature(curGc);
-	}
-	 
-	
-	public static String getFileTypeFromName(String fileName){
+	public static TrackFormat getFileTypeFromName(String fileName){
 		fileName= fileName.toLowerCase();
 		
 		if(    fileName.endsWith(".bed") 
 		    || fileName.endsWith(".bed.gz") 
 		    || fileName.endsWith(".bed.gz.tbi")){
-			return "bed";
+			return TrackFormat.BED;
 		} else if( fileName.endsWith(".gtf") 
 				|| fileName.endsWith(".gtf.gz")
 				|| fileName.endsWith(".gtf.gz.tbi")
 				|| fileName.endsWith(".gff") 
 				|| fileName.endsWith(".gff.gz") 
 				|| fileName.endsWith(".gff.gz.tbi")){
-			return "gff";
+			return TrackFormat.GFF;
 		} else if(fileName.endsWith(".bam") || fileName.endsWith(".cram")){
-			return "bam";
+			return TrackFormat.BAM;
 		} else if(fileName.endsWith(".bigwig") || fileName.endsWith(".bw")) {
-			return "bigWig";
+			return TrackFormat.BIGWIG;
 		} else if(fileName.endsWith(".tdf")) {
-			return "tdf";
+			return TrackFormat.TDF;
 		} else if(fileName.endsWith(".bedgraph.gz") || fileName.endsWith(".bedgraph")) {
-			return "bedGraph";
+			return TrackFormat.BEDGRAPH;
 		} else {
 			// System.err.println("Unsopported file: " + fileName);
-			return "bed";
+			return TrackFormat.BED;
 		}
 	}
 	
@@ -209,7 +199,7 @@ public class Utils {
 		LinkedHashMap<String, IntervalFeatureSet> ifsets= new LinkedHashMap<String, IntervalFeatureSet>();
 		for(String x : fileNames){
 			File f= new File(x);
-			if(getFileTypeFromName(x).equals("bed") || getFileTypeFromName(x).equals("gff")){
+			if(getFileTypeFromName(x).equals(TrackFormat.BED) || getFileTypeFromName(x).equals(TrackFormat.GFF)){
 				if(!ifsets.containsKey(x)){ // If the input has duplicates, do not reload duplicates!
 					IntervalFeatureSet ifs= new IntervalFeatureSet(f);
 					ifsets.put(x, ifs);
@@ -309,55 +299,6 @@ public class Utils {
 		}
 		return faSeq;
 	}     
-	
-	/** Get the coordinates of the first mapped read in bam file and put it
-	 * in GenomicCoords obj.
-	 * @param bam
-	 */
-	/*public static GenomicCoords getStartCoordsOfBAM(String bam){
-		SamReader samReader= ReadWriteBAMUtils.reader(bam, ValidationStringency.SILENT);
-		String pos= "";
-		for(SAMRecord rec: samReader){
-			if(!rec.getReadUnmappedFlag()){
-				// This is silly: GenomciCoords
-				pos= rec.getReferenceName() + ":" + rec.getAlignmentStart() + "-" + rec.getAlignmentStart();  
-				//gc.setChrom(rec.getReferenceName());
-				//gc.setFrom(rec.getAlignmentStart());
-				//gc.setTo(gc.getFrom());
-				break;
-			}
-		}
-		GenomicCoords gc= new GenomicCoords(pos, samReader.getFileHeader().getSequenceDictionary());
-		try {
-			samReader.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return gc;
-	}*/
-	/*public static GenomicCoords getStartCoordsOfBAM(String bam, String chrom){
-		SamReader samReader= ReadWriteBAMUtils.reader(bam, ValidationStringency.LENIENT);
-		Iterator<SAMRecord> sam= samReader.query(chrom, 0, 0, false);
-		
-		GenomicCoords gc= new GenomicCoords(null, samReader.getFileHeader().getSequenceDictionary());
-		while(sam.hasNext()){
-			SAMRecord rec= sam.next();
-			if(!rec.getReadUnmappedFlag()){
-				gc= new GenomicCoords(
-					rec.getReferenceName(), 
-					rec.getAlignmentStart(),
-					rec.getAlignmentStart(),
-					samReader.getFileHeader().getSequenceDictionary());
-				break;
-			}
-		}
-		try {
-			samReader.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return gc;		
-	}*/	
 	
 	private static int parseStringToIntWithUnits(String x){
 		x= x.trim();
@@ -573,108 +514,5 @@ public class Utils {
 			throw new RuntimeException(msg);
 		}
 		return mapping;
-	}
-	
-	/** From cmdInput extract regex and ylimits then iterate through the tracks list to set 
-	 * the ylimits in the tracks whose filename matches the regex.
-	 * The input list is updated in place! 
-	*/
-	public static List<Track> setTrackYlimitsForRegex(String cmdInput, List<Track> tracks) throws InvalidCommandLineException{
-
-		StrTokenizer str= new StrTokenizer(cmdInput);
-		str.setQuoteChar('\'');
-		List<String> tokens= str.getTokenList();
-		if(tokens.size() != 4){
-			System.err.println("Error in :ylim subcommand. Expected 4 args got: " + cmdInput);
-			throw new InvalidCommandLineException();
-		}
-		String ylimRegex= tokens.get(0);
-		
-		try{
-			Pattern.compile(ylimRegex); // Validate regex
-		} catch(PatternSyntaxException e){
-	    	System.err.println("Invalid regex in: " + cmdInput);
-	    	System.err.println(e.getDescription());
-		}
-		
-		double ymin= Double.NaN;
-        double ymax= Double.NaN;
-		try{
-			ymin= Double.parseDouble(tokens.get(1));
-			ymax= Double.parseDouble(tokens.get(2));
-		} catch(NumberFormatException e){
-			ymin= Double.NaN;
-			ymax= Double.NaN;
-		}
-		if(ymin >= ymax){
-			System.err.println("Warning ymin >= ymax. Resetting to default.");
-			ymin= Double.NaN;
-			ymax= Double.NaN;							
-		}
-		for(Track tr : tracks){
-			if(tr.getFilename().matches(ylimRegex)){
-				tr.setYmin(ymin);
-				tr.setYmax(ymax);
-				//if(!(tr instanceof TrackReads)){
-				//	String title= tr.getTitle().trim() + " ymin: " + tr.getYmin() + "; ymax: " + tr.getYmax() + ";\n";
-				//	tr.setTitle(title);
-				//}
-			}
-		}
-		return tracks;
-	}
-	
-	/**
-	 * Generate sequence of doubles of desired length. Same as R seq(from, to, length.out)
-	 * @param from
-	 * @param to
-	 * @param lengthOut
-	 * @return
-	 */
-	/* public static List<Double> seqFromToLenOut(int from, int to, int lengthOut){
-		
-		if(lengthOut < 1){
-			String msg= "Invalid lenght of sequence: Cannot be < 1. Got " + lengthOut;
-			throw new RuntimeException(msg);
-		}
-		
-		List<Double> mapping= new ArrayList<Double>();
-		
-		if(lengthOut == 1){ // Consistent with R seq(from, to, length.out= 1) -> from
-			mapping.add((double)from);
-			return mapping;
-		}
-		
-		int span= to - from + 1;
-		double step= ((double)span - 1)/(lengthOut - 1);
-		mapping.add((double)from);
-		for(int i= 1; i < lengthOut; i++){
-			mapping.add((double)mapping.get(i-1)+step);
-		}
-		
-		// First check last point is close enough to expection. If so, replace last point with
-		// exact desired.
-		double diffTo= Math.abs(mapping.get(mapping.size() - 1) - to);
-		if(diffTo > (to * 0.001)){
-			String msg= "Error generating sequence from " + from + " to " + to + " with length " + lengthOut + "\n" + 
-					     "Last point: " + mapping.get(mapping.size() - 1) + "\n" +
-					     "To diff: " + diffTo + "\n" +
-					     "Step: " + step + "\n"
-					     + "Sequence: " + mapping;
-			
-			throw new RuntimeException(msg);
-		} else {
-			mapping.set(mapping.size()-1, (double)to);
-		}
-		
-		double diffFrom= Math.abs(mapping.get(0) - from);		
-		if(diffFrom > 0.01 || mapping.size() != lengthOut){
-			String msg= "Error generating sequence:\n" +
-					    "Expected size: " + lengthOut + "; Effective: " + mapping.size() + "\n" + 
-					    "From diff: " + diffFrom;
-			throw new RuntimeException(msg);
-		}
-		return mapping;
-	} */
-		
+	}		
 }

@@ -12,6 +12,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import tracks.Track;
+import tracks.TrackFormat;
 
 import org.junit.Test;
 
@@ -27,23 +28,15 @@ public class UtilsTest {
 	public static String fastaFile= "test_data/chr7.fa";
 
 	@Test
-	public void canSetYlimits() throws InvalidCommandLineException{
-		String cmdInput= ".*.gz$ 0 10 :ylim";
-		List<Track> tracks= new ArrayList<Track>();
-		Track t1= new Track(); t1.setFilename("foo.gz"); tracks.add(t1);
-		Track t2= new Track(); t2.setFilename("foo.txt"); tracks.add(t2);
-		Track t3= new Track(); t3.setFilename("bla.gz"); tracks.add(t3);
-
-		Utils.setTrackYlimitsForRegex(cmdInput, tracks);
-		
-		assertEquals(0, tracks.get(0).getYmin(), 0.001);
-		assertEquals(10, tracks.get(0).getYmax(), 0.001);
-		assertEquals(Double.NaN, tracks.get(1).getYmax(), 0.001);
+	public void canTestForTabixIndex() throws IOException{
+		assertTrue(Utils.hasTabixIndex("test_data/test.bedGraph.gz"));
+		assertTrue(! Utils.hasTabixIndex("test_data/test.bedGraph"));
 	}
-	
+		
 	@Test
 	public void canGetFileTypeFromName(){
-		assertEquals("bigWig",
+		
+		assertEquals(TrackFormat.BIGWIG,
 		Utils.getFileTypeFromName("/Users/berald01/Downloads/wgEncodeCaltechRnaSeqGm12878R2x75Il400SigRep2V2.bigWig"));
 	} 
 

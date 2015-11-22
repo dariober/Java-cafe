@@ -28,6 +28,13 @@ import tracks.IntervalFeatureSet;
 public class IntervalFeatureSetTest {
 
 	@Test
+	public void canReadFileWithHeader() throws IOException{
+		IntervalFeatureSet set= new IntervalFeatureSet(new File("test_data/refSeq.bed"));
+		assertEquals(2, set.getIntervalMap().size());
+		assertEquals(2, set.getIntervalMap().get("chr1").size());
+	}
+	
+	@Test
 	public void test2() throws IOException{
 		Set<String> chroms= new HashSet<String>();
 		chroms.add("c1");

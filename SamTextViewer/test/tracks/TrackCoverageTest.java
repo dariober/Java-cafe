@@ -103,8 +103,10 @@ public class TrackCoverageTest {
 		
 		GenomicCoords  gc= new GenomicCoords("chr7", 1, 1000, samSeqDict, 20, null);
 		TrackCoverage tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, false);
-		tc.setyMaxLines(10);
-		assertEquals("____________________", tc.printToScreen());
+		tc.setyMaxLines(2);
+		assertEquals(
+				   "                    \n"                   
+				+  "____________________", tc.printToScreen());
 	}
 
 	@Test

@@ -1,8 +1,17 @@
 package tracks;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
+
 import org.apache.commons.lang3.StringUtils;
 import org.broad.igv.bbfile.BBFileReader;
 import org.broad.igv.bbfile.BigWigIterator;
@@ -11,6 +20,11 @@ import org.broad.igv.tdf.TDFUtils;
 
 import com.google.common.base.Joiner;
 
+import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.tribble.bed.BEDCodec;
+import htsjdk.tribble.index.IndexFactory;
+import htsjdk.tribble.index.tabix.TabixFormat;
+import htsjdk.tribble.index.tabix.TabixIndex;
 import htsjdk.tribble.readers.TabixReader;
 import htsjdk.tribble.readers.TabixReader.Iterator;
 import samTextViewer.GenomicCoords;
@@ -20,46 +34,142 @@ import samTextViewer.Utils;
  * bigBed, bigWig, */
 public class TrackWiggles extends Track {
 
-	// private List<Double> screenScores= new ArrayList<Double>(); 
-	// private double scorePerDot;   
-	// private double maxDepth;
 	private double maxDepth;
 	private double scorePerDot;
-
+	private List<ScreenWiggleLocusInfo> screenWiggleLocusInfoList;
+	private int bdgDataColIdx= 4; 
+	
 	/* C o n s t r u c t o r s */
 
 	/**
 	 * Read bigWig from local file or remote URL.
-	 * @param url Filename or URL to access 
+	 * @param filename Filename or URL to access 
 	 * @param gc Query coordinates and size of printable window 
 	 * @throws IOException */
-	public TrackWiggles(String url, GenomicCoords gc) throws IOException{
+	public TrackWiggles(String filename, GenomicCoords gc, int bdgDataColIdx) throws IOException{
 
 		this.setGc(gc);
+		this.setFilename(filename);
+		this.bdgDataColIdx= bdgDataColIdx;
+		this.update();
 		
-		if(Utils.getFileTypeFromName(url).equals("bigWig")){
-			BBFileReader reader=new BBFileReader(url); // or url for remote access.
+	};
+	
+	public void update() throws IOException {
+
+		if(this.bdgDataColIdx < 4){
+			System.err.println("Invalid index for bedgraph column of data value. Resetting to 4. Expected >=4. Got " + this.bdgDataColIdx);
+			this.bdgDataColIdx= 4;
+		}
+
+		if(Utils.getFileTypeFromName(this.getFilename()).equals(TrackFormat.BIGWIG)){
+			
+			BBFileReader reader=new BBFileReader(this.getFilename()); // or url for remote access.
 			if(!reader.getBBFileHeader().isBigWig()){
-				System.err.println("Invalid file type " + url);
+				System.err.println("Invalid file type " + this.getFilename());
 				System.exit(1);			
 			}
 			bigWigToScores(reader);
-		} else if(Utils.getFileTypeFromName(url).equals("tdf")){
 			
-			List<ScreenWiggleLocusInfo> screenWiggleLocusInfoList= TDFUtils.tdfRangeToScreen(url, gc.getChrom(), gc.getFrom(), gc.getTo(), gc.getMapping());
+		} else if(Utils.getFileTypeFromName(this.getFilename()).equals(TrackFormat.TDF)){
+
+			this.screenWiggleLocusInfoList= 
+					TDFUtils.tdfRangeToScreen(this.getFilename(), this.getGc().getChrom(), 
+							this.getGc().getFrom(), this.getGc().getTo(), this.getGc().getMapping());
+			
 			ArrayList<Double> screenScores= new ArrayList<Double>();
 			for(ScreenWiggleLocusInfo x : screenWiggleLocusInfoList){
 				screenScores.add((double)x.getMeanScore());
 			}
-			this.setScreenScores(screenScores);		
-		} else if(Utils.getFileTypeFromName(url).equals("bedGraph")){
-			bedGraphToScores(url);
+			this.setScreenScores(screenScores);	
+			
+		} else if(Utils.getFileTypeFromName(this.getFilename()).equals(TrackFormat.BEDGRAPH)){
+
+			if(Utils.hasTabixIndex(this.getFilename())){
+				bedGraphToScores(this.getFilename());
+			} else if(Utils.hasTabixIndex(this.getFilename() + ".samTextViewer.tmp.gz")){
+				bedGraphToScores(this.getFilename() + ".samTextViewer.tmp.gz");
+			} else {
+				blockCompressAndIndex(this.getFilename(), this.getFilename() + ".samTextViewer.tmp.gz", true);
+				bedGraphToScores(this.getFilename() + ".samTextViewer.tmp.gz");
+			}
 		} else {
-			throw new RuntimeException("Extension (i.e. file type) not recognized for " + url);
+			throw new RuntimeException("Extension (i.e. file type) not recognized for " + this.getFilename());
 		}
-	};
+	}
+
 	
 	/*  M e t h o d s  */
+	/**
+	 * Block compress input file and create associated tabix index. Newly created file and index are
+	 * deleted on exit if deleteOnExit true.
+	 * @throws IOException 
+	 * */
+	private void blockCompressAndIndex(String in, String bgzfOut, boolean deleteOnExit) throws IOException {
+		
+		BufferedReader br= null;
+		InputStream gzipStream= null;
+		if(in.endsWith(".gz")){
+			InputStream fileStream = new FileInputStream(in);
+			gzipStream = new GZIPInputStream(fileStream);
+			Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
+			br = new BufferedReader(decoder);
+		} else {
+			br = new BufferedReader(new FileReader(in));
+		}
+		System.err.print("Block compressing " + in + "... ");
+		BlockCompressedOutputStream blockOs= new BlockCompressedOutputStream(bgzfOut);
+		String line;
+		boolean isFirst= true;
+		while ((line = br.readLine()) != null) {
+			if(line.trim().startsWith("#")){
+				continue;
+			}
+			if(isFirst){
+				isFirst= false;
+				if(!isValidBedGraphLine(line)){ // Allow first line to fail: Might be header.
+					System.err.print("First line skipped. ");
+					continue;
+				}
+			}
+			line += "\n";
+			blockOs.write(line.getBytes());
+		}
+		br.close();
+		if(gzipStream != null){
+			gzipStream.close();
+		}
+		blockOs.close();
+		
+		System.err.print("Indexing... ");
+		File bgzfFile= new File(bgzfOut);
+		BEDCodec codec=new BEDCodec();
+		TabixIndex tabixIndex =
+				IndexFactory.createTabixIndex(bgzfFile, codec, TabixFormat.BED, null);
+		tabixIndex.writeBasedOnFeatureFile(bgzfFile);
+		System.err.println("Done");
+		if(deleteOnExit){
+			bgzfFile.deleteOnExit();
+			File idx= new File(bgzfFile + ".tbi");
+			idx.deleteOnExit();
+		}
+	}
+
+	/** Return true if line looks like a valid bedgraph record  
+	 * */
+	public static boolean isValidBedGraphLine(String line){
+		String[] bdg= line.split("\t");
+		if(bdg.length < 4){
+			return false;
+		}
+		try{
+			Integer.parseInt(bdg[1]);
+			Integer.parseInt(bdg[2]);
+		} catch(NumberFormatException e){
+			return false;
+		}
+		return true;
+	}
 	
 	/** Populate object using bigWig data */
 	private void bigWigToScores(BBFileReader reader){
@@ -86,6 +196,8 @@ public class TrackWiggles extends Track {
 		this.setScreenScores(screenScores);		
 	}
 	
+	/** Get values for bedgraph
+	 * */
 	private void bedGraphToScores(String fileName) throws IOException{
 		
 		List<ScreenWiggleLocusInfo> screenWiggleLocusInfoList= new ArrayList<ScreenWiggleLocusInfo>();
@@ -93,8 +205,6 @@ public class TrackWiggles extends Track {
 			screenWiggleLocusInfoList.add(new ScreenWiggleLocusInfo());
 		}
 		
-		// LineIterator it = FileUtils.lineIterator(new File(fileName), "UTF-8");
-	
 		try {
 			TabixReader tabixReader= new TabixReader(fileName);
 			Iterator qry= tabixReader.query(this.getGc().getChrom(), this.getGc().getFrom()-1, this.getGc().getTo());
@@ -106,7 +216,7 @@ public class TrackWiggles extends Track {
 				String[] tokens= q.split("\t");
 				int screenFrom= Utils.getIndexOfclosestValue(Integer.valueOf(tokens[1])+1, this.getGc().getMapping());
 				int screenTo= Utils.getIndexOfclosestValue(Integer.valueOf(tokens[2]), this.getGc().getMapping());
-				float value= Float.valueOf(tokens[3]);
+				float value= Float.valueOf(tokens[this.bdgDataColIdx-1]);
 				for(int i= screenFrom; i <= screenTo; i++){
 					screenWiggleLocusInfoList.get(i).increment(value);
 				}
@@ -139,13 +249,7 @@ public class TrackWiggles extends Track {
 		ArrayList<String> lineStrings= new ArrayList<String>();
 		for(int i= (textProfile.getProfile().size() - 1); i >= 0; i--){
 			List<String> xl= textProfile.getProfile().get(i);
-			// Set<String> unique= new HashSet<String>(xl);
 			lineStrings.add(StringUtils.join(xl, ""));
-			//if(unique.size() == 1 && unique.contains(textProfile.getStrForFill())){ // Do not print blank lines
-			//	continue;
-			//} else {
-			//	lineStrings.add(StringUtils.join(xl, ""));
-			//}
 		}
 		return Joiner.on("\n").join(lineStrings);
 	}
@@ -160,10 +264,13 @@ public class TrackWiggles extends Track {
 		return scorePerDot;
 	}
 
+	protected int getBdgDataColIdx() { return bdgDataColIdx; }
+	protected void setBdgDataColIdx(int bdgDataColIdx) { this.bdgDataColIdx = bdgDataColIdx; }
+
 	@Override
 	public String getTitle(){
-		return this.getFilename() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
-				Math.rint((this.maxDepth)*100)/100 + "; .= " + Math.rint((this.scorePerDot)) + ";\n";
+		return this.getFileTag() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
+				Math.rint((this.maxDepth)*100)/100 + "; .= " + Math.rint((this.scorePerDot)*100)/100 + ";\n";
 	}
 	
 }

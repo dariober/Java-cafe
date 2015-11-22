@@ -27,7 +27,8 @@ public class TrackReads extends Track{
 	private List<List<TextRead>> readStack;
 	private boolean bs= false;
 	private boolean withReadName= false;
-
+	private int maxReadStack;
+	
 	/* C o n s t r u c t o r s */
 	/**
 	 * Create read track
@@ -37,41 +38,47 @@ public class TrackReads extends Track{
 	 * @param maxReadsStack Accumulate at most this many reads.
 	 * @throws IOException 
 	 */
-	public TrackReads(String bam, GenomicCoords gc, List<SamRecordFilter> filters, int maxReadsStack) throws IOException{
+	public TrackReads(String bam, GenomicCoords gc, List<SamRecordFilter> filters, int maxReadStack) throws IOException{
 
 		if(!Utils.bamHasIndex(bam)){
 			System.err.println("\nAlignment file " + bam + " has no index.\n");
 			throw new RuntimeException();
 		}
-		
+		this.setFilename(bam);
 		this.setGc(gc);
+		this.setFilters(filters);
+		this.maxReadStack= maxReadStack;
+		this.update();
 
+	} 
+	
+	/* M e t h o d s */
+	
+	public void update(){
 		SamReaderFactory srf=SamReaderFactory.make();
 		srf.validationStringency(ValidationStringency.SILENT);
-		SamReader samReader = srf.open(new File(bam));
+		SamReader samReader = srf.open(new File(this.getFilename()));
 
-		long cnt= countReadsInWindow(bam, gc, filters);
-		float probSample= (float)maxReadsStack / cnt;
+		long cnt= countReadsInWindow(this.getFilename(), this.getGc(), this.getFilters());
+		float probSample= (float) this.maxReadStack / cnt;
 		
-		Iterator<SAMRecord> sam= samReader.query(gc.getChrom(), gc.getFrom(), gc.getTo(), false);
+		Iterator<SAMRecord> sam= samReader.query(this.getGc().getChrom(), this.getGc().getFrom(), this.getGc().getTo(), false);
 		List<TextRead> textReads= new ArrayList<TextRead>();
-		AggregateFilter aggregateFilter= new AggregateFilter(filters);
+		AggregateFilter aggregateFilter= new AggregateFilter(this.getFilters());
 		
-		while(sam.hasNext() && textReads.size() < maxReadsStack){
+		while(sam.hasNext() && textReads.size() < this.maxReadStack){
 
 			SAMRecord rec= sam.next();
 			if( !aggregateFilter.filterOut(rec) ){
 				Random rand = new Random();
 				if(rand.nextFloat() < probSample){ // Downsampler
-					TextRead tr= new TextRead(rec, gc);
+					TextRead tr= new TextRead(rec, this.getGc());
 					textReads.add(tr);
 				}
 			}
 		}
 		this.readStack= stackReads(textReads);
-	} 
-	
-	/* M e t h o d s */
+	}
 	
 	/** 
 	 * Printable track on screen. This is what should be called by Main */

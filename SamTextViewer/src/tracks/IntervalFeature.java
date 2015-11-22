@@ -54,15 +54,15 @@ class IntervalFeature implements Comparable<IntervalFeature> {
 	/**
 	 * Create an IntervalFeature from a String. Typically this string is a bed or gtf line read from file.
 	 * @param line
-	 * @param format Format of this line
+	 * @param type Format of this line
 	 */
-	public IntervalFeature(String line, String format){
-		if(format.equals("bed")){
+	public IntervalFeature(String line, TrackFormat type){
+		if(type.equals(TrackFormat.BED)){
 			intervalFeatureFromBedLine(line);
-		} else if(format.equals("gtf") || format.equals("gff")){
+		} else if(type.equals(TrackFormat.GFF)){
 			intervalFeatureFromGtfLine(line);
 		} else {
-			System.err.println("Format " + format + " not supported");
+			System.err.println("Format " + type + " not supported");
 			System.exit(1);
 		}
 	}
