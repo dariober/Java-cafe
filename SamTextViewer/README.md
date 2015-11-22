@@ -62,58 +62,70 @@ For visualizing BS-Seq data add the `-bs` flag and provide a reference fasta fil
 
     SamTextViewer -bs fa chr7.fa ds051.actb.bam 
 
-After starting `SamTextViewer` you can navigate the genome with the following interactive commands. Note that some options can be set either at start time
-or interctively, e.g. `-r`.
+After starting `SamTextViewer` you can navigate the genome with the following interactive commands. Note that some options can be set either at start time or interctively, e.g. `-r`. 
 
-    Navigation options
+Help on intercative input:
 
-    [f]/[b]
-            Small, step forward/backward 1/10 window
-    [ff]/[bb]
-            Large step forward/backward 1/2 window
-    [zi]/[zo]
-            Zoom in / zoom out
-    [p]/[n]
-           Go to previous/next visited position
-    [:pos]
-            Go to position <pos> on current chromosome
-    +/-<int>
-            Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m
-    <filename> [:n]
-            Move to the next feature in <filename> on current chromosome
-    <filename> <string> [:find]
-            Find the next record in file containing string. Use single quotes for strings containing spaces.
-    [print]
-            Turn on/off the printing of bed/gtf features in current interval
-    [rNameOn]/[rNameOff]
-            Show/Hide read names
-    [history]
-            Show visited positions
-    [q]
-            Quit
-    [h]
-            Show this help
-    
-    Command line options
-    
-    -r
-        Go to region. Format 1-based as 'chrom:start-end' or 'chrom:start' or 'chrom'
-    -f
-        Required sam flags. Use 4096 for reads on top strand
-    -F
-        Filtering sam flags. Use 4096 for reads on top strand
-    -q
-        Minumum mapping quality for a read to be considered
-    -m
-        Maximum number of lines to print for read tracks. No limit If < 0
-    -rpm
-        Toggle on/off the normalization of Reads Per Million for bam input. Default off
-    -d
-        Maximum number of lines to print for coverage tracks. No limit if < 0
-    -ml
-        Maximum number of lines to print for each methylation track. No limit if < 0
+```
+Command line options
 
+-r
+    Go to region. Format 1-based as 'chrom:start-end' or 'chrom:start' or 'chrom'
+-f
+    Required sam flags. Use 4096 for reads on top strand
+-F
+    Filtering sam flags. Use 4096 for reads on top strand
+-q
+    Minumum mapping quality for a read to be considered
+-m
+    Maximum number of lines to print for read tracks. No limit If < 0
+-rpm
+    Toggle on/off the normalization of Reads Per Million for bam input. Default off
+-d
+    Maximum number of lines to print for coverage tracks. No limit if < 0
+-ml
+    Maximum number of lines to print for each methylation track. No limit if < 0
 
+    N a v i g a t i o n   o p t i o n s
+
+f / b 
+        Small step forward/backward 1/10 window
+ff / bb
+        Large step forward/backward 1/2 window
+zi / zo
+        Zoom in / zoom out
+p / n
+        Go to previous/next visited position
+:<pos>
+        Go to position <pos> on current chromosome
+[+]/[-]<int>[k,m]
+        Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m
+
+    S e a r c h   o p t i o n s
+
+next <trackId>
+        Move to the next feature in <trackId> on *current* chromosome
+find <regex> <trackId>
+        Find the next record in trackId matching regex. Use single quotes for strings containing spaces.
+        For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'
+
+    D i s p l a y   o p t i o n s
+
+ylim <min> <max> [regex]
+        Set limits of y axis for all track IDs captured by regex. Default regex: '.*'
+dataCol <idx> [regex]
+        Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index.
+print
+        Turn on/off the printing of bed/gtf features in current interval
+rNameOn / rNameOff
+        Show/Hide read names
+history
+        Show visited positions
+q
+        Quit
+h
+        Show this help
+```
 # Supported input files
 
 For input format specs see also [UCSC format](https://genome.ucsc.edu/FAQ/FAQformat.html) and for choice of format see [IGV recommendations](https://www.broadinstitute.org/igv/RecommendedFileFormats)
