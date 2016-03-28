@@ -1,6 +1,6 @@
 ## Utility to convert vmatch output to sam format
 
-[vmatch](http://www.vmatch.de/) a versatile software tool for eﬃciently solving large scale sequence matching tasks.
+[vmatch](http://www.vmatch.de/) is a versatile software tool for eﬃciently solving large scale sequence matching tasks.
 `vmatchToSam` converts the vmatch output to [sam format](http://samtools.github.io/hts-specs/SAMv1.pdf) so that
 various tools for sam analysis can be used on vmatch.
 
@@ -43,6 +43,7 @@ At least one of the options `-complete`, `-hxdrop`, `-exdrop`, or `-l` is requir
 `ref.fa.fai` is a tab separated file of sequence names and lengths. Options `-fa` and `-fai` are not required but if not given the sam
 output will be headerless.
 
+
 The sam output will have mapping quality 255 (unavailable); the cigar string uses `=` and `X` for match/mismatch instead of the generic `M`.
 The following attributes are set:
 
@@ -56,7 +57,7 @@ The following attributes are set:
 
 * `RG:Z:NA` Read group always set to NA.
 
-See also [addAlignmentTagsToBam.py](https://github.com/dariober/bioinformatics-cafe/blob/master/addAlignmentTagsToBam.py) for a a tools to add some useful tags to sam.
+See also [addAlignmentTagsToBam.py](https://github.com/dariober/bioinformatics-cafe/blob/master/addAlignmentTagsToBam.py) for a tool to add some useful tags to sam.
 
 ## Install and Requirements
 
@@ -68,9 +69,8 @@ wget https://github.com/dariober/Java-cafe/releases/download/vx.x.x/vmatchToSam.
 java -jar /path/to/vmatchToSam.jar -h
 ```
 
-## Mics
+## TODO
 
-```
-cd ~/svn_git/Java-cafe/trunk/vmatchToSam/test_data/
-vmatch -showdesc 0 -s -p -d -complete -q reads.fa ref.fa
-```
+* Rank alignments within queries by alignment score or else so it's easy to get the "best" query aligmnent.
+
+* Accept xml output from vmatch. Problem is xml does not contain the aligned sequences.
