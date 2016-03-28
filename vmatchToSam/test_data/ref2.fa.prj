@@ -1,0 +1,15 @@
+dbfile=ref2.fa 610 589
+totallength=589
+specialcharacters=1
+specialranges=1
+lengthofspecialprefix=0
+lengthofspecialsuffix=0
+numofsequences=2
+numofdbsequences=2
+numofquerysequences=0
+longest=196
+prefixlength=2
+largelcpvalues=0
+maxbranchdepth=54
+integersize=64
+littleendian=1

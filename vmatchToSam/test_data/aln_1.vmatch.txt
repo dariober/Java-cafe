@@ -1,0 +1,333 @@
+# args=-showdesc 0 -s 10 -p -d -complete -e 2 -q reads.fa /Users/berald01/svn_git/Java-cafe/trunk/vmatchToSam/test_data/ref.fa
+25   ref_1   2   D 27   r1   0   2    7.44e-10  46    92.59
+Sbjct: --TCTCTAGA          10
+       !!        
+Query: CCTCTCTAGA          10
+
+Sbjct: GGTTAGCGAG          20
+Query: GGTTAGCGAG          20
+
+Sbjct: ACCGAAC             27
+Query: ACCGAAC             27
+
+
+26   ref_1   1   D 27   r1   0   1    5.91e-12  50    96.30
+Sbjct: -CTCTCTAGA          10
+       !         
+Query: CCTCTCTAGA          10
+
+Sbjct: GGTTAGCGAG          20
+Query: GGTTAGCGAG          20
+
+Sbjct: ACCGAAC             27
+Query: ACCGAAC             27
+
+
+27   ref_1   0   D 27   r1   0   0    1.84e-14  54   100.00
+Sbjct: CCTCTCTAGA          10
+Query: CCTCTCTAGA          10
+
+Sbjct: GGTTAGCGAG          20
+Query: GGTTAGCGAG          20
+
+Sbjct: ACCGAAC             27
+Query: ACCGAAC             27
+
+
+79   ref_2   2   D 81   r4   0   2    2.12e-41 154    97.53
+Sbjct: --GGTACTCG          10
+       !!        
+Query: ATGGTACTCG          10
+
+Sbjct: CAATACCCCC          20
+Query: CAATACCCCC          20
+
+Sbjct: GGATTAGTTC          30
+Query: GGATTAGTTC          30
+
+Sbjct: TTCCTCTGTC          40
+Query: TTCCTCTGTC          40
+
+Sbjct: TTGAGCGCCT          50
+Query: TTGAGCGCCT          50
+
+Sbjct: GTGAGAATAG          60
+Query: GTGAGAATAG          60
+
+Sbjct: CTACGCCTCA          70
+Query: CTACGCCTCA          70
+
+Sbjct: TCACCACTAG          80
+Query: TCACCACTAG          80
+
+Sbjct: T                   81
+Query: T                   81
+
+
+80   ref_2   1   D 81   r4   0   1    5.47e-44 158    98.77
+Sbjct: -TGGTACTCG          10
+       !         
+Query: ATGGTACTCG          10
+
+Sbjct: CAATACCCCC          20
+Query: CAATACCCCC          20
+
+Sbjct: GGATTAGTTC          30
+Query: GGATTAGTTC          30
+
+Sbjct: TTCCTCTGTC          40
+Query: TTCCTCTGTC          40
+
+Sbjct: TTGAGCGCCT          50
+Query: TTGAGCGCCT          50
+
+Sbjct: GTGAGAATAG          60
+Query: GTGAGAATAG          60
+
+Sbjct: CTACGCCTCA          70
+Query: CTACGCCTCA          70
+
+Sbjct: TCACCACTAG          80
+Query: TCACCACTAG          80
+
+Sbjct: T                   81
+Query: T                   81
+
+
+81   ref_2   0   D 81   r4   0   0    5.67e-47 162   100.00
+Sbjct: ATGGTACTCG          10
+Query: ATGGTACTCG          10
+
+Sbjct: CAATACCCCC          20
+Query: CAATACCCCC          20
+
+Sbjct: GGATTAGTTC          30
+Query: GGATTAGTTC          30
+
+Sbjct: TTCCTCTGTC          40
+Query: TTCCTCTGTC          40
+
+Sbjct: TTGAGCGCCT          50
+Query: TTGAGCGCCT          50
+
+Sbjct: GTGAGAATAG          60
+Query: GTGAGAATAG          60
+
+Sbjct: CTACGCCTCA          70
+Query: CTACGCCTCA          70
+
+Sbjct: TCACCACTAG          80
+Query: TCACCACTAG          80
+
+Sbjct: T                   81
+Query: T                   81
+
+
+51   ref_1 322   D 53   r5_multiple   0   2    6.48e-25  98    96.23
+Sbjct: --CGCGAAAC         330
+       !!        
+Query: CTCGCGAAAC          10
+
+Sbjct: GGCTGTCTGC         340
+Query: GGCTGTCTGC          20
+
+Sbjct: CTCTTTCACC         350
+Query: CTCTTTCACC          30
+
+Sbjct: AGGTCTGCCG         360
+Query: AGGTCTGCCG          40
+
+Sbjct: GCTATAGACT         370
+Query: GCTATAGACT          50
+
+Sbjct: CGC                373
+Query: CGC                 53
+
+
+52   ref_1 321   D 53   r5_multiple   0   1    2.58e-27 102    98.11
+Sbjct: -TCGCGAAAC         330
+       !         
+Query: CTCGCGAAAC          10
+
+Sbjct: GGCTGTCTGC         340
+Query: GGCTGTCTGC          20
+
+Sbjct: CTCTTTCACC         350
+Query: CTCTTTCACC          30
+
+Sbjct: AGGTCTGCCG         360
+Query: AGGTCTGCCG          40
+
+Sbjct: GCTATAGACT         370
+Query: GCTATAGACT          50
+
+Sbjct: CGC                373
+Query: CGC                 53
+
+
+53   ref_1 320   D 53   r5_multiple   0   0    4.08e-30 106   100.00
+Sbjct: CTCGCGAAAC         330
+Query: CTCGCGAAAC          10
+
+Sbjct: GGCTGTCTGC         340
+Query: GGCTGTCTGC          20
+
+Sbjct: CTCTTTCACC         350
+Query: CTCTTTCACC          30
+
+Sbjct: AGGTCTGCCG         360
+Query: AGGTCTGCCG          40
+
+Sbjct: GCTATAGACT         370
+Query: GCTATAGACT          50
+
+Sbjct: CGC                373
+Query: CGC                 53
+
+
+54   ref_1 319   D 53   r5_multiple   0   1    2.58e-27 104    98.15
+Sbjct: TCTCGCGAAA         329
+       !         
+Query: -CTCGCGAAA           9
+
+Sbjct: CGGCTGTCTG         339
+Query: CGGCTGTCTG          19
+
+Sbjct: CCTCTTTCAC         349
+Query: CCTCTTTCAC          29
+
+Sbjct: CAGGTCTGCC         359
+Query: CAGGTCTGCC          39
+
+Sbjct: GGCTATAGAC         369
+Query: GGCTATAGAC          49
+
+Sbjct: TCGC               373
+Query: TCGC                53
+
+
+55   ref_1 318   D 53   r5_multiple   0   2    6.48e-25 102    96.36
+Sbjct: CTCTCGCGAA         328
+       !!        
+Query: --CTCGCGAA           8
+
+Sbjct: ACGGCTGTCT         338
+Query: ACGGCTGTCT          18
+
+Sbjct: GCCTCTTTCA         348
+Query: GCCTCTTTCA          28
+
+Sbjct: CCAGGTCTGC         358
+Query: CCAGGTCTGC          38
+
+Sbjct: CGGCTATAGA         368
+Query: CGGCTATAGA          48
+
+Sbjct: CTCGC              373
+Query: CTCGC               53
+
+
+51   ref_2 164   D 53   r5_multiple   0   2    6.48e-25  98    96.23
+Sbjct: --CGCGAAAC         172
+       !!        
+Query: CTCGCGAAAC          10
+
+Sbjct: GGCTGTCTGC         182
+Query: GGCTGTCTGC          20
+
+Sbjct: CTCTTTCACC         192
+Query: CTCTTTCACC          30
+
+Sbjct: AGGTCTGCCG         202
+Query: AGGTCTGCCG          40
+
+Sbjct: GCTATAGACT         212
+Query: GCTATAGACT          50
+
+Sbjct: CGC                215
+Query: CGC                 53
+
+
+52   ref_2 163   D 53   r5_multiple   0   1    2.58e-27 102    98.11
+Sbjct: -TCGCGAAAC         172
+       !         
+Query: CTCGCGAAAC          10
+
+Sbjct: GGCTGTCTGC         182
+Query: GGCTGTCTGC          20
+
+Sbjct: CTCTTTCACC         192
+Query: CTCTTTCACC          30
+
+Sbjct: AGGTCTGCCG         202
+Query: AGGTCTGCCG          40
+
+Sbjct: GCTATAGACT         212
+Query: GCTATAGACT          50
+
+Sbjct: CGC                215
+Query: CGC                 53
+
+
+53   ref_2 162   D 53   r5_multiple   0   0    4.08e-30 106   100.00
+Sbjct: CTCGCGAAAC         172
+Query: CTCGCGAAAC          10
+
+Sbjct: GGCTGTCTGC         182
+Query: GGCTGTCTGC          20
+
+Sbjct: CTCTTTCACC         192
+Query: CTCTTTCACC          30
+
+Sbjct: AGGTCTGCCG         202
+Query: AGGTCTGCCG          40
+
+Sbjct: GCTATAGACT         212
+Query: GCTATAGACT          50
+
+Sbjct: CGC                215
+Query: CGC                 53
+
+
+54   ref_2 161   D 53   r5_multiple   0   1    2.58e-27 104    98.15
+Sbjct: TCTCGCGAAA         171
+       !         
+Query: -CTCGCGAAA           9
+
+Sbjct: CGGCTGTCTG         181
+Query: CGGCTGTCTG          19
+
+Sbjct: CCTCTTTCAC         191
+Query: CCTCTTTCAC          29
+
+Sbjct: CAGGTCTGCC         201
+Query: CAGGTCTGCC          39
+
+Sbjct: GGCTATAGAC         211
+Query: GGCTATAGAC          49
+
+Sbjct: TCGC               215
+Query: TCGC                53
+
+
+55   ref_2 160   D 53   r5_multiple   0   2    6.48e-25 102    96.36
+Sbjct: GTCTCGCGAA         170
+       !!        
+Query: --CTCGCGAA           8
+
+Sbjct: ACGGCTGTCT         180
+Query: ACGGCTGTCT          18
+
+Sbjct: GCCTCTTTCA         190
+Query: GCCTCTTTCA          28
+
+Sbjct: CCAGGTCTGC         200
+Query: CCAGGTCTGC          38
+
+Sbjct: CGGCTATAGA         210
+Query: CGGCTATAGA          48
+
+Sbjct: CTCGC              215
+Query: CTCGC               53
+
+

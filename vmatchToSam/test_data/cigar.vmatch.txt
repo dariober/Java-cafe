@@ -1,0 +1,7 @@
+76    0   4   D 84    2   0  10    1.23e-27 130    88.10
+Sbjct: ----TCTAGAGGTTAGCGAGACCGAACGGCATCTACTCCTGCCCTTAG----GAATGTTGAAGGCATTCAGTTTACATTGGCCG                          80
+       !!!!                    !!                      !!!!                                
+Query: CCTCTCTAGAGGTTAGCGAGACCGnnCGGCATCTACTCCTGCCCTTAGaaaaGAATGTTGAAGGCATTCAGTTTACATTGGCCG                          84
+
+
+
