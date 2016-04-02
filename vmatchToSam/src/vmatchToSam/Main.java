@@ -68,8 +68,11 @@ public class Main {
 			sam.close();
 		}
 		
+		// For performance of db see also tips here
+		// http://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite
 		VmatchSqlite vsql= new VmatchSqlite();
-				
+		Statement stmt= vsql.getConn().createStatement();
+		stmt.execute("PRAGMA journal_mode = MEMORY"); // This is not to leave tmp journal file o disk
 		vsql.getConn().setAutoCommit(false); // This is important: By default each insert is committed 
 											 // as it is executed, which is slow. Let's commit in bulk at the end instead.
 		
@@ -90,11 +93,9 @@ public class Main {
 		}
 		stmtInsert.close();
 		System.err.println(nrec + " written to db");
-		vsql.getConn().commit();
 		br.close();
 		
-		// Now retrieve records from db 
-		Statement stmt= vsql.getConn().createStatement();
+		// Now retrieve records from db 				
 		System.err.println("Creating index");
 		stmt.execute("CREATE INDEX qname_idx ON " + VmatchRecord.SQLITE_VMATCH_TABLE + " (queryNameOrIndex)");
 		System.err.println("Getting unique query names");
