@@ -70,5 +70,8 @@ Query: CCTCTCTAGAGGTTAGCGAGACCGAAC                                           27
 		SAMRecord samRec= vRec.getSAMRecord();
 		assertEquals("4S20=2X22=4I32=", samRec.getCigar().toString());
 		System.out.println(samRec.getSAMString());
+		
+		System.out.println(vRec.toSqlString());
+		
 	}	
 }

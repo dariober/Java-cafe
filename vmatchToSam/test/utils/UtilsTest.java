@@ -2,10 +2,22 @@ package utils;
 
 import static org.junit.Assert.*;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 import org.junit.Test;
 
+import exceptions.InvalidVmatchRecordException;
 import htsjdk.samtools.SAMFileHeader;
+import vmatchToSam.VmatchRecord;
 
 public class UtilsTest {
 
@@ -32,6 +44,6 @@ public class UtilsTest {
 		assertEquals("ref_2", fh.getSequence(1).getSequenceName());
 		assertEquals(215, fh.getSequence(1).getSequenceLength());
 	
-	}
+	}	
 	
 }

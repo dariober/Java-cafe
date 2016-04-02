@@ -2,6 +2,8 @@ package vmatchToSam;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,14 +15,18 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.ValidationStringency;
 import utils.Utils;
 
+/**
+ * Class to hold a vmatch alignment record.
+ * */
 public class VmatchRecord {
 
 	public static String DEFAULT_READ_GROUP= "NA";
+	public static String SQLITE_VMATCH_TABLE= "vmatch";
 	
 	private int referenceAlignmentLength;
-	private String referenceNameOrIndex;
-	private int referenceAlignmentStart; // 1-based
-	private Object strand;
+	private String referenceNameOrIndex; // Null default is used by isEmpty() method.
+	private int referenceAlignmentStart;
+	private String strand;
 	private int queryAlignmentLength; // N of bases of the query aligned to ref. Gaps don't count.
 	private String queryNameOrIndex;
 	private int queryAlignmentStart;
@@ -28,15 +34,37 @@ public class VmatchRecord {
 	private float evalue;
 	private int alignmentScore;
 	private float pctIdentity;
-	private StringBuilder recordString= new StringBuilder();
 	private String alignedReferenceSequence;
 	private String alignedQuerySequence;
+	
+	private StringBuilder recordString= new StringBuilder();
 	
 	/*      C O N S T R U C T O R S      */
 
 	public VmatchRecord() {
+		// Need to enable setters for this to be useful.
+	}
+
+	/** Construct from sql results containing appropriate fields 
+	 * @throws SQLException */
+	public VmatchRecord(ResultSet rs) throws SQLException {
+		
+		this.referenceAlignmentLength= rs.getInt("referenceAlignmentLength");
+		this.referenceNameOrIndex= rs.getString("referenceNameOrIndex");
+		this.queryAlignmentStart= rs.getInt("queryAlignmentStart");
+		this.strand= rs.getString("strand");
+		this.queryAlignmentLength= rs.getInt("queryAlignmentLength");
+		this.queryNameOrIndex= rs.getString("queryNameOrIndex");
+		this.queryAlignmentStart= rs.getInt("queryAlignmentStart");
+		this.editDistance= rs.getInt("editDistance");
+		this.evalue= rs.getFloat("evalue");
+		this.alignmentScore= rs.getInt("alignmentScore");
+		this.pctIdentity= rs.getFloat("pctIdentity");
+		this.alignedQuerySequence= rs.getString("alignedQuerySequence");
+		this.alignedReferenceSequence= rs.getString("alignedReferenceSequence");
 		
 	}
+
 	
 	/**
 	 * Read the next vmatch record from BufferedReader. 
@@ -48,7 +76,7 @@ public class VmatchRecord {
 		boolean alnStatsNeeded= true;
 		StringBuilder referenceSequence= new StringBuilder();
 		StringBuilder querySequence= new StringBuilder();
-		while(nConsecutiveBreaks < 2){
+		while(nConsecutiveBreaks < 2 && br.ready()){
 			String line= br.readLine().trim();
 			
 			if(line.startsWith("#")){
@@ -96,7 +124,7 @@ public class VmatchRecord {
 	}
 
 	/* M E T H O D S */
-	
+
 	/** Populate vmatch record by parsing the line containing the 
 	 * alignment stats. Typically this looks like:
 	 * 25   ref_1   2   D 27   r1   0   2    7.44e-10  46    92.5
@@ -121,6 +149,35 @@ public class VmatchRecord {
 		this.pctIdentity= Float.parseFloat(stats[10]);
 	}
 
+	public String toSqlString(){
+		String sql= "INSERT INTO " + this.SQLITE_VMATCH_TABLE + " ("
+				+ "referenceAlignmentLength, "
+				+ "referenceNameOrIndex, "
+				+ "referenceAlignmentStart, "
+				+ "strand, "
+				+ "queryAlignmentLength, "
+				+ "queryNameOrIndex, "
+				+ "queryAlignmentStart, "
+				+ "editDistance, "
+				+ "evalue, "
+				+ "alignmentScore, "
+				+ "pctIdentity"
+				+ ") VALUES (" + 
+				this.referenceAlignmentLength + ", " +
+				this.referenceNameOrIndex + ", " + 
+				this.referenceAlignmentStart + ", " +
+				this.strand + ", " +
+				this.queryAlignmentLength + ", " +
+				this.queryNameOrIndex + ", " +
+				this.queryAlignmentStart + ", " +
+				this.editDistance + ", " +
+				this.evalue + ", " +
+				this.alignmentScore + ", " +
+				this.pctIdentity + ")";
+				
+		return sql;
+	}
+	
 	public SAMRecord getSAMRecord() {
 		SAMRecord samRec= new SAMRecord(null);
 		samRec.setReadName(this.queryNameOrIndex);
@@ -217,6 +274,16 @@ public class VmatchRecord {
 		return cigar;
 	}
 
+	/** Test whether object is empty. Useful to check if input file has been fully read.
+	 *  */
+	public boolean isEmpty(){
+		if (this.queryNameOrIndex == null){
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
 	/** Return the lines read from BufferedReader */
 	public String toString(){
 		return this.recordString.toString().trim();
@@ -236,7 +303,7 @@ public class VmatchRecord {
 		return referenceAlignmentStart;
 	}
 
-	public Object getStrand() {
+	public String getStrand() {
 		return strand;
 	}
 
@@ -256,15 +323,20 @@ public class VmatchRecord {
 		return editDistance;
 	}
 
-	public double getEvalue() {
+	public float getEvalue() {
 		return evalue;
 	}
 
-	public double getAlignmentScore() {
+	public int getAlignmentScore() {
 		return alignmentScore;
 	}
+	public void setAlignmentScore(int alignmentScore) {
+		this.alignmentScore = alignmentScore;
+	}
 
-	public double getPctIdentity() {
+
+	
+	public float getPctIdentity() {
 		return pctIdentity;
 	}
 	
@@ -275,5 +347,5 @@ public class VmatchRecord {
 	public String getAlignedQuerySequence() {
 		return alignedQuerySequence;
 	}
-
+	
 }

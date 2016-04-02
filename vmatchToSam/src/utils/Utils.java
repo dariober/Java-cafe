@@ -4,8 +4,16 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.util.List;
+
+import exceptions.InvalidVmatchRecordException;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
+import vmatchToSam.VmatchRecord;
 
 public class Utils {
 
@@ -73,5 +81,32 @@ public class Utils {
 		
 		String clean= refSeqName.trim().replaceAll("\\s.*$", "");
 		return clean;
-	}	
+	}
+
+	/**
+	 * Mark as supplementary the alignments with 2nd best AS.
+	 * */
+	public static void setSecondaryAlignments(List<SAMRecord> samRecStack) {
+		if(samRecStack.size() > 1){
+			for(int i= 1; i < samRecStack.size(); i++){
+				samRecStack.get(i).setSupplementaryAlignmentFlag(true);
+			}
+		}		
+	}
+
+	/**
+	 * Assign mapping quality to multiple alignments of the same query */
+	public static void setMappingQualities(List<SAMRecord> samRecStack) {
+		if(samRecStack.size() == 1){
+			samRecStack.get(0).setMappingQuality(30);
+		} else if(samRecStack.size() > 1){
+			int firstAlnScore= (int) samRecStack.get(0).getAttribute("AS");
+			int secondAlnScore= (int) samRecStack.get(1).getAttribute("AS");
+			samRecStack.get(0).setMappingQuality(firstAlnScore - secondAlnScore);
+			for(int i= 1; i < samRecStack.size(); i++){
+				samRecStack.get(i).setMappingQuality(0);
+			}
+		}		
+	}
+	
 }

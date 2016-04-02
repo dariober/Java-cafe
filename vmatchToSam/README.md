@@ -43,9 +43,14 @@ At least one of the options `-complete`, `-hxdrop`, `-exdrop`, or `-l` is requir
 `ref.fa.fai` is a tab separated file of sequence names and lengths. Options `-fa` and `-fai` are not required but if not given the sam
 output will be headerless.
 
+* **Mapping quality and alignment score** Mulitple alignments for the same query are sorted by descending alignment score (AS). The alignment with highest (best) AS
+gets mapping quality given by: *MAPQ= AS_best - AS_second_best*. Queries with only one alignment get MAPQ= 30.
+This is arbitrary and doesn't produce real MAPQ scores, but it can be useful for filetring reads. Also, alignments other then the highest scoring
+have the bit 2048 set (supplementary alignment).
 
-The sam output will have mapping quality 255 (unavailable); the cigar string uses `=` and `X` for match/mismatch instead of the generic `M`.
-The following attributes are set:
+* The output is returned sorted by read name then by alignment score.
+
+##### The following attributes are set:
 
 * `XE:f` E-value
 
@@ -70,7 +75,5 @@ java -jar /path/to/vmatchToSam.jar -h
 ```
 
 ## TODO
-
-* Rank alignments within queries by alignment score or else so it's easy to get the "best" query aligmnent.
 
 * Accept xml output from vmatch. Problem is xml does not contain the aligned sequences.
