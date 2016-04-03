@@ -77,15 +77,18 @@ public class Main {
 											 // as it is executed, which is slow. Let's commit in bulk at the end instead.
 		
 		System.err.println("Writing to temporary sqlite database: " + vsql.getSqlitedb().getAbsolutePath());
+		// System.exit(0);
 		int nrec= 0;
 		PreparedStatement stmtInsert= vsql.getConn().prepareStatement(vsql.getSqlInsert());
-		while( br.ready() ){
+		while( true ){
 			// First accumulate records in sqlite
 			VmatchRecord vmr= new VmatchRecord(br);
 			if(!vmr.isEmpty()){
 				vsql.add(vmr, stmtInsert);
 				stmtInsert.execute();
 				nrec += 1;
+			} else {
+				break;
 			}
 			if(nrec % 100000 == 0){
 				System.err.println(nrec + " written to db");
@@ -94,7 +97,7 @@ public class Main {
 		stmtInsert.close();
 		System.err.println(nrec + " written to db");
 		br.close();
-		
+
 		// Now retrieve records from db 				
 		System.err.println("Creating index");
 		stmt.execute("CREATE INDEX qname_idx ON " + VmatchRecord.SQLITE_VMATCH_TABLE + " (queryNameOrIndex)");
@@ -103,6 +106,7 @@ public class Main {
 	        "SELECT DISTINCT queryNameOrIndex FROM " + VmatchRecord.SQLITE_VMATCH_TABLE + 
 	        " ORDER BY queryNameOrIndex");
 		
+		System.err.println("Retrieving records");
 		String sql= "SELECT * FROM " + VmatchRecord.SQLITE_VMATCH_TABLE +
 			    " WHERE queryNameOrIndex = ?" +
 			    " ORDER BY alignmentScore DESC";

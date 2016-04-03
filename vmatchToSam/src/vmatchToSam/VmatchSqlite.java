@@ -46,7 +46,6 @@ public class VmatchSqlite {
 	/* C O N S T R U C T O R */
 	public VmatchSqlite() throws ClassNotFoundException, IOException, SQLException{
 		this.createSQLiteVmatchDb();
-		this.conn= DriverManager.getConnection("jdbc:sqlite:" + this.sqlitedb.getName());
 	}
 	
 	private void createSQLiteVmatchDb() throws IOException, ClassNotFoundException, SQLException {
@@ -60,7 +59,8 @@ public class VmatchSqlite {
 	    sqlitedb.deleteOnExit();
 
 	    Class.forName("org.sqlite.JDBC");
-	    Connection conn = DriverManager.getConnection("jdbc:sqlite:" + sqlitedb.getName());
+	    this.conn = DriverManager.getConnection("jdbc:sqlite:" + sqlitedb.getName());
+	    // this.conn = DriverManager.getConnection("jdbc:sqlite::memory:");
         Statement stmt = conn.createStatement();
         String sql = "CREATE TABLE " +
                    VmatchRecord.SQLITE_VMATCH_TABLE + " (" +
@@ -80,7 +80,6 @@ public class VmatchSqlite {
                    ")"; 
         stmt.executeUpdate(sql);
         stmt.close();   
-        conn.close();
         this.sqlitedb= sqlitedb;
 	}
 	
@@ -90,7 +89,7 @@ public class VmatchSqlite {
 		stmt.setInt(1,     vmatchRecord.getReferenceAlignmentLength());
 		stmt.setString(2,  vmatchRecord.getReferenceNameOrIndex());
 		stmt.setInt(3,     vmatchRecord.getQueryAlignmentStart());
-		stmt.setString(4,  vmatchRecord.getStrand());
+		stmt.setBoolean(4,  vmatchRecord.getStrand());
 		stmt.setInt(5,     vmatchRecord.getQueryAlignmentLength());
 		stmt.setString(6,  vmatchRecord.getQueryNameOrIndex());
 		stmt.setInt(7,     vmatchRecord.getQueryAlignmentStart());

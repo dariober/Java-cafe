@@ -26,7 +26,7 @@ public class VmatchRecord {
 	private int referenceAlignmentLength;
 	private String referenceNameOrIndex; // Null default is used by isEmpty() method.
 	private int referenceAlignmentStart;
-	private String strand;
+	private boolean strand= true; // true for + false for -
 	private int queryAlignmentLength; // N of bases of the query aligned to ref. Gaps don't count.
 	private String queryNameOrIndex;
 	private int queryAlignmentStart;
@@ -52,7 +52,8 @@ public class VmatchRecord {
 		this.referenceAlignmentLength= rs.getInt("referenceAlignmentLength");
 		this.referenceNameOrIndex= rs.getString("referenceNameOrIndex");
 		this.queryAlignmentStart= rs.getInt("queryAlignmentStart");
-		this.strand= rs.getString("strand");
+		/** True if direct match (D, aka, +) false otherwise (P, reverse)*/
+		this.strand= rs.getBoolean("strand");
 		this.queryAlignmentLength= rs.getInt("queryAlignmentLength");
 		this.queryNameOrIndex= rs.getString("queryNameOrIndex");
 		this.queryAlignmentStart= rs.getInt("queryAlignmentStart");
@@ -136,9 +137,13 @@ public class VmatchRecord {
 		this.referenceAlignmentLength= Integer.parseInt(stats[0]);
 		this.referenceNameOrIndex= stats[1];
 		this.referenceAlignmentStart= Integer.parseInt(stats[2]);
-		this.strand= stats[3].equals("D") ? "+" : stats[3].equals("P") ? "-" : null;
-		if(this.strand == null){
-			throw new InvalidVmatchRecordException(); 
+		if(stats[3].equals("P")){
+			this.strand= false;
+		} else if(stats[3].equals("D")){
+			this.strand= true;
+		} else {
+			System.err.println("Strand: expected P or D. Got: " + stats[3]);
+			throw new InvalidVmatchRecordException();
 		}
 		this.queryAlignmentLength= Integer.parseInt(stats[4]);
 		this.queryNameOrIndex= stats[5];
@@ -181,7 +186,7 @@ public class VmatchRecord {
 	public SAMRecord getSAMRecord() {
 		SAMRecord samRec= new SAMRecord(null);
 		samRec.setReadName(this.queryNameOrIndex);
-		if(this.strand.equals("-")){
+		if(!this.strand){
 			samRec.setReadNegativeStrandFlag(true);
 		}
 		// Applying refSeqNameForSam() shouldn't be necessary as vmatch already strips the blank and what follows  
@@ -303,7 +308,7 @@ public class VmatchRecord {
 		return referenceAlignmentStart;
 	}
 
-	public String getStrand() {
+	public boolean getStrand() {
 		return strand;
 	}
 
