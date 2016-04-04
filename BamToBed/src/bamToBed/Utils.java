@@ -35,7 +35,7 @@ public class Utils {
 	public static String SAMRecordToBed(SAMRecord rec) {
 		
 		// This suffix is to conform to bedtools
-		String suffix= "FOO";
+		String suffix= "";
 		if(rec.getSecondOfPairFlag()){
 			suffix= "/2";
 		} else if (rec.getFirstOfPairFlag()){
