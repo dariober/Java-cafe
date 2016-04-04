@@ -1,6 +1,9 @@
 package bamToBed;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.util.Iterator;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
@@ -12,21 +15,27 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 
 		Namespace opts= ArgParse.argParse(args);
-		SamReader sam= Utils.reader(opts.getString("inbam"), ValidationStringency.SILENT);
+		SamReader samReader= Utils.reader(opts.getString("inbam"), ValidationStringency.SILENT);
 		
-		for(SAMRecord rec : sam){
-			if( (rec.getFlags() & opts.getInt("requiredFlag")) != opts.getInt("requiredFlag") ){
+		Iterator<SAMRecord> sam= null;
+		if( opts.getString("chrom").isEmpty() ){
+			sam= samReader.iterator();
+		} else {
+			sam= samReader.query(opts.getString("chrom"), opts.getInt("from"), opts.getInt("to"), false);
+		}
+		
+		BufferedWriter out = new BufferedWriter(new OutputStreamWriter(System.out));
+		while(sam.hasNext()){
+			SAMRecord rec= sam.next();
+			if(rec.getReadUnmappedFlag()){ // Consistent with bedtools 
 				continue;
 			}
-			if( (rec.getFlags() & opts.getInt("filterFlag")) != 0 ){
-				continue;
-			} 
-			if (rec.getMappingQuality() < opts.getInt("mapq")){
-				continue;
-			} 
-			System.out.print(rec.getSAMString()); // TODO: Use BufferedWriter
+			if( ! Utils.filterSamRecord(rec, opts.getInt("requiredFlag"), opts.getInt("filterFlag"), opts.getInt("mapq"))){
+				out.write(Utils.SAMRecordToBed(rec) + "\n");
+			}
 		}
-		sam.close();
+		out.flush();
+		samReader.close();
 	}
 
 }

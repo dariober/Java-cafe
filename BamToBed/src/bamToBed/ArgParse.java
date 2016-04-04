@@ -28,17 +28,28 @@ public class ArgParse {
 			.setDefault("-")
 			.help("Input bam file. Should be sorted and indexed");
 
-		parser.addArgument("--chrom", "-chr")
+		parser.addArgument("--chrom", "-chrom")
 			.type(String.class)
 			.required(false)
 			.setDefault("")
 			.help("Only output reads on this chromosome");
 
+		parser.addArgument("--from", "-from")
+			.type(Integer.class)
+			.required(false)
+			.setDefault(0)
+			.help("Only output reads starting from this position. 1-based, 0 for start of reference");
+	
+		parser.addArgument("--to", "-to")
+			.type(Integer.class)
+			.setDefault(0)
+			.help("Only output reads up to this position. 1-based, 0 for end of reference");
+		
 		parser.addArgument("--mapq", "-q")
 			.type(Integer.class)
 			.required(false)
 			.setDefault(0)
-			.help("Minimum mapq score to output a read. samtools view -q");
+			.help("Minimum mapq score to output a read. Equivalent to samtools view -q");
 
 		parser.addArgument("--requiredFlag", "-f")
 			.type(Integer.class)
@@ -50,19 +61,7 @@ public class ArgParse {
 			.type(Integer.class)
 			.required(false)
 			.setDefault(0)
-			.help("Do not output reads with these bits set in flag. Equivalent to `samtools view -F`");
-
-// Not implemented yet:
-//		parser.addArgument("--from", "-from")
-//			.type(Integer.class)
-//			.required(false)
-//			.help("Only output reads starting from this position. Requires --chrom to be set.");
-//		
-//		parser.addArgument("--to", "-to")
-//			.type(Integer.class)
-//			.required(false)
-//			.help("Only output reads up to this position. Requires --chrom and --from to be set.");
-
+			.help("Do not output reads with these bits set in flag. Equivalent to `samtools view -F`. Unmapped reads are always discared.");
 		
 		parser.addArgument("--version", "-v").action(Arguments.version());
 		
