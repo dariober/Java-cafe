@@ -31,17 +31,18 @@ public class Utils {
 		return sam;
 	}
 
-	/** Conevrt SAMRecord to bed string */
+	/** Convert SAMRecord to bed string */
 	public static String SAMRecordToBed(SAMRecord rec) {
 		
 		// This suffix is to conform to bedtools
 		String suffix= "";
-		if(rec.getSecondOfPairFlag()){
-			suffix= "/2";
-		} else if (rec.getFirstOfPairFlag()){
-			suffix= "/1";
+		if(rec.getReadPairedFlag()){
+			if(rec.getSecondOfPairFlag()){
+				suffix= "/2";
+			} else if (rec.getFirstOfPairFlag()){
+				suffix= "/1";
+			}
 		}
-		
 		StringBuilder sb= new StringBuilder();
 		sb.append(rec.getReferenceName());
 		sb.append("\t");
