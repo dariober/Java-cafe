@@ -4,7 +4,7 @@ Convert input BAM file to BED in a similar way as [bedtools bamtobed](http://bed
 
 Features not available in `bedtools bamtobed`: 
 
-* Allows random access of chromosomes and positions (similar to `samtools view ... [reg]`) 
+* Allows random access of chromosomes and positions if input is sorted and indexed (similar to `samtools view ... [reg]`)
 * Allows filtering for mapq, and bitwise flags (similar to `samtools view -q <int> -f <int> -F <int>`)
 * No installation required as this is a Java program
 
