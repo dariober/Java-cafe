@@ -51,7 +51,7 @@ optional arguments:
 
 ## Installation and Requirement
 
-No installation required as this is pure java. JVM 1.6+ required. Just download the compiled [BamToBed.jar](https://github.com/dariober/Java-cafe/releases/download/v0.1.0/BamToBed.jar) from Releases and execute as
+No installation required as this is pure java. JVM 1.6+ required. Just download the compiled [BamToBed.jar](https://github.com/dariober/Java-cafe/releases/download/v0.1.0/BamToBed.jar) from [Releases](https://github.com/dariober/Java-cafe/releases) and execute as
 
 ```
 java -jar ~/path/to/BamToBed.jar ...
