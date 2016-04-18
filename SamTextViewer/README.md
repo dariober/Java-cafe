@@ -14,42 +14,9 @@ Features that attempt to combine text based viewers (```tview```) with GUI viewe
 
 ![ex3](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/screenshots/ex3.png)
 
-# Requirements and Installation
-
-### Installation quick start. 
-
-In the commands below replace version numbers with the latest ones from [releases](https://github.com/dariober/Java-cafe/releases):
-
-```
-wget https://github.com/dariober/Java-cafe/releases/download/v0.1.0/SamTextViewer-0.1.0.zip
-unzip SamTextViewer-0.1.0.zip
-cd SamTextViewer-0.1.0
-cp SamTextViewer.jar /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
-cp SamTextViewer /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
-```
-
-### A little more explanation
-
-```SamTextViewer.jar``` requires Java **1.8+** but most functionalities work on Java **1.7**. Block compressing and indexing bedgraph files needs 1.8, everything else should work with Java 1.7.
-
-There is virtually no installation needed as `SamTextViewer` is pure Java. Download the zip file `SamTextViewer-x.x.x.zip` from [releases](https://github.com/dariober/Java-cafe/releases), unzip it and execute the jar file with
-
-    java -jar /path/to/SamTextViewer.jar --help
-
-To avoid typing ```java -jar ...``` every time, you can put both the helper 
-script `SamTextViewer` and the jar file ```SamTextViewer.jar``` in the same directory in your `PATH` and execute with:
-
-	SamTextViewer [options]
-
-Note the helper is a bash script.
-
-# Usage 
+# Usage quick start
 
 These are some examples, for brevity using the helper `SamTextViewer`
-
-View help
-
-    SamTextViewer -h
 
 Display a bam file together with a gtf annotation file, go straight to position chr7:5566640-5569055 (atcb gene). This is RNA-Seq data:
 
@@ -81,9 +48,59 @@ For visualizing BS-Seq data add the `-bs` flag and provide a reference fasta fil
 
 After starting `SamTextViewer` you can navigate the genome with the following interactive commands. Note that some options can be set either at start time or interctively, e.g. `-r`. 
 
-Help on intercative input:
+### Getting help
 
 ```
+SamTextViewer -h
+usage: SamTextViewer [-h] [--region REGION] [--windowSize WINDOWSIZE] [--fasta FASTA] [--f F] [--F F] [--mapq MAPQ] [--maxLines MAXLINES] [--rpm]
+                     [--maxDepthLines MAXDEPTHLINES] [--maxMethylLines MAXMETHYLLINES] [--maxReadsStack MAXREADSSTACK] [--BSseq] [--noFormat] [--nonInteractive] [--version]
+                     [insam [insam ...]]
+
+DESCRIPTION
+Text viewer for genome alignment and annotation files.
+For details see https://github.com/dariober/Java-cafe/tree/master/SamTextViewer
+Example
+java /.../SamTextViewer.jar -r chr18:1000-2000 reads.bam ann.gtf.gz
+
+positional arguments:
+  insam                  Input files. bam/cram must be sorted and indexed. Large bed/gtf files should be indexed with tabix.
+
+optional arguments:
+  -h, --help             show this help message and exit
+  --region REGION, -r REGION
+                         Go to region. Format 1-based as 'chrom:start-end' or 'chrom:start' or 'chrom' (default: )
+  --windowSize WINDOWSIZE, -w WINDOWSIZE
+                         Window size to display. Ignored if --region is in format chrom:start-end (default: 160)
+  --fasta FASTA, -fa FASTA
+                         Optional reference fasta reference file.
+                         If given, must be indexed, e.g. with `samtools faidx ref.fa`
+  --f F, -f F            Required sam flags. Use 4096 for reads on top strand (default: 0)
+  --F F, -F F            Required sam flags. Use 4096 for reads on top strand (default: 0)
+  --mapq MAPQ, -q MAPQ   Minumum mapping quality for a read to be considered (default: 0)
+  --maxLines MAXLINES, -m MAXLINES
+                         Maximum number of lines to print for read tracks. No limit If < 0 (default: 10)
+  --rpm, -rpm            Toggle on/off the normalization of Reads Per Million for bam input. Default off (default: false)
+  --maxDepthLines MAXDEPTHLINES, -d MAXDEPTHLINES
+                         Maximum number of lines to print for coverage tracks. No limit if < 0 (default: 10)
+  --maxMethylLines MAXMETHYLLINES, -ml MAXMETHYLLINES
+                         Maximum number of lines to print for each methylation track. No limit if < 0 (default: 10)
+  --maxReadsStack MAXREADSSTACK, -M MAXREADSSTACK
+                         Maximum number of reads to accumulate before printing. If more than this many reads map to the window
+                         randomy select them (default: 2000)
+  --BSseq, -bs           Bisulphite mode: Mark bases as methylated (M/m) or unmethylated (U/u). Requires -fa (default: false)
+  --noFormat, -nf        Do not format output with non ascii chars (colour, bold, etc.) (default: false)
+  --nonInteractive, -ni  Non interactive mode: Exit after having processed cmd line args. (default: true)
+  --version, -v
+```
+
+Once `SamTextViewer` is started help can be displayed with `h`
+
+```
+SamTextViewer <input files>
+...
+chr1:1-160; 160 bp; 1.0 bp/char; Filters: -q 0 -f 0 -F 4; Mem: 633 MB; 
+[h] for help: h
+
 Command line options
 
 -r
@@ -122,7 +139,7 @@ p / n
 
 next <trackId>
         Move to the next feature in <trackId> on *current* chromosome
-find <regex> <trackId>
+find <regex> [trackId]
         Find the next record in trackId matching regex. Use single quotes for strings containing spaces.
         For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'
 
@@ -143,6 +160,7 @@ q
 h
         Show this help
 ```
+
 # Supported input files
 
 For input format specs see also [UCSC format](https://genome.ucsc.edu/FAQ/FAQformat.html) and for choice of format see [IGV recommendations](https://www.broadinstitute.org/igv/RecommendedFileFormats)
@@ -155,8 +173,37 @@ For input format specs see also [UCSC format](https://genome.ucsc.edu/FAQ/FAQfor
 * Other extensions: Will be treated as bed files, provided the format is actually bed!
 
 Large bed, gtf, bedGraph files should be sorted, bgzipped and indexed with **`tabix`** for fast access and memory efficiency
-(see [tabix manual](http://www.htslib.org/doc/tabix.html)). If not indexed, these files will be loaded in memory, which is anyway fine
-for files of up to ~1/2 million records.
+(see [tabix manual](http://www.htslib.org/doc/tabix.html)). If not indexed, bed and gtf will be loaded in memory, which is anyway fine
+for files of up to ~1/2 million records. Unindexed bedGraph files are first bgzipped and indexed to temporary files.
+
+# Requirements and Installation
+
+### Installation quick start. 
+
+In the commands below replace version numbers with the latest ones from [releases](https://github.com/dariober/Java-cafe/releases):
+
+```
+wget https://github.com/dariober/Java-cafe/releases/download/v0.1.0/SamTextViewer-0.1.0.zip
+unzip SamTextViewer-0.1.0.zip
+cd SamTextViewer-0.1.0
+cp SamTextViewer.jar /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
+cp SamTextViewer /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
+```
+
+### A little more detail
+
+```SamTextViewer.jar``` requires Java **1.8+** but most functionalities work on Java **1.7**. Block compressing and indexing bedgraph files needs 1.8, everything else should work with Java 1.7.
+
+There is virtually no installation needed as `SamTextViewer` is pure Java. Download the zip file `SamTextViewer-x.x.x.zip` from [releases](https://github.com/dariober/Java-cafe/releases), unzip it and execute the jar file with
+
+    java -jar /path/to/SamTextViewer.jar --help
+
+To avoid typing ```java -jar ...``` every time, you can put both the helper 
+script `SamTextViewer` and the jar file ```SamTextViewer.jar``` in the same directory in your `PATH` and execute with:
+
+	SamTextViewer [options]
+
+Note the helper is a bash script.
 
 # Performance
 
@@ -165,6 +212,7 @@ above a few hundreds of kilobases. Consider setting `-d 0` and `-m 0` to tempora
 
 # Credits
 
-Bam processing is mostly done with the [samtools/htsjdk](https://github.com/samtools/htsjdk) library.
-Bigwig and tdf are processed with classes from [IGV](https://github.com/igvteam/igv) source code.
+* Bam processing is mostly done with the [samtools/htsjdk](https://github.com/samtools/htsjdk) library.
+* Bigwig and tdf are processed with classes from [IGV](https://github.com/igvteam/igv) source code.
+* Block compression and indexing done using [jvarkit](https://github.com/lindenb/jvarkit)
 
