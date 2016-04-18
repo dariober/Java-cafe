@@ -22,7 +22,8 @@ public class TrackMethylation extends Track {
 	private double scorePerDot;
 	
 	/* C o n s t r u c t o r s */
-	public TrackMethylation(List<ScreenLocusInfo> screenLocusInfoList){		
+	public TrackMethylation(String filename, List<ScreenLocusInfo> screenLocusInfoList){		
+		this.setFilename(filename);
 		this.screenLocusInfoList= screenLocusInfoList;
 	}
 	

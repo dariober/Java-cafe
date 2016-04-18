@@ -35,6 +35,17 @@ public class IntervalFeatureTest {
 		assertEquals("exon", f.getFeature());
 		System.out.println(f.toString());
 	}
+
+	@Test
+	public void canGetAttribute(){
+		String gtfLine= "chr1\tunknown\texon\t11874\t12227\t.\t+\t.\tgene_id \"DDX11L1\"; transcript_id \"NR_046018_1\"; gene_name \"DDX11L1\"; tss_id \"TSS14523\";";	
+		
+		IntervalFeature f= new IntervalFeature(gtfLine, TrackFormat.GFF);
+		String x= f.getAttribute("transcript_id");
+		assertEquals("NR_046018_1", x);
+		System.out.println(f.toString());
+	}
+
 	
 	@Test
 	public void canCreateIntervalFromString() {

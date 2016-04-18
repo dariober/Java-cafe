@@ -157,7 +157,7 @@ public class Main {
 							trackId= new File(sam).getName() + "#" + (idForTrack+1);
 							idForTrack++;
 							if(!trackSet.getTrackSet().containsKey(trackId)){
-								TrackMethylation trackMethylation= new TrackMethylation(trackCoverage.getScreenLocusInfoList());
+								TrackMethylation trackMethylation= new TrackMethylation(sam, trackCoverage.getScreenLocusInfoList());
 								trackMethylation.setFileTag(trackId);
 								trackSet.addOrReplace(trackMethylation);
 							}
@@ -272,7 +272,7 @@ public class Main {
 							+ "[+]/[-]<int>[k,m]\n        Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m\n"
 							+ "\n    S e a r c h   o p t i o n s\n\n"
 							+ "next <trackId>\n        Move to the next feature in <trackId> on *current* chromosome\n"
-							+ "find <regex> <trackId>\n        Find the next record in trackId matching regex. Use single quotes for strings containing spaces.\n"
+							+ "find <regex> [trackId]\n        Find the next record in trackId matching regex. Use single quotes for strings containing spaces.\n"
 							+                         "        For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'\n"
 							+ "\n    D i s p l a y   o p t i o n s\n\n"
 							+ "ylim <min> <max> [regex]\n        Set limits of y axis for all track IDs captured by regex. Default regex: '.*'\n"
@@ -365,10 +365,13 @@ public class Main {
 						StrTokenizer str= new StrTokenizer(cmdInput);
 						str.setQuoteChar('\'');
 						List<String> tokens= str.getTokenList();
-						if(tokens.size() != 3){
-							System.err.println("Error in 'find' subcommand. Expected 3 args got: " + cmdInput);
+						if(tokens.size() < 2){
+							System.err.println("Error in 'find' subcommand. Expected at least 2 args got: " + cmdInput);
 							cmdInput= "";
 							continue;
+						}
+						if(tokens.size() == 2){
+							tokens.add("");
 						}
 						GenomicCoords gc= (GenomicCoords)gch.current().clone();
 						gch.add(trackSet.findNextStringOnTrack(tokens.get(1), tokens.get(2), gc));

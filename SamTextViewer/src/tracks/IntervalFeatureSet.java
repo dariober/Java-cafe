@@ -11,6 +11,7 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -96,6 +97,17 @@ public class IntervalFeatureSet {
 			}
 			return xFeatures;
 		}
+	}
+	
+	/** add introns to the set of features in input. 
+	 * */
+	private List<IntervalFeature> addIntrons(List<IntervalFeature> features){
+		// * Collect features belonging to the same transcript_id
+		LinkedHashMap<String, IntervalFeature> transcripts= new LinkedHashMap<String, IntervalFeature>(); 
+		
+		// * Walk along features and mark as introns all the gaps
+		return features;
+
 	}
 	
 	public static boolean isValidBedLine(String line){

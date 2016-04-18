@@ -179,7 +179,10 @@ public class Utils {
 				|| fileName.endsWith(".gtf.gz.tbi")
 				|| fileName.endsWith(".gff") 
 				|| fileName.endsWith(".gff.gz") 
-				|| fileName.endsWith(".gff.gz.tbi")){
+				|| fileName.endsWith(".gff.gz.tbi")
+				|| fileName.endsWith(".gff3")
+				|| fileName.endsWith(".gff3.gz") 
+				|| fileName.endsWith(".gff3.gz.tbi")){
 			return TrackFormat.GFF;
 		} else if(fileName.endsWith(".bam") || fileName.endsWith(".cram")){
 			return TrackFormat.BAM;

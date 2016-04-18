@@ -9,7 +9,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.lang3.StringUtils;
@@ -18,15 +20,23 @@ import org.broad.igv.bbfile.BigWigIterator;
 import org.broad.igv.bbfile.WigItem;
 import org.broad.igv.tdf.TDFUtils;
 
+import com.github.lindenb.jvarkit.io.IOUtils;
+import com.github.lindenb.jvarkit.util.bio.bed.BedLine;
+import com.github.lindenb.jvarkit.util.bio.bed.BedLineCodec;
 import com.google.common.base.Joiner;
+import com.google.common.io.Files;
 
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.tribble.bed.BEDCodec;
+import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.index.tabix.TabixIndex;
+import htsjdk.tribble.index.tabix.TabixIndexCreator;
+import htsjdk.tribble.readers.LineIterator;
 import htsjdk.tribble.readers.TabixReader;
 import htsjdk.tribble.readers.TabixReader.Iterator;
+import htsjdk.tribble.util.TabixUtils;
 import samTextViewer.GenomicCoords;
 import samTextViewer.Utils;
 
@@ -85,6 +95,7 @@ public class TrackWiggles extends Track {
 			
 		} else if(Utils.getFileTypeFromName(this.getFilename()).equals(TrackFormat.BEDGRAPH)){
 
+			// FIXME: Do not use hardcoded .samTextViewer.tmp.gz!
 			if(Utils.hasTabixIndex(this.getFilename())){
 				bedGraphToScores(this.getFilename());
 			} else if(Utils.hasTabixIndex(this.getFilename() + ".samTextViewer.tmp.gz")){
@@ -107,50 +118,45 @@ public class TrackWiggles extends Track {
 	 * */
 	private void blockCompressAndIndex(String in, String bgzfOut, boolean deleteOnExit) throws IOException {
 		
-		BufferedReader br= null;
-		InputStream gzipStream= null;
-		if(in.endsWith(".gz")){
-			InputStream fileStream = new FileInputStream(in);
-			gzipStream = new GZIPInputStream(fileStream);
-			Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
-			br = new BufferedReader(decoder);
-		} else {
-			br = new BufferedReader(new FileReader(in));
+		System.err.print("Compressing: " + in + " to file: " + bgzfOut + "... ");
+		
+		File inFile= new File(in);
+		File outFile= new File(bgzfOut);
+		
+		LineIterator lin= IOUtils.openURIForLineIterator(inFile.getAbsolutePath());
+
+		BlockCompressedOutputStream writer = new BlockCompressedOutputStream(outFile);
+		long filePosition= writer.getFilePointer();
+		
+		TabixIndexCreator indexCreator=new TabixIndexCreator(TabixFormat.BED);
+		BedLineCodec bedCodec= new BedLineCodec();
+		while(lin.hasNext()){
+			String line = lin.next();
+			BedLine bed = bedCodec.decode(line);
+			if(bed==null) continue;
+			writer.write(line.getBytes());
+			writer.write('\n');
+			indexCreator.addFeature(bed, filePosition);
+			filePosition = writer.getFilePointer();
 		}
-		System.err.print("Block compressing " + in + "... ");
-		BlockCompressedOutputStream blockOs= new BlockCompressedOutputStream(bgzfOut);
-		String line;
-		boolean isFirst= true;
-		while ((line = br.readLine()) != null) {
-			if(line.trim().startsWith("#")){
-				continue;
-			}
-			if(isFirst){
-				isFirst= false;
-				if(!isValidBedGraphLine(line)){ // Allow first line to fail: Might be header.
-					System.err.print("First line skipped. ");
-					continue;
-				}
-			}
-			line += "\n";
-			blockOs.write(line.getBytes());
-		}
-		br.close();
-		if(gzipStream != null){
-			gzipStream.close();
-		}
-		blockOs.close();
+		writer.flush();
 		
 		System.err.print("Indexing... ");
-		File bgzfFile= new File(bgzfOut);
-		BEDCodec codec=new BEDCodec();
-		TabixIndex tabixIndex =
-				IndexFactory.createTabixIndex(bgzfFile, codec, TabixFormat.BED, null);
-		tabixIndex.writeBasedOnFeatureFile(bgzfFile);
+		
+		File tbi= new File(bgzfOut + TabixUtils.STANDARD_INDEX_EXTENSION);
+		if(tbi.exists() && tbi.isFile()){
+			System.err.println("Index file exists: " + tbi);
+			System.exit(1);
+		}
+		Index index = indexCreator.finalizeIndex(writer.getFilePointer());
+		index.writeBasedOnFeatureFile(outFile);
+		writer.close();
+
 		System.err.println("Done");
+		
 		if(deleteOnExit){
-			bgzfFile.deleteOnExit();
-			File idx= new File(bgzfFile + ".tbi");
+			outFile.deleteOnExit();
+			File idx= new File(outFile.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION);
 			idx.deleteOnExit();
 		}
 	}

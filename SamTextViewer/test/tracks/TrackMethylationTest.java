@@ -40,7 +40,7 @@ public class TrackMethylationTest {
 		
 		int yMaxLines= 5;
 		TrackCoverage tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, true);
-		TrackMethylation tm= new TrackMethylation(tc.getScreenLocusInfoList());
+		TrackMethylation tm= new TrackMethylation(tc.getFilename(), tc.getScreenLocusInfoList());
 		tm.setyMaxLines(yMaxLines);
 		tm.setNoFormat(true);
 		String tmProfile= tm.printToScreen();
@@ -51,7 +51,7 @@ public class TrackMethylationTest {
 		windowSize= 101;
 		gc= new GenomicCoords("chr7", 5566770, 5566870, samSeqDict, windowSize, fastaFile);
 		tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, true);
-		tm= new TrackMethylation(tc.getScreenLocusInfoList());
+		tm= new TrackMethylation(tc.getFilename(), tc.getScreenLocusInfoList());
 		tm.setyMaxLines(yMaxLines);
 		tm.setNoFormat(true);
 		tmProfile= tm.printToScreen();

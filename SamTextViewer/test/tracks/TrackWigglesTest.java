@@ -26,7 +26,7 @@ public class TrackWigglesTest {
 	
 	
 	@Test
-	public void canParseNonBGZFFile() throws IOException, NoSuchAlgorithmException, InvalidGenomicCoordsException{
+	public void canParseNonBGZFFile() throws IOException, InvalidGenomicCoordsException{
 		
 		String url= "test_data/test2.bedGraph";
 		int windowSize= 160;
@@ -113,8 +113,6 @@ public class TrackWigglesTest {
 		tw.setyMaxLines(14);
 		System.out.println(tw.printToScreen());
 	}
-	
-
 	
 	@Test
 	public void canPrintWiggleTrack() throws InvalidGenomicCoordsException, IOException {

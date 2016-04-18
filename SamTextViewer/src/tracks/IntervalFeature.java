@@ -3,6 +3,9 @@ package tracks;
 import java.util.List;
 
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang3.text.StrTokenizer;
+import org.biojava.nbio.genome.parsers.gff.Feature;
+import org.biojava.nbio.genome.parsers.gff.Location;
 
 import samTextViewer.Utils;
 
@@ -21,15 +24,14 @@ class IntervalFeature implements Comparable<IntervalFeature> {
 	private String chrom;       // Required
 	private int from;           // Required. NB 1 based also for bed files.
 	private int to;             // Required 
-	//private String name= ""; // Kind of bed specific, there is no exact equivalent in gtf.
+
 	private float score= Float.NaN;
 	private char strand= '.'; 
 	private String source= "."; // Gtf specific
 	private String feature= "."; // Gtf specific
-	//private String attribute= "."; // Gtf specific
-	//private char frame= '.'; // Gtf specific
+
 	private String raw; // Raw input string exactly as read from file.
-	// More to come?
+	private TrackFormat format= TrackFormat.BED;
 	
 	/** Start position of feature in screen coordinates. 
 	 * -1 if the feature is not part of the screenshot. */
@@ -43,13 +45,14 @@ class IntervalFeature implements Comparable<IntervalFeature> {
 	 * @param from NB: 1-based. If getting straight from bed add 1.
 	 * @param to
 	 */
-	public IntervalFeature(String chrom, int from, int to){
-		
-		this.chrom= chrom.trim();
-		this.from= from;
-		this.to= to;
-		this.validateIntervalFeature();
-	}
+	//public IntervalFeature(String chrom, int from, int to){
+	//	
+	//	this.chrom= chrom.trim();
+	//	this.from= from;
+	//	this.to= to;
+	//	this.format= TrackFormat.BED;
+	//	this.validateIntervalFeature();
+	//}
 	
 	/**
 	 * Create an IntervalFeature from a String. Typically this string is a bed or gtf line read from file.
@@ -59,8 +62,10 @@ class IntervalFeature implements Comparable<IntervalFeature> {
 	public IntervalFeature(String line, TrackFormat type){
 		if(type.equals(TrackFormat.BED)){
 			intervalFeatureFromBedLine(line);
+			this.format= TrackFormat.BED;
 		} else if(type.equals(TrackFormat.GFF)){
 			intervalFeatureFromGtfLine(line);
+			this.format= TrackFormat.GFF;
 		} else {
 			System.err.println("Format " + type + " not supported");
 			System.exit(1);
@@ -238,6 +243,29 @@ class IntervalFeature implements Comparable<IntervalFeature> {
 	public boolean equalCoords(IntervalFeature x){
 		return (this.chrom.equals(x.chrom) && this.from == x.from && this.to == x.to);
 	}
+	
+	protected String getAttribute(String attributeName){
+		// * Get attribute field,
+		if(this.format != TrackFormat.GFF){
+			return null;
+		}
+		String[] line= this.raw.split("\t");
+		if(line.length < 9){
+			return null;
+		}
+		Location location= new Location(Integer.parseInt(line[3]), Integer.parseInt(line[4]));
+		double score= line[5].equals(".") ? Double.NaN : Double.parseDouble(line[5]);
+		int frame= line[7].equals(".") ? -1 : Integer.parseInt(line[7]);
+		Feature gff= new Feature(line[0], line[1], line[2], location, score, frame, line[8]);
+		String x= gff.getAttribute(attributeName);
+		
+		// String attributes= this.raw.split("\t")[8];
+		// StrTokenizer str= new StrTokenizer();
+		// str.setQuoteChar('\'');
+		// List<String> tokens= str.getTokenList();
+		return x; 
+	}
+	
 	/*   S e t t e r s   and   G e t t e r s   */
 	
 	public String getChrom() {

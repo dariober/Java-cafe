@@ -111,14 +111,15 @@ public class TrackSet {
 		trackId= trackId.trim();
 		LinkedHashMap<String, Track> ifTracks = this.getIntervalFeatureTracks().getTrackSet();
 		
-		if(ifTracks.isEmpty()){
-			System.err.println("\nTrackSet has no interval feature tracks!\n");
-			return curGc;
-		}
-
+		//if(ifTracks.isEmpty()){
+		//	System.err.println("\nTrackSet has no interval feature tracks!\n");
+		//	return curGc;
+		//}
 		
 		Track tr;
-		if(!ifTracks.containsKey(trackId)){ 	
+		if(trackId.isEmpty() && ifTracks.size() == 1){
+			tr= ifTracks.values().iterator().next();
+		} else if(!ifTracks.containsKey(trackId)){ 	
 			System.err.println("\nTag '" + trackId + "' not found in searchable track set:");
 			System.err.println(ifTracks.keySet() + "\n");
 			return curGc;
