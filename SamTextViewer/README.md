@@ -1,8 +1,8 @@
-# SamTextViewer 
+# SamTextViewer: A text based, no GUI genome viewer
 
 
-```SamTextViewer``` is a command line genome viewer to visualize sequence alignment and annotation files
-on console screen. It aims to be similar to ```samtools tview``` but with the flexibility of
+```SamTextViewer``` is a command line genome viewer useful to browse and visualize sequence alignment and annotation files
+on **console screen**. It aims to be similar to ```samtools tview``` but with the flexibility of
 GUI genome viewers like IGV.
 
 Features that attempt to combine text based viewers (```tview```) with GUI viewers:
