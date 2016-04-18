@@ -14,17 +14,34 @@ Features that attempt to combine text based viewers (```tview```) with GUI viewe
 
 ![ex3](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/screenshots/ex3.png)
 
-# Installation
+# Requirements and Installation
 
-There is virtually no installation needed as ```SamTextViewer.jar``` is pure Java. 
-Download the zip file `SamTextViewer-x.x.x.zip` from [releases](https://github.com/dariober/Java-cafe/releases), unzip it and execute the jar file with
+### Installation quick start. 
+
+In the commands below replace version numbers with the latest ones from [releases](https://github.com/dariober/Java-cafe/releases):
+
+```
+wget https://github.com/dariober/Java-cafe/releases/download/v0.1.0/SamTextViewer-0.1.0.zip
+unzip SamTextViewer-0.1.0.zip
+cd SamTextViewer-0.1.0
+cp SamTextViewer.jar /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
+cp SamTextViewer /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
+```
+
+### A little more explanation
+
+```SamTextViewer.jar``` requires Java **1.8+** but most functionalities work on Java **1.7**. Block compressing and indexing bedgraph files needs 1.8, everything else should work with Java 1.7.
+
+There is virtually no installation needed as `SamTextViewer` is pure Java. Download the zip file `SamTextViewer-x.x.x.zip` from [releases](https://github.com/dariober/Java-cafe/releases), unzip it and execute the jar file with
 
     java -jar /path/to/SamTextViewer.jar --help
 
 To avoid typing ```java -jar ...``` every time, you can put both the helper 
-file `SamTextViewer` and the jar file ```SamTextViewer.jar``` in a directory in your PATH and execute with:
+script `SamTextViewer` and the jar file ```SamTextViewer.jar``` in the same directory in your `PATH` and execute with:
 
 	SamTextViewer [options]
+
+Note the helper is a bash script.
 
 # Usage 
 
