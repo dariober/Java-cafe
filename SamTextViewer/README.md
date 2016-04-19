@@ -185,7 +185,6 @@ In the commands below replace version numbers with the latest ones from [release
 ```
 wget https://github.com/dariober/Java-cafe/releases/download/v0.1.0/SamTextViewer-0.1.0.zip
 unzip SamTextViewer-0.1.0.zip
-cd SamTextViewer-0.1.0
 cp SamTextViewer.jar /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
 cp SamTextViewer /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
 ```
