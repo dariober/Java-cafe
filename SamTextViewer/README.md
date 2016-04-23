@@ -1,3 +1,22 @@
+<!-- MarkdownTOC -->
+
+- [SamTextViewer: A text based, no GUI genome viewer](#samtextviewer-a-text-based-no-gui-genome-viewer)
+- [Usage](#usage)
+  - [Quick start](#quick-start)
+  - [Moving around the genome](#moving-around-the-genome)
+  - [Display options](#display-options)
+  - [Filtering reads](#filtering-reads)
+  - [Searching features in annotation files](#searching-features-in-annotation-files)
+- [Getting help](#getting-help)
+- [Supported input files](#supported-input-files)
+- [Requirements and Installation](#requirements-and-installation)
+  - [Installation quick start.](#installation-quick-start)
+  - [A little more detail](#a-little-more-detail)
+- [Performance](#performance)
+- [Credits](#credits)
+
+<!-- /MarkdownTOC -->
+
 # SamTextViewer: A text based, no GUI genome viewer
 
 
@@ -9,12 +28,14 @@ Features that attempt to combine text based viewers (```tview```) with GUI viewe
 
 * Command line input and interaction, no graphical interface.
 * Can load multiple files in various formats.
-* Support for BS-Seq alignent files.
+* Support for BS-Seq alignment files.
 * Navigation and search options
 
 ![ex3](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/screenshots/ex3.png)
 
-# Usage quick start
+# Usage
+
+## Quick start
 
 These are some examples, for brevity using the helper `SamTextViewer`
 
@@ -31,7 +52,7 @@ The header line:
 ds051.actb.bam; Each . = 44.68; max depth: 893.62x; 
 ```
 
-gives the name of the file, scale of the read depth track (in this example one dot coresponds to 44.68 reads) and the maximum read depth
+gives the name of the file, scale of the read depth track (in this example one dot corresponds to 44.68 reads) and the maximum read depth
 in the current view (893.62).
 
 The line at the bottom of the tracks
@@ -46,82 +67,13 @@ For visualizing BS-Seq data add the `-bs` flag and provide a reference fasta fil
 
     SamTextViewer -bs fa chr7.fa ds051.actb.bam 
 
-After starting `SamTextViewer` you can navigate the genome with the following interactive commands. Note that some options can be set either at start time or interctively, e.g. `-r`. 
+After starting `SamTextViewer` you can navigate the genome with the following interactive commands. Note that some options can be set either at start time or interactively, e.g. `-r`. 
 
-### Getting help
+## Moving around the genome
 
-```
-SamTextViewer -h
-usage: SamTextViewer [-h] [--region REGION] [--windowSize WINDOWSIZE] [--fasta FASTA] [--f F] [--F F] [--mapq MAPQ] [--maxLines MAXLINES] [--rpm]
-                     [--maxDepthLines MAXDEPTHLINES] [--maxMethylLines MAXMETHYLLINES] [--maxReadsStack MAXREADSSTACK] [--BSseq] [--noFormat] [--nonInteractive] [--version]
-                     [insam [insam ...]]
-
-DESCRIPTION
-Text viewer for genome alignment and annotation files.
-For details see https://github.com/dariober/Java-cafe/tree/master/SamTextViewer
-Example
-java /.../SamTextViewer.jar -r chr18:1000-2000 reads.bam ann.gtf.gz
-
-positional arguments:
-  insam                  Input files. bam/cram must be sorted and indexed. Large bed/gtf files should be indexed with tabix.
-
-optional arguments:
-  -h, --help             show this help message and exit
-  --region REGION, -r REGION
-                         Go to region. Format 1-based as 'chrom:start-end' or 'chrom:start' or 'chrom' (default: )
-  --windowSize WINDOWSIZE, -w WINDOWSIZE
-                         Window size to display. Ignored if --region is in format chrom:start-end (default: 160)
-  --fasta FASTA, -fa FASTA
-                         Optional reference fasta reference file.
-                         If given, must be indexed, e.g. with `samtools faidx ref.fa`
-  --f F, -f F            Required sam flags. Use 4096 for reads on top strand (default: 0)
-  --F F, -F F            Required sam flags. Use 4096 for reads on top strand (default: 0)
-  --mapq MAPQ, -q MAPQ   Minumum mapping quality for a read to be considered (default: 0)
-  --maxLines MAXLINES, -m MAXLINES
-                         Maximum number of lines to print for read tracks. No limit If < 0 (default: 10)
-  --rpm, -rpm            Toggle on/off the normalization of Reads Per Million for bam input. Default off (default: false)
-  --maxDepthLines MAXDEPTHLINES, -d MAXDEPTHLINES
-                         Maximum number of lines to print for coverage tracks. No limit if < 0 (default: 10)
-  --maxMethylLines MAXMETHYLLINES, -ml MAXMETHYLLINES
-                         Maximum number of lines to print for each methylation track. No limit if < 0 (default: 10)
-  --maxReadsStack MAXREADSSTACK, -M MAXREADSSTACK
-                         Maximum number of reads to accumulate before printing. If more than this many reads map to the window
-                         randomy select them (default: 2000)
-  --BSseq, -bs           Bisulphite mode: Mark bases as methylated (M/m) or unmethylated (U/u). Requires -fa (default: false)
-  --noFormat, -nf        Do not format output with non ascii chars (colour, bold, etc.) (default: false)
-  --nonInteractive, -ni  Non interactive mode: Exit after having processed cmd line args. (default: true)
-  --version, -v
-```
-
-Once `SamTextViewer` is started help can be displayed with `h`
+Use the following keys and commands to navigate the genome
 
 ```
-SamTextViewer <input files>
-...
-chr1:1-160; 160 bp; 1.0 bp/char; Filters: -q 0 -f 0 -F 4; Mem: 633 MB; 
-[h] for help: h
-
-Command line options
-
--r
-    Go to region. Format 1-based as 'chrom:start-end' or 'chrom:start' or 'chrom'
--f
-    Required sam flags. Use 4096 for reads on top strand
--F
-    Filtering sam flags. Use 4096 for reads on top strand
--q
-    Minumum mapping quality for a read to be considered
--m
-    Maximum number of lines to print for read tracks. No limit If < 0
--rpm
-    Toggle on/off the normalization of Reads Per Million for bam input. Default off
--d
-    Maximum number of lines to print for coverage tracks. No limit if < 0
--ml
-    Maximum number of lines to print for each methylation track. No limit if < 0
-
-    N a v i g a t i o n   o p t i o n s
-
 f / b 
         Small step forward/backward 1/10 window
 ff / bb
@@ -134,31 +86,88 @@ p / n
         Go to position <pos> on current chromosome
 [+]/[-]<int>[k,m]
         Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m
+```
 
-    S e a r c h   o p t i o n s
+To jump directly to a location use the -r option as `-r chr1:1000` or `chr1:1000-2000`
 
-next <trackId>
-        Move to the next feature in <trackId> on *current* chromosome
-find <regex> [trackId]
-        Find the next record in trackId matching regex. Use single quotes for strings containing spaces.
-        For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'
+## Display options
 
-    D i s p l a y   o p t i o n s
+These options can be used to set the limits of the y axis and their height.
 
+```
 ylim <min> <max> [regex]
         Set limits of y axis for all track IDs captured by regex. Default regex: '.*'
 dataCol <idx> [regex]
-        Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index.
+        Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index
+```
+
+also see:
+
+```
 print
         Turn on/off the printing of bed/gtf features in current interval
 rNameOn / rNameOff
         Show/Hide read names
 history
         Show visited positions
-q
-        Quit
-h
-        Show this help
+```
+
+These options apply to bam files:
+
+```
+-m
+    Maximum number of lines to print for read tracks. No limit If < 0
+-rpm
+    Toggle on/off the normalization of Reads Per Million for bam input. Default off
+-d
+    Maximum number of lines to print for coverage tracks
+-ml
+    Maximum number of lines to print for each methylation track
+```
+
+## Filtering reads
+
+Reads in bam files can be filtered in and out using the -f, -F and -q options as in `samtools`:
+
+```
+-f
+    Required sam flags. Use 4096 for reads on top strand
+-F
+    Filtering sam flags. Use 4096 for reads on top strand
+-q
+    Minumum mapping quality for a read to be considered
+
+```
+
+## Searching features in annotation files
+
+These options apply to bed, gff and gtf files:
+
+```
+next <trackId>
+        Move to the next feature in <trackId> on *current* chromosome
+find <regex> [trackId]
+        Find the next record in trackId matching regex. Use single quotes for strings containing spaces.
+        For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'
+```
+
+Note that `find` searches the entire lines for matches to the given regular expression. So to find the 'ACTB' gene name use `find .*ACTB.*`, using just `find ACTB` as you would with `grep` will return no matches as no line in a bed file can match just that. 
+
+# Getting help
+
+From command line:
+
+```
+SamTextViewer -h
+```
+
+Once `SamTextViewer` is started help can be displayed with `h`
+
+```
+SamTextViewer <input files>
+...
+chr1:1-160; 160 bp; 1.0 bp/char; Filters: -q 0 -f 0 -F 4; Mem: 633 MB; 
+[h] for help: h   <-- h HERE to show help
 ```
 
 # Supported input files
@@ -178,7 +187,7 @@ for files of up to ~1/2 million records. Unindexed bedGraph files are first bgzi
 
 # Requirements and Installation
 
-### Installation quick start. 
+## Installation quick start. 
 
 In the commands below replace version numbers with the latest ones from [releases](https://github.com/dariober/Java-cafe/releases):
 
@@ -189,7 +198,7 @@ cp SamTextViewer.jar /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
 cp SamTextViewer /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
 ```
 
-### A little more detail
+## A little more detail
 
 ```SamTextViewer.jar``` requires Java **1.8+** but most functionalities work on Java **1.7**. Block compressing and indexing bedgraph files needs 1.8, everything else should work with Java 1.7.
 
