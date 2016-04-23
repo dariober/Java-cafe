@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -25,7 +24,6 @@ import jline.console.completer.StringsCompleter;
 import tracks.Track;
 import tracks.TrackCoverage;
 import tracks.TrackFormat;
-import tracks.IntervalFeatureSet;
 import tracks.TrackIntervalFeature;
 import tracks.TrackMethylation;
 import tracks.TrackReads;
@@ -135,58 +133,58 @@ public class Main {
 				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BAM)){
 				
 					/* Coverage and methylation track */
-					if(maxDepthLines > 0 || bs){
-						String trackId= new File(sam).getName() + "#" + (idForTrack+1);
+					String coverageTrackId= new File(sam).getName() + "#" + (idForTrack+1);
+					idForTrack++;
+					if(!trackSet.getTrackSet().containsKey(coverageTrackId)){
+						TrackCoverage trackCoverage= new TrackCoverage(sam, gch.current(), filters, bs);
+						trackCoverage.setFileTag(coverageTrackId);
+						trackSet.addOrReplace(trackCoverage);
+					}
+					TrackCoverage trackCoverage= (TrackCoverage) trackSet.getTrackSet().get(coverageTrackId);
+					trackCoverage.setGc(gch.current());
+					trackCoverage.setFilters(filters);
+					trackCoverage.update();
+					
+					if(maxDepthLines < 0) {
+						maxDepthLines= 0;
+					}
+					trackCoverage.setyMaxLines(maxDepthLines);
+					trackCoverage.setRpm(rpm);
+					trackCoverage.printToScreen();				
+					
+					if(bs){
+						if(maxMethylLines < 0){
+							maxMethylLines= 0;
+						}
+						coverageTrackId= new File(sam).getName() + "#" + (idForTrack+1);
 						idForTrack++;
-						if(!trackSet.getTrackSet().containsKey(trackId)){
-							TrackCoverage trackCoverage= new TrackCoverage(sam, gch.current(), filters, bs);
-							trackCoverage.setFileTag(trackId);
-							trackSet.addOrReplace(trackCoverage);
+						if(!trackSet.getTrackSet().containsKey(coverageTrackId)){
+							TrackMethylation trackMethylation= new TrackMethylation(sam, trackCoverage.getScreenLocusInfoList());
+							trackMethylation.setFileTag(coverageTrackId);
+							trackSet.addOrReplace(trackMethylation);
 						}
-						TrackCoverage trackCoverage= (TrackCoverage) trackSet.getTrackSet().get(trackId);
-						trackCoverage.setGc(gch.current());
-						trackCoverage.setFilters(filters);
-						trackCoverage.update();
-						
-						if(maxDepthLines > 0){
-							trackCoverage.setyMaxLines(maxDepthLines);
-							trackCoverage.setRpm(rpm);
-							trackCoverage.printToScreen();				
-						}
-						if(bs && maxMethylLines > 0){							
-							trackId= new File(sam).getName() + "#" + (idForTrack+1);
-							idForTrack++;
-							if(!trackSet.getTrackSet().containsKey(trackId)){
-								TrackMethylation trackMethylation= new TrackMethylation(sam, trackCoverage.getScreenLocusInfoList());
-								trackMethylation.setFileTag(trackId);
-								trackSet.addOrReplace(trackMethylation);
-							}
-							TrackMethylation trackMethylation= (TrackMethylation) trackSet.getTrackSet().get(trackId);
-							trackMethylation.setScreenLocusInfoList(trackCoverage.getScreenLocusInfoList());
-							trackMethylation.setyMaxLines(maxMethylLines);
-						}
+						TrackMethylation trackMethylation= (TrackMethylation) trackSet.getTrackSet().get(coverageTrackId);
+						trackMethylation.setScreenLocusInfoList(trackCoverage.getScreenLocusInfoList());
+						trackMethylation.setyMaxLines(maxMethylLines);
 					}
 										
 					/* Reads */
-					if(maxLines != 0){
-						
-						String trackId= new File(sam).getName() + "#" + (idForTrack+1);
-						idForTrack++;
-						if(!trackSet.getTrackSet().containsKey(trackId)){
-							TrackReads trackReads= new TrackReads(sam, gch.current(), filters, maxReadsStack);
-							trackReads.setFileTag(trackId);
-							trackSet.addOrReplace(trackReads);
-							trackReads.setFilename(sam);
-							trackReads.setFileTag(trackId);
-						}
-						TrackReads trackReads= (TrackReads) trackSet.getTrackSet().get(trackId);
-						trackReads.setGc(gch.current());
-						trackReads.setFilters(filters);
-						trackReads.update();
-						trackReads.setyMaxLines(maxLines);
-						trackReads.setBs(bs);
-						trackReads.setWithReadName(withReadName);
-					}								
+					String trackId= new File(sam).getName() + "#" + (idForTrack+1);
+					idForTrack++;
+					if(!trackSet.getTrackSet().containsKey(trackId)){
+						TrackReads trackReads= new TrackReads(sam, gch.current(), filters, maxReadsStack);
+						trackReads.setFileTag(trackId);
+						trackSet.addOrReplace(trackReads);
+						trackReads.setFilename(sam);
+						trackReads.setFileTag(trackId);
+					}
+					TrackReads trackReads= (TrackReads) trackSet.getTrackSet().get(trackId);
+					trackReads.setGc(gch.current());
+					trackReads.setFilters(filters);
+					trackReads.update();
+					trackReads.setyMaxLines(maxLines);
+					trackReads.setBs(bs);
+					trackReads.setWithReadName(withReadName);
 				} // End processing bam file
 				
 				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BED) 

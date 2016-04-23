@@ -480,12 +480,15 @@ public class Utils {
 	
 	public static List<Double> seqFromToLenOut(double from, double to, int lengthOut){
 		
-		if(lengthOut < 1){
-			String msg= "Invalid lenght of sequence: Cannot be < 1. Got " + lengthOut;
+		if(lengthOut < 0){
+			String msg= "Sequence from " + from + " to " + to + ". Invalid lenght of sequence: Cannot be < 1. Got " + lengthOut;
 			throw new RuntimeException(msg);
-		}
-		List<Double> mapping= new ArrayList<Double>();
+		} 
+		if(lengthOut == 0){ // Consistent with R seq(): return 0-length vector
+			return new ArrayList<Double>();
+		}		
 		
+		List<Double> mapping= new ArrayList<Double>();
 		double span= to - from + 1;
 		double step= ((double)span - 1)/(lengthOut - 1);
 		mapping.add((double)from);

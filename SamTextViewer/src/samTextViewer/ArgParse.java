@@ -81,13 +81,13 @@ public class ArgParse {
 			.help(docstrings.get("-rpm"));
 
 		
-		docstrings.put("-d", "Maximum number of lines to print for coverage tracks. No limit if < 0");
+		docstrings.put("-d", "Maximum number of lines to print for coverage tracks");
 		parser.addArgument("--maxDepthLines", "-d")
 			.type(Integer.class)
 			.setDefault(10)
 			.help(docstrings.get("-d"));
 
-		docstrings.put("-ml", "Maximum number of lines to print for each methylation track. No limit if < 0");
+		docstrings.put("-ml", "Maximum number of lines to print for each methylation track");
 		parser.addArgument("--maxMethylLines", "-ml")
 			.type(Integer.class)
 			.setDefault(10)
