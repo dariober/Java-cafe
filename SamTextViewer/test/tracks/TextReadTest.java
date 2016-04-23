@@ -84,6 +84,9 @@ public class TextReadTest {
 		assertEquals(textRead.getTextStart(), 3);
 		assertEquals(textRead.getTextEnd(), 21);
 		assertEquals("AACCGGTTAACCGGTTAAC".length(), textRead.getTextEnd() - textRead.getTextStart() + 1);
+		
+		System.out.println(textRead.getPrintableTextRead(false, true, false));
+		
 		assertEquals("a,ccgg,t,acc,gtt,ac", textRead.getPrintableTextRead(false, true, false));
 		assertEquals("a,ccgg,t,uccmgtt,ac", textRead.getPrintableTextRead(true, true, false));
 

@@ -4,19 +4,15 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
-import tracks.Track;
 import tracks.TrackFormat;
 
 import org.junit.Test;
 
-import exceptions.InvalidCommandLineException;
 import exceptions.InvalidGenomicCoordsException;
 
 public class UtilsTest {
@@ -82,7 +78,8 @@ public class UtilsTest {
 		
 		// Length of 1 returns "from" like R seq(0, 10, length.out= 1) -> 0
 		assertEquals(1, Utils.seqFromToLenOut(0, 10, 1).size());
-		assertEquals(0, Utils.seqFromToLenOut(0, 10, 1).get(0), 0.00001);		
+		assertEquals(0, Utils.seqFromToLenOut(0, 10, 1).get(0), 0.00001);
+		assertEquals(0, Utils.seqFromToLenOut(0, 10, 0).size()); // Zero-length sequence
 	}
 	
 	@Test
