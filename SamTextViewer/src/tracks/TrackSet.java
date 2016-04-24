@@ -1,11 +1,8 @@
 package tracks;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -45,13 +42,13 @@ public class TrackSet {
 			System.err.println("Error in ylim subcommand. Expected at least 3 args got: " + cmdInput);
 			throw new InvalidCommandLineException();
 		}
-		String ylimRegex= ".*"; // Default: Capture everything
+		String trackNameRegex= ".*"; // Default: Capture everything
 		if(tokens.size() == 4){
-			ylimRegex= tokens.get(3);
+			trackNameRegex= tokens.get(3);
 		}
 		
 		try{
-			Pattern.compile(ylimRegex); // Validate regex
+			Pattern.compile(trackNameRegex); // Validate regex
 		} catch(PatternSyntaxException e){
 	    	System.err.println("Invalid regex in: " + cmdInput);
 	    	System.err.println(e.getDescription());
@@ -72,13 +69,52 @@ public class TrackSet {
 			ymax= Double.NaN;							
 		}
 		for(Track tr : this.trackSet.values()){
-			if(tr.getFileTag().matches(ylimRegex)){
+			if(tr.getFileTag().matches(trackNameRegex)){
 				tr.setYmin(ymin);
 				tr.setYmax(ymax);
 			}
 		}
 	}
 
+	/** Set visibility for IntervalFeature tracks. 
+	*/
+	public void setVisibilityForTrackIntervalFeature(String cmdInput) throws InvalidCommandLineException{
+
+		StrTokenizer str= new StrTokenizer(cmdInput);
+		str.setQuoteChar('\'');
+		List<String> tokens= str.getTokenList();
+
+		// Defaults:
+		String showRegex= ".*";  // Show all
+		String hideRegex= "^$";    // Hide nothing
+		String trackNameRegex= ".*"; // Apply to all tracks
+		if(tokens.size() > 1){
+			showRegex= tokens.get(1);
+		}
+		if(tokens.size() > 2){
+			hideRegex= tokens.get(2);
+		}
+		if(tokens.size() > 3){
+			trackNameRegex= tokens.get(3);
+		}
+		try{
+			// Validate regex
+			Pattern.compile(hideRegex); 
+			Pattern.compile(showRegex);
+			Pattern.compile(trackNameRegex); 
+		} catch(PatternSyntaxException e){
+	    	throw new PatternSyntaxException(e.getDescription(), cmdInput, -1);
+		}
+
+		System.err.println("Show: '" + showRegex + "'; hide: '" + hideRegex + "'; for tracks captured by '" + trackNameRegex + "':");
+		for(Track tr : this.trackSet.values()){
+			if(tr.getFileTag().matches(trackNameRegex)){
+				System.err.println(tr.getFileTag());
+				tr.setShowRegex(showRegex);
+				tr.setHideRegex(hideRegex);
+			}
+		}
+	}
 	
 	public GenomicCoords goToNextFeatureOnFile(String trackId, GenomicCoords curGc) throws InvalidGenomicCoordsException, IOException{
 
@@ -128,7 +164,7 @@ public class TrackSet {
 		}
 		
 		TrackIntervalFeature tif= (TrackIntervalFeature) tr;
-		return tif.getIntervalFeatureSet().findNextString(curGc, regex);
+		return tif.getIntervalFeatureSet().findNextRegex(curGc, regex);
 	}
 
 	private TrackSet getIntervalFeatureTracks(){

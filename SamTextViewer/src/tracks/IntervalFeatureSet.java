@@ -36,8 +36,11 @@ public class IntervalFeatureSet {
 	private TabixReader tabixReader= null;
 	private boolean isTabix= false;
 	private TrackFormat type;
+	private String hideRegex= ""; // Regex to capture feature to hide/show
+	private String showRegex= ".*";
 	
-	/* Constructor */
+	/* C o n s t r u c t o r */
+	
 	/** Construct from bed or gtf file.
 	 * @throws IOException */
 	public IntervalFeatureSet(File infile) throws IOException{
@@ -53,8 +56,20 @@ public class IntervalFeatureSet {
 			this.isTabix= false;
 		}
 	}
-	/* Methods */
+	
+	/* M e t h o d s */
 
+	/** Return true if a feature in the IntervalFeatureSet is visible, i.e. it
+	 * passes the regex filters. Note that regex filters are applied to the raw string.
+	 * */
+	private boolean featureIsVisible(IntervalFeature x){
+		if(x.getRaw().matches(this.showRegex) && !x.getRaw().matches(this.hideRegex)){
+			return true;
+		} else {
+			return false;
+		} 
+	}
+	
 	public List<IntervalFeature> getFeaturesInInterval(String chrom, int from, int to) throws IOException{
 		if(from > to || from < 1 || to < 1){
 			throw new RuntimeException("Invalid range: " + from + "-" + to);
@@ -70,9 +85,8 @@ public class IntervalFeatureSet {
 				IntervalFeature intervalFeature= new IntervalFeature(q, this.type);
 				xFeatures.add(intervalFeature);
 			}
-			return xFeatures;
 		} else {
-			List<IntervalFeature> thisChrom= this.getIntervalMap().get(chrom);		
+			List<IntervalFeature> thisChrom= this.intervalMap.get(chrom);		
 			if(thisChrom == null){
 				return xFeatures;
 			}
@@ -95,20 +109,27 @@ public class IntervalFeatureSet {
 					break;
 				}
 			}
-			return xFeatures;
 		}
+		// Remove hidden features
+		List<IntervalFeature> xFeaturesFiltered= new ArrayList<IntervalFeature>();
+		for(IntervalFeature x : xFeatures){
+			if(this.featureIsVisible(x)){
+				xFeaturesFiltered.add(x);
+			}
+		}
+		return xFeaturesFiltered;
 	}
 	
 	/** add introns to the set of features in input. 
 	 * */
-	private List<IntervalFeature> addIntrons(List<IntervalFeature> features){
-		// * Collect features belonging to the same transcript_id
-		LinkedHashMap<String, IntervalFeature> transcripts= new LinkedHashMap<String, IntervalFeature>(); 
-		
-		// * Walk along features and mark as introns all the gaps
-		return features;
-
-	}
+	//private List<IntervalFeature> addIntrons(List<IntervalFeature> features){
+	//	// * Collect features belonging to the same transcript_id
+	//	LinkedHashMap<String, IntervalFeature> transcripts= new LinkedHashMap<String, IntervalFeature>(); 
+	//	
+	//	// * Walk along features and mark as introns all the gaps
+	//	return features;
+	//
+	//}
 	
 	public static boolean isValidBedLine(String line){
 		String[] bdg= line.split("\t");
@@ -143,6 +164,11 @@ public class IntervalFeatureSet {
 		String line;
 		boolean isFirst= true;
 		while ((line = br.readLine()) != null) {
+			if(line.trim().equals("##FASTA")){
+				// Stop reading once you hit the optional sequence section in gff3 format
+				// See http://gmod.org/wiki/GFF#GFF3_Sequence_Section
+				break;
+			}
 			if(line.trim().startsWith("#")){
 				continue;
 			}
@@ -176,12 +202,7 @@ public class IntervalFeatureSet {
 			Collections.sort(interalList);
 		}
 	}
-	
-	/* Setters and Getters */
-	public Map<String, List<IntervalFeature>> getIntervalMap() {
-		return intervalMap;
-	}
-
+		
 	/** Get the next feature on chrom after "from" position or null if no 
 	 * feature found 
 	 * @throws IOException */
@@ -193,7 +214,7 @@ public class IntervalFeatureSet {
 				return null;
 			}
 			for(IntervalFeature x : featuresList){
-				if(x.getFrom() > from){
+				if(x.getFrom() > from && this.featureIsVisible(x)){
 					return x;
 				}
 			}
@@ -206,7 +227,7 @@ public class IntervalFeatureSet {
 					return null;
 				} 
 				IntervalFeature x= new IntervalFeature(line, this.type);
-				if(x.getFrom() > from){
+				if(x.getFrom() > from && this.featureIsVisible(x)){
 					return x;
 				}
 			}
@@ -235,7 +256,7 @@ public class IntervalFeatureSet {
 	
 	/** Search chrom to find the *next* feature matching the given string. The search will 
 	 * wrap around the chrom if not found in the chunk following "from". */
-	protected IntervalFeature findNextStringOnChrom(String regex, String chrom, int from) throws IOException{
+	protected IntervalFeature findNextRegexOnChrom(String regex, String chrom, int from) throws IOException{
 		
 		if(this.intervalMap != null){
 	
@@ -249,7 +270,7 @@ public class IntervalFeatureSet {
 				List<IntervalFeature> featuresList = this.intervalMap.get(curChrom);
 				for(IntervalFeature x : featuresList){
 					//if(x.getFrom() > startingPoint && x.getRaw().toLowerCase().contains(regex.toLowerCase())){
-					if(x.getFrom() > startingPoint && x.getRaw().matches(regex)){
+					if(x.getFrom() > startingPoint && x.getRaw().matches(regex) && this.featureIsVisible(x)){ 
 						return x;
 					}
 				}
@@ -270,7 +291,7 @@ public class IntervalFeatureSet {
 					if(line == null) break;
 					if(line.matches(regex)){
 						IntervalFeature x= new IntervalFeature(line, this.type);
-						if(x.getFrom() > startingPoint){
+						if(x.getFrom() > startingPoint && this.featureIsVisible(x)){
 							return x;
 						}
 					}
@@ -281,9 +302,9 @@ public class IntervalFeatureSet {
 		return null;
 	}
 	
-	public GenomicCoords findNextString(GenomicCoords currentGc, String string) throws IOException, InvalidGenomicCoordsException{
+	public GenomicCoords findNextRegex(GenomicCoords currentGc, String regex) throws IOException, InvalidGenomicCoordsException{
 
-		IntervalFeature nextFeature= findNextStringOnChrom(string, currentGc.getChrom(), currentGc.getTo());
+		IntervalFeature nextFeature= findNextRegexOnChrom(regex, currentGc.getChrom(), currentGc.getTo());
 		if(nextFeature == null){
 			return currentGc;
 		}
@@ -311,4 +332,26 @@ public class IntervalFeatureSet {
 				currentGc.getFastaFile());
 		return nextGc;
 	}
+	
+	/* S e t t e r s  and  G e t t e r s */
+    
+	protected Map<String, List<IntervalFeature>> getIntervalMap() {
+		return intervalMap;
+	}
+
+	protected void setHideRegex(String hideRegex) {
+		this.hideRegex = hideRegex;
+	}
+	protected String getHideRegex() {
+		return hideRegex;
+	}
+
+	protected void setShowRegex(String showRegex) {
+		this.showRegex = showRegex;
+	}
+	protected String getShowRegex() {
+		return showRegex;
+	}
+
+	
 }

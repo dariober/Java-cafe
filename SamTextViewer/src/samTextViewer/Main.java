@@ -73,6 +73,16 @@ public class Main {
 			bs= false;
 		}
 		
+		if(windowSize < 0){
+			try{
+				int terminalWidth = jline.TerminalFactory.get().getWidth();
+				windowSize= (int) (terminalWidth * 0.95); 
+			} catch(Exception e){
+				e.printStackTrace();
+				windowSize= 160;
+			}
+		}
+		
 		/* Test input files exist */
 		List<String> dropMe= new ArrayList<String>();
 		for(String x : insam){
@@ -221,6 +231,8 @@ public class Main {
 
 			/* Print tracks */
 			/* ************ */
+			console.clearScreen();
+			console.flush();
 			for(Track tr : trackSet.getTrackSet().values()){
 				tr.setNoFormat(noFormat);
 				if(tr.isNoFormat()){
@@ -273,7 +285,10 @@ public class Main {
 							+ "find <regex> [trackId]\n        Find the next record in trackId matching regex. Use single quotes for strings containing spaces.\n"
 							+                         "        For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'\n"
 							+ "\n    D i s p l a y   o p t i o n s\n\n"
-							+ "ylim <min> <max> [regex]\n        Set limits of y axis for all track IDs captured by regex. Default regex: '.*'\n"
+							+ "visibile [show regex] [hide regex] [track regex]\n        In annotation tracks, only include rows captured by [show regex] and exclude [hide regex].\n"
+							+                                                   "        Apply to annotation tracks captured by [track regex]. With no optional arguments reset to default: \"'.*' '^$' '.*'\"\n"
+							+                                                   "        Use '.*' to match everything and '^$' to hide nothing. Ex \"visible .*exon.* .*CDS.* .*gtf#.*\"\n"       
+							+ "ylim <min> <max> [track regex]\n        Set limits of y axis for all track IDs captured by regex. Default regex: '.*'\n"
 							+ "dataCol <idx> [regex]\n        Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index.\n"
 							+ "print\n        Turn on/off the printing of bed/gtf features in current interval\n"
 							+ "rNameOn / rNameOff\n        Show/Hide read names\n"
@@ -373,7 +388,18 @@ public class Main {
 						}
 						GenomicCoords gc= (GenomicCoords)gch.current().clone();
 						gch.add(trackSet.findNextStringOnTrack(tokens.get(1), tokens.get(2), gc));
-					} else { // Command line options from Argparse
+						
+					} else if(cmdInput.startsWith("visible ") || cmdInput.equals("visible")){
+						try{
+							trackSet.setVisibilityForTrackIntervalFeature(cmdInput);
+						} catch (PatternSyntaxException e){
+							System.err.println("Invalid pattern in " + cmdInput);
+							cmdInput= "";
+							continue;							
+						}
+
+					// Command line options from Argparse
+					} else { 
 						List<String> clArgs= Arrays.asList(cmdInput.split("\\s+"));
 						if(clArgs.indexOf("-r") != -1){
 							int i= clArgs.indexOf("-r") + 1;
@@ -418,7 +444,7 @@ public class Main {
 					cmdInput= "";
 				}
 			} // END while loop to get cmLine args
-				System.out.println(StringUtils.repeat("~", gch.current().getUserWindowSize()));
+			System.out.println(StringUtils.repeat("~", gch.current().getUserWindowSize()));
 		} // End while loop keep going until quit or if no interactive input set
 	}
 }

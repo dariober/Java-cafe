@@ -43,8 +43,8 @@ public class ArgParse {
 
 		parser.addArgument("--windowSize", "-w")
 			.type(Integer.class)
-			.setDefault(160)
-			.help("Window size to display. Ignored if --region is in format chrom:start-end");
+			.setDefault(-1)
+			.help("Window size to display. Default to terminal width x0.95");
 		
 		parser.addArgument("--fasta", "-fa")
 			.type(String.class)

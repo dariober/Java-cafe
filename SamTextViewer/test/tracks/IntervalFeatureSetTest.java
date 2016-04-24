@@ -4,21 +4,13 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.instrument.Instrumentation;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang3.text.StrTokenizer;
 import org.junit.Test;
-
-import com.google.common.collect.ContiguousSet;
-import com.google.common.collect.DiscreteDomain;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Range;
 
 import exceptions.InvalidGenomicCoordsException;
 import samTextViewer.GenomicCoords;
@@ -27,6 +19,48 @@ import tracks.IntervalFeatureSet;
 
 public class IntervalFeatureSetTest {
 
+	@Test
+	public void canShowAndHide_getFeaturesInInterval() throws IOException{
+		// For Map:
+		IntervalFeatureSet set= new IntervalFeatureSet(new File("test_data/hg19_genes_head.gtf"));
+		set.setShowRegex(".*start_codon.*");
+		set.setHideRegex(".*OR4F.*");
+		List<IntervalFeature> subset = set.getFeaturesInInterval("chr1", 1, 500000000);
+		assertEquals(40, subset.size());
+
+		// Same for tabix
+		set= new IntervalFeatureSet(new File("test_data/hg19_genes_head.gtf.gz"));
+		set.setShowRegex(".*start_codon.*");
+		set.setHideRegex(".*OR4F.*");
+		subset = set.getFeaturesInInterval("chr1", 1, 500000000);
+		assertEquals(40, subset.size());
+				
+		// TESTME: coordsOfNextFeature
+		// findNextString
+	}
+
+	@Test
+	public void canShowAndHide_coordsOfNextFeature() throws IOException, InvalidGenomicCoordsException{
+		GenomicCoords gc= new GenomicCoords("chr1:1", null, 100, null);
+
+		IntervalFeatureSet set= new IntervalFeatureSet(new File("test_data/hg19_genes_head.gtf"));
+		set.setShowRegex(".*exon.*");
+		set.setHideRegex(".*DDX11L1.*");
+		GenomicCoords curr = set.coordsOfNextFeature(gc);
+		assertEquals(14362, (int) curr.getFrom());
+	}
+
+	@Test
+	public void canShowAndHide_findNextRegex() throws IOException, InvalidGenomicCoordsException{
+		GenomicCoords gc= new GenomicCoords("chr1:1", null, 100, null);
+
+		IntervalFeatureSet set= new IntervalFeatureSet(new File("test_data/hg19_genes_head.gtf"));
+		set.setShowRegex(".*exon.*");
+		set.setHideRegex(".*DDX11L1.*");
+		GenomicCoords curr = set.findNextRegex(gc, ".*gene_id.*");
+		assertEquals(14362, (int) curr.getFrom());
+	}
+	
 	@Test
 	public void canReadFileWithHeader() throws IOException{
 		IntervalFeatureSet set= new IntervalFeatureSet(new File("test_data/refSeq.bed"));
@@ -52,39 +86,37 @@ public class IntervalFeatureSetTest {
 
 	
 	@Test
-	public void canFindNextFeatureOnChrom() throws IOException, InvalidGenomicCoordsException{
+	public void canFindNextFeatureOnChromGivenRegex() throws IOException, InvalidGenomicCoordsException{
 
-		//String tokens= "find  bla /my/  File";
 		StrTokenizer str= new StrTokenizer("one\n   two '   three four'");
 		str.setQuoteChar('\'');
 		List<String> xs = str.getTokenList();		
-		// new StringTokenizer("one two \"three four\"", ' ', '"').getTokenArray();
 		
 		System.out.println(xs);
 		
 		IntervalFeatureSet set= new IntervalFeatureSet(new File("test_data/refSeq.hg19.short.sort-2.bed"));
 		
-		IntervalFeature x = set.findNextStringOnChrom("nm_", "chr1", 20000000);
+		IntervalFeature x = set.findNextRegexOnChrom(".*NM_.*", "chr1", 20000000);
 		assertTrue(x.getRaw().contains("NM_013943_utr3_5_0_chr1_25167429_f"));
-		x = set.findNextStringOnChrom("nm_", "chr1", 80000000);
+		x = set.findNextRegexOnChrom(".*NM_.*", "chr1", 80000000);
 		assertTrue(x.getRaw().contains("NM_001080397_utr3_8_0_chr1_8404074_f"));
 		
-		x = set.findNextStringOnChrom("NotPresent", "chr1", 1);
+		x = set.findNextRegexOnChrom("NotPresent", "chr1", 1);
 		assertEquals(null, x);
 		
 		// Tabix
 		set= new IntervalFeatureSet(new File("test_data/refSeq.hg19.short.sort.bed.gz"));
-		x = set.findNextStringOnChrom("nm_", "chr1", 20000000);
+		x = set.findNextRegexOnChrom(".*NM_.*", "chr1", 20000000);
 		assertTrue(x.getRaw().contains("NM_013943_utr3_5_0_chr1_25167429_f"));
-		x = set.findNextStringOnChrom("nm_", "chr1", 80000000);
+		x = set.findNextRegexOnChrom(".*NM_.*", "chr1", 80000000);
 		assertTrue(x.getRaw().contains("NM_001080397_utr3_8_0_chr1_8404074_f"));
 	
 		set= new IntervalFeatureSet(new File("test_data/refSeq.hg19.short.sort-2.bed"));
-		x = set.findNextStringOnChrom("nm_", "chr1", 20000000);
+		x = set.findNextRegexOnChrom(".*NM_.*", "chr1", 20000000);
 		int i= 0;
 		while(i < 20){
 			// System.out.println(x);
-			x = set.findNextStringOnChrom("nm_", x.getChrom(), x.getFrom());
+			x = set.findNextRegexOnChrom(".*NM_.*", x.getChrom(), x.getFrom());
 			assertTrue(x.getRaw().contains("NM_"));
 			i++;
 		}

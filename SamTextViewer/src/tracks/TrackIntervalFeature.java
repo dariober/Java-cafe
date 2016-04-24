@@ -14,8 +14,8 @@ public class TrackIntervalFeature extends Track {
 	private List<IntervalFeature> intervalFeatureList= new ArrayList<IntervalFeature>();  
 	private IntervalFeatureSet intervalFeatureSet;
 	
-	/* Constructor */
-	
+	/* C o n s t r u c t o r */
+
 	public TrackIntervalFeature(String filename, GenomicCoords gc) throws IOException{
 		this.setGc(gc);
 		this.setFilename(filename);
@@ -32,10 +32,28 @@ public class TrackIntervalFeature extends Track {
 			ift.mapToScreen(this.getGc().getMapping());
 		}
 	}
+		
+	@Override
+	public void setHideRegex(String hideRegex) {
+		this.intervalFeatureSet.setHideRegex(hideRegex);
+	}
+	@Override
+	public String getHideRegex() {
+		return this.intervalFeatureSet.getHideRegex();
+	}
+
+	@Override
+	public void setShowRegex(String showRegex) {
+		this.intervalFeatureSet.setShowRegex(showRegex);
+	}
+	@Override
+	public String getShowRegex() {
+		return this.intervalFeatureSet.getShowRegex();
+	}
 	
 	@Override
 	public String printToScreen() {
-		
+				
 		String fwd= ">";
 		String rev= "<";
 		String na= "|";

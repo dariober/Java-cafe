@@ -2,7 +2,6 @@ package tracks;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import htsjdk.samtools.filter.SamRecordFilter;
 import samTextViewer.GenomicCoords;
 
@@ -20,7 +19,7 @@ public class Track {
 	private double ymax= Double.NaN;
 	private List<SamRecordFilter> filters= new ArrayList<SamRecordFilter>();
 	private boolean bs; 
-	
+
 //	public Track(){}
 	
 	/* Printers */
@@ -97,5 +96,11 @@ public class Track {
 	public boolean isBs() { return bs; }
 	public void setBs(boolean bs) { this.bs = bs; }
 
+	public void setHideRegex(String hideRegex) { }
+	public String getHideRegex() { return ""; }
+	
+	public void setShowRegex(String showRegex) { }
+	public String getShowRegex() { return ""; }
+	
 }
 
