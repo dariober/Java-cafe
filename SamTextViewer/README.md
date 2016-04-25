@@ -7,12 +7,15 @@
   - [Display options](#display-options)
   - [Filtering reads](#filtering-reads)
   - [Searching features in annotation files](#searching-features-in-annotation-files)
+  - [Note on regular expression](#note-on-regular-expression)
+  - [Formatting of reads and features](#formatting-of-reads-and-features)
 - [Getting help](#getting-help)
 - [Supported input files](#supported-input-files)
 - [Requirements and Installation](#requirements-and-installation)
   - [Installation quick start.](#installation-quick-start)
   - [A little more detail](#a-little-more-detail)
 - [Performance](#performance)
+- [TODO, FIXME etc](#todo-fixme-etc)
 - [Credits](#credits)
 
 <!-- /MarkdownTOC -->
@@ -95,6 +98,10 @@ To jump directly to a location use the -r option as `-r chr1:1000` or `chr1:1000
 These options can be used to set the limits of the y axis and their height.
 
 ```
+visibile [show regex] [hide regex] [track regex]
+        In annotation tracks, only include rows captured by [show regex] and exclude [hide regex].
+        Apply to annotation tracks captured by [track regex]. With no optional arguments reset to default: "'.*' '^$' '.*'"
+        Use '.*' to match everything and '^$' to hide nothing. Ex "visible .*exon.* .*CDS.* .*gtf#.*"
 ylim <min> <max> [regex]
         Set limits of y axis for all track IDs captured by regex. Default regex: '.*'
 dataCol <idx> [regex]
@@ -153,6 +160,24 @@ find <regex> [trackId]
 
 Note that `find` searches the entire lines for matches to the given regular expression. So to find the 'ACTB' gene name use `find .*ACTB.*`, using just `find ACTB` as you would with `grep` will return no matches as no line in a bed file can match just that. 
 
+## Note on regular expression
+
+The options that take regular expressions assume some familiarity with regexes. In particular remember that lines are scanned as a single string for matches. These are some pointers:
+
+* Almost always you want to surround your pattern with `.*`, e.g. to find the ACTB gene use `.*ACTB.*`, but note that this will hit LACTB as well unless you are more specific (e.g. `.*"ACTB".*`) or you use fancier regex. E.g. `.*[^A-Z0-9]ACTB[^A-Z0-9].*` will match ACTB but not LACTB or ACTB9. 
+
+* Just using 'ACTB' as pattern, as you would do with `grep`, will return nothing as no line should contain only 'ACTB'.
+
+* Use the `(?i)` modifier to match in case insensitve mode, e.g. '(?i).*actb.*'
+
+* For reference, regexes are parsed by Java `String.match()` method.
+
+## Formatting of reads and features
+
+When aligned reads are show at single base resolution, read bases follow the same convention as samtools: 
+Upper case letters and `.` for read align to forward strand, lower case and `,` otherwise; second-in-pair reads are underlined;
+grey-shaded reads have mapping quality of <=5. In bisulfite mode the characters M, U, m, u are used for methylated and unmethylated bases on forward and reverse strands.
+
 # Getting help
 
 From command line:
@@ -172,51 +197,70 @@ chr1:1-160; 160 bp; 1.0 bp/char; Filters: -q 0 -f 0 -F 4; Mem: 633 MB;
 
 # Supported input files
 
-For input format specs see also [UCSC format](https://genome.ucsc.edu/FAQ/FAQformat.html) and for choice of format see [IGV recommendations](https://www.broadinstitute.org/igv/RecommendedFileFormats)
-
-* **bam** and **cram** files should be sorted and indexed, e.g. with `samtools sort` and `samtools index`. Sam files are not supported.
-* **bedGraph** recognized by extension `.bedGraph`, can be uncompressed or gzipped.
+* **bam** and **cram** files should be sorted and indexed, e.g. with `samtools sort` and `samtools index`. Sam files are not supported
+* **bedGraph** recognized by extension `.bedGraph` or `.bedgraph`
 * **bigWig** recognized by extension `.bw` or `.bigWig`
-* **bed**, **gtf**, **gff** recognized by respective extensions, can be gzipped.
-* **tdf** This is very useful for quickly displaying very large intervals (tens of megabases).
+* **bed**, **gtf**, **gff** recognized by respective extensions
+* **tdf** This is very useful for quickly displaying very large intervals like tens of megabases or entire chromosomes see [tdf](https://www.broadinstitute.org/igv/TDF)
 * Other extensions: Will be treated as bed files, provided the format is actually bed!
 
-Large bed, gtf, bedGraph files should be sorted, bgzipped and indexed with **`tabix`** for fast access and memory efficiency
-(see [tabix manual](http://www.htslib.org/doc/tabix.html)). If not indexed, bed and gtf will be loaded in memory, which is anyway fine
-for files of up to ~1/2 million records. Unindexed bedGraph files are first bgzipped and indexed to temporary files.
+All plain text formats (bed, bedgraph, etc) can be read as gzipped and there is no need to decompress them.
+
+Bedgraph files should be sorted by position a `sort -k1,1 -k2,2n` will do. Unindexed bedGraph files are first bgzipped and indexed to temporary files which are deleted on exit. This can take time 
+for large files so consider creating the index once for all with [tabix](http://www.htslib.org/doc/tabix.html), *e.g.*
+
+```
+bgzip my.bedgraph &&
+tabix -p bed my.bedgraph.gz
+```
+
+Bed & gtf file are not required to be sorted or index but in this case they are loaded in memory. To save memory and time for large files you can again index them as above. Loaded in memory is typically fast for files of up to ~1/2 million records.
+
+For input format specs see also [UCSC format](https://genome.ucsc.edu/FAQ/FAQformat.html) and for guidelines on the choice of format see [IGV recommendations](https://www.broadinstitute.org/igv/RecommendedFileFormats).
+
 
 # Requirements and Installation
 
 ## Installation quick start. 
 
-In the commands below replace version numbers with the latest ones from [releases](https://github.com/dariober/Java-cafe/releases):
+In the commands below replace version number with the latest from [releases](https://github.com/dariober/Java-cafe/releases):
 
 ```
 wget https://github.com/dariober/Java-cafe/releases/download/v0.1.0/SamTextViewer-0.1.0.zip
 unzip SamTextViewer-0.1.0.zip
-cp SamTextViewer.jar /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
-cp SamTextViewer /usr/local/bin/ # Or ~/bin/ instead of /usr/local/bin/
+cp SamTextViewer.jar /usr/local/bin/ # Or ~/bin/
+cp SamTextViewer /usr/local/bin/     # Or ~/bin/ 
 ```
 
 ## A little more detail
 
-```SamTextViewer.jar``` requires Java **1.8+** but most functionalities work on Java **1.7**. Block compressing and indexing bedgraph files needs 1.8, everything else should work with Java 1.7.
-
-There is virtually no installation needed as `SamTextViewer` is pure Java. Download the zip file `SamTextViewer-x.x.x.zip` from [releases](https://github.com/dariober/Java-cafe/releases), unzip it and execute the jar file with
+`SamTextViewer.jar` requires **Java 1.7+** and this is (should be) the only requirement. There is virtually no installation needed as `SamTextViewer` is pure Java and should work on most (all?) platforms. Download the zip file `SamTextViewer-x.x.x.zip` from [releases](https://github.com/dariober/Java-cafe/releases), unzip it and execute the jar file with
 
     java -jar /path/to/SamTextViewer.jar --help
 
-To avoid typing ```java -jar ...``` every time, you can put both the helper 
+To avoid typing `java -jar ...` every time, you can put both the helper 
 script `SamTextViewer` and the jar file ```SamTextViewer.jar``` in the same directory in your `PATH` and execute with:
 
 	SamTextViewer [options]
 
-Note the helper is a bash script.
+Note the helper is a bash script. To set the amount of memory available to java use the `-Xmx` option as e.g. `java -Xmx1500m -jar ...`.
+
+If for some reason the text formatting misbehaves, disable it with the `-nf` option. 
 
 # Performance
 
-Alignment files are typically accessed very quickly but `SamTextViewer` becomes slow when the displayed window size grows
-above a few hundreds of kilobases. Consider setting `-d 0` and `-m 0` to temporarily turn off the visualization of bam files.
+Alignment files are typically accessed very quickly but `SamTextViewer` becomes slow when the window size grows
+above a few hundreds of kilobases. Annotation files (bed, gff, gtf) are loaded in memory unless they are indexed
+with `tabix`. 
+
+# TODO, FIXME etc
+
+* When setting `-d 0 -m 0` parsing bam files should be made faster  
+* If a sam header is available:
+  ** Add option to print it
+  ** Add track showing the current position on the chromosome
+* Header ` ylim: NaN, NaN; max: 884.69; .= 44.0;` can be confusing. E.g. if ylim is not set it show NaN.
+
 
 # Credits
 
