@@ -70,10 +70,10 @@ For visualizing BS-Seq data add the `-bs` flag and provide a reference fasta fil
 
     SamTextViewer -bs fa chr7.fa ds051.actb.bam 
 
+<img src="screenshots/exBSmode.png" width="450">
 
-![exBSmode-2](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/screenshots/exBSmode-2.png)
+<img src="screenshots/exBSmode-2.png" width="450">
 
-![exBSmode](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/screenshots/exBSmode.png)
 
 After starting `SamTextViewer` you can navigate the genome with the following interactive commands. Note that some options can be set either at start time or interactively, e.g. `-r`. 
 
