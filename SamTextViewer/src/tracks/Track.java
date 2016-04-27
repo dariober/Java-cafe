@@ -8,7 +8,7 @@ import samTextViewer.GenomicCoords;
 public class Track {
 
 	private String title= "";
-	private int yMaxLines= 10;
+	protected int yMaxLines= 10;
 	private String filename= "N/A"; // File name as given in input
 	private String fileTag= "N/A"; // File name for title
 	private List<Double> screenScores= new ArrayList<Double>();

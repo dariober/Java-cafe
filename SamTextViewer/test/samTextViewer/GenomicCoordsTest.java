@@ -23,8 +23,34 @@ public class GenomicCoordsTest {
 	public static String fastaFile= "test_data/chr7.fa";
 	
 	@Test
+	public void canPrintChromMap() throws InvalidGenomicCoordsException, IOException{
+			
+		GenomicCoords gc= new GenomicCoords("chr7", 1, 1, samSeqDict, 10, null);
+		
+		String chromMap= gc.getChromIdeogram();		
+		assertEquals("*--------|", chromMap);
+		
+		
+		gc= new GenomicCoords("chr7", 1, 1000000000, samSeqDict, 10, null);
+		chromMap= gc.getChromIdeogram();		
+		assertEquals("**********", chromMap);
+		
+		
+		gc= new GenomicCoords("chr7", 200000000, 200000000, samSeqDict, 10, null);
+		chromMap= gc.getChromIdeogram();		
+		assertEquals("|--------*", chromMap);
+		
+		
+		gc= new GenomicCoords("chr7", 20000000, 55000000, samSeqDict, 16, null);
+		chromMap= gc.getChromIdeogram();		
+		assertEquals("|-****---------|", chromMap);
+		
+	}
+	
+	@Test
 	public void printRefSeq() throws InvalidGenomicCoordsException, IOException{
 		GenomicCoords gc= new GenomicCoords("chr7", 5540580, 5540590, null, 100, "test_data/chr7.fa");
+		//GenomicCoords gc= new GenomicCoords("chr7", 5540580, 5540590, samSeqDict, 100, null);
 		System.out.println("START");
 		System.out.println(gc.printableRefSeq(true));
 		System.out.println("DONE");

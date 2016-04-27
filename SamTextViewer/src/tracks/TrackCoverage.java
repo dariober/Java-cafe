@@ -35,6 +35,8 @@ public class TrackCoverage extends Track {
 	 * score in the input. Typically this "reads per dot". */
 	private double scorePerDot;   
 	private double maxDepth;
+	/** Max window size allowed before resettig yMaxLines to 0 */
+	private int MAX_WINDOW_SIZE= 500000;
 	
 	/* C o n s t r u c t o r */
 	
@@ -61,7 +63,9 @@ public class TrackCoverage extends Track {
 	/* M e t h o d s */
 
 	public void update() throws IOException{
-
+		
+		// this.setyMaxLines(this.yMaxLines);
+		
 		SamReaderFactory srf=SamReaderFactory.make();
 		srf.validationStringency(ValidationStringency.SILENT);
 		SamReader samReader= srf.open(new File(this.getFilename()));
@@ -77,6 +81,7 @@ public class TrackCoverage extends Track {
 			screenLocusInfoList.add(new ScreenLocusInfo());	
 		}
 		
+		// if(this.getyMaxLines() != 0){
 		while(iter.hasNext()){			
 			samTextViewer.SamLocusIterator.LocusInfo locusInfo= iter.next();
 			int screenPos= Utils.getIndexOfclosestValue(locusInfo.getPosition(), this.getGc().getMapping());
@@ -86,9 +91,9 @@ public class TrackCoverage extends Track {
 			}
 			screenLocusInfoList.get(screenPos).increment(locusInfo, refBase, this.isBs());
 		}
+		// }
 		samLocIter.close();
-		samReader.close();
-		
+		samReader.close();		
 	}
 	
 	/**
@@ -100,7 +105,7 @@ public class TrackCoverage extends Track {
 	 */
 	@Override
 	public String printToScreen(){
-		
+				
 		if(this.getyMaxLines() == 0){return "";}
 		
 		List<Double> yValues= new ArrayList<Double>();
@@ -120,7 +125,6 @@ public class TrackCoverage extends Track {
 		ArrayList<String> lineStrings= new ArrayList<String>();
 		for(int i= (textProfile.getProfile().size() - 1); i >= 0; i--){
 			List<String> xl= textProfile.getProfile().get(i);
-			Set<String> unique= new HashSet<String>(xl);
 			lineStrings.add(StringUtils.join(xl, ""));
 		}
 		return Joiner.on("\n").join(lineStrings);
@@ -165,5 +169,16 @@ public class TrackCoverage extends Track {
 		return this.getFileTag() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
 				Math.rint((this.getMaxDepth())*100)/100 + "; .= " + Math.rint((this.scorePerDot)) + ";\n";
 	}
-	
+
+	//@Override
+	/**Number of text lines assigned to y-axis. Overridden to allow resetting
+	 * to zero if window size becomes too large
+	 * */
+	//public void setyMaxLines(int yMaxLines){
+	//	if(this.getGc().getGenomicWindowSize() > this.MAX_WINDOW_SIZE){
+	//		this.yMaxLines = 0;
+	//	} else {
+	//		this.yMaxLines = yMaxLines;
+	//	}
+	//}
 }

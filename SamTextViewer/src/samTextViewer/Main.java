@@ -76,7 +76,7 @@ public class Main {
 		if(windowSize < 0){
 			try{
 				int terminalWidth = jline.TerminalFactory.get().getWidth();
-				windowSize= (int) (terminalWidth * 0.95); 
+				windowSize= (int) (terminalWidth * 0.99); 
 			} catch(Exception e){
 				e.printStackTrace();
 				windowSize= 160;
@@ -111,7 +111,7 @@ public class Main {
 				}
 			}
 		}
-		if(region.isEmpty() && fasta != null){ // Try to initilize from fasta
+		if((region == null || region.isEmpty()) && fasta != null){ // Try to initilize from fasta
 			IndexedFastaSequenceFile faSeqFile = new IndexedFastaSequenceFile(new File(fasta));
 			region= faSeqFile.nextSequence().getName();
 			faSeqFile.close();
@@ -143,6 +143,9 @@ public class Main {
 				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BAM)){
 				
 					/* Coverage and methylation track */
+					if(maxDepthLines < 0) {
+						maxDepthLines= 0;
+					}
 					String coverageTrackId= new File(sam).getName() + "#" + (idForTrack+1);
 					idForTrack++;
 					if(!trackSet.getTrackSet().containsKey(coverageTrackId)){
@@ -153,13 +156,9 @@ public class Main {
 					TrackCoverage trackCoverage= (TrackCoverage) trackSet.getTrackSet().get(coverageTrackId);
 					trackCoverage.setGc(gch.current());
 					trackCoverage.setFilters(filters);
-					trackCoverage.update();
-					
-					if(maxDepthLines < 0) {
-						maxDepthLines= 0;
-					}
 					trackCoverage.setyMaxLines(maxDepthLines);
 					trackCoverage.setRpm(rpm);
+					trackCoverage.update();
 					trackCoverage.printToScreen();				
 					
 					if(bs){
@@ -191,10 +190,10 @@ public class Main {
 					TrackReads trackReads= (TrackReads) trackSet.getTrackSet().get(trackId);
 					trackReads.setGc(gch.current());
 					trackReads.setFilters(filters);
-					trackReads.update();
 					trackReads.setyMaxLines(maxLines);
 					trackReads.setBs(bs);
 					trackReads.setWithReadName(withReadName);
+					trackReads.update();
 				} // End processing bam file
 				
 				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BED) 
@@ -233,6 +232,10 @@ public class Main {
 			/* ************ */
 			console.clearScreen();
 			console.flush();
+			
+			if(gch.current().getChromIdeogram() != null){
+				System.out.println(gch.current().getChromIdeogram());
+			}			
 			for(Track tr : trackSet.getTrackSet().values()){
 				tr.setNoFormat(noFormat);
 				if(tr.isNoFormat()){
@@ -271,31 +274,31 @@ public class Main {
 				cmdInput = console.readLine().trim();
 				
 				if(cmdInput.equals("h")){
-					System.out.println("\nCommand line options\n");
-					System.out.println(ArgParse.getDocstrings());
 					String inline= "    N a v i g a t i o n   o p t i o n s\n\n"
-							+ "f / b \n        Small step forward/backward 1/10 window\n"
-							+ "ff / bb\n        Large step forward/backward 1/2 window\n"
-							+ "zi / zo\n        Zoom in / zoom out\n"
-							+ "p / n\n        Go to previous/next visited position\n"
-							+ ":<pos>\n        Go to position <pos> on current chromosome\n" 
-							+ "[+]/[-]<int>[k,m]\n        Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m\n"
+							+ "f / b \n      Small step forward/backward 1/10 window\n"
+							+ "ff / bb\n      Large step forward/backward 1/2 window\n"
+							+ "zi / zo\n      Zoom in / zoom out\n"
+							+ "p / n\n      Go to previous/next visited position\n"
+							+ ":<pos>\n      Go to position <pos> on current chromosome\n" 
+							+ "[+]/[-]<int>[k,m]\n      Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m\n"
 							+ "\n    S e a r c h   o p t i o n s\n\n"
-							+ "next <trackId>\n        Move to the next feature in <trackId> on *current* chromosome\n"
-							+ "find <regex> [trackId]\n        Find the next record in trackId matching regex. Use single quotes for strings containing spaces.\n"
-							+                         "        For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'\n"
+							+ "next <trackId>\n      Move to the next feature in <trackId> on *current* chromosome\n"
+							+ "find <regex> [trackId]\n      Find the next record in trackId matching regex. Use single quotes for strings containing spaces.\n"
+							+                         "      For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'\n"
 							+ "\n    D i s p l a y   o p t i o n s\n\n"
-							+ "visibile [show regex] [hide regex] [track regex]\n        In annotation tracks, only include rows captured by [show regex] and exclude [hide regex].\n"
-							+                                                   "        Apply to annotation tracks captured by [track regex]. With no optional arguments reset to default: \"'.*' '^$' '.*'\"\n"
-							+                                                   "        Use '.*' to match everything and '^$' to hide nothing. Ex \"visible .*exon.* .*CDS.* .*gtf#.*\"\n"       
-							+ "ylim <min> <max> [track regex]\n        Set limits of y axis for all track IDs captured by regex. Default regex: '.*'\n"
-							+ "dataCol <idx> [regex]\n        Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index.\n"
-							+ "print\n        Turn on/off the printing of bed/gtf features in current interval\n"
-							+ "rNameOn / rNameOff\n        Show/Hide read names\n"
-							+ "history\n        Show visited positions\n"
-							+ "q\n        Quit\n"
-							+ "h\n        Show this help";
+							+ "visibile [show regex] [hide regex] [track regex]\n      In annotation tracks, only include rows captured by [show regex] and exclude [hide regex].\n"
+							+                                                   "      Apply to annotation tracks captured by [track regex]. With no optional arguments reset to default: \"'.*' '^$' '.*'\"\n"
+							+                                                   "      Use '.*' to match everything and '^$' to hide nothing. Ex \"visible .*exon.* .*CDS.* .*gtf#.*\"\n"       
+							+ "ylim <min> <max> [track regex]\n      Set limits of y axis for all track IDs captured by regex. Default regex: '.*'\n"
+							+ "dataCol <idx> [regex]\n      Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index.\n"
+							+ "print\n      Turn on/off the printing of bed/gtf features in current interval\n"
+							+ "rNameOn / rNameOff\n      Show/Hide read names\n"
+							+ "history\n      Show visited positions\n";
 					System.out.println(inline);
+					System.out.println("\n    M i s c e l l a n e a\n");
+					System.out.println(ArgParse.getDocstrings());
+					System.out.println("q      Quit");
+					System.out.println("See also http://github.com/dariober/Java-cafe/tree/master/SamTextViewer");
 					cmdInput= "";
 					continue;
 				} 
@@ -315,7 +318,8 @@ public class Main {
 						|| cmdInput.matches("^\\+{0,1}\\d+.*")){ // No cmd line args either f/b ops or ints
 						cmdInput= cmdInput.matches("^\\+.*") ? cmdInput.substring(1) : cmdInput;
 						String newRegion= Utils.parseConsoleInput(cmdInput, gch.current()).trim();
-						gch.add(new GenomicCoords(newRegion, samSeqDict, windowSize, fasta));
+						GenomicCoords newGc= new GenomicCoords(newRegion, samSeqDict, windowSize, fasta);
+						gch.add(newGc);
 						
 					} else if(cmdInput.startsWith("dataCol ")){
 						

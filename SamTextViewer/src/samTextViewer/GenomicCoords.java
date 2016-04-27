@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -19,6 +20,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import tracks.TrackFormat;
 //import readWriteBAMUtils.ReadWriteBAMUtils;
 
 /**
@@ -333,6 +335,32 @@ public class GenomicCoords implements Cloneable {
 		return bpPerScreenColumn;
 	}
 	
+	/**
+	 * Produce a string representation of the current position on the chromosome  
+	 * */
+	public String getChromIdeogram() {
+		if(this.samSeqDict == null || this.samSeqDict.size() == 0){
+			return null;
+		}
+		// Set up map
+		StringBuilder map= new StringBuilder();
+		for(int i= 0; i < this.windowSize; i++){
+			map.append('-');
+		}
+		map.setCharAt(0, '|');
+		map.setCharAt(this.windowSize-1, '|');
+		
+		// Generate a sequence of length equal the window size. Then fid the index of the 
+		// points closest to from and to.
+		List<Double> positionMap = Utils.seqFromToLenOut(1, this.samSeqDict.getSequence(this.chrom).getSequenceLength(), this.windowSize);
+		int fromTextPos= Utils.getIndexOfclosestValue(this.from, positionMap);
+		int toTextPos= Utils.getIndexOfclosestValue(this.to, positionMap);
+
+		for(int i= fromTextPos; i <= toTextPos; i++){
+			map.setCharAt(i, '*');
+		}
+		return map.toString();
+	}
 	
 	
 	/** For debugging only */
@@ -407,9 +435,12 @@ public class GenomicCoords implements Cloneable {
 	public static SAMSequenceDictionary getSamSeqDictFromAnyFile(List<String> insam, String fasta) throws IOException{
 
 		SAMSequenceDictionary seqDict= new SAMSequenceDictionary(); // null;
+		
+		// TODO: Initialize from genome file
+		
 		if(insam != null){
-			for(String x : insam){ // Get sequence dict from bam, if any
-				if(Utils.getFileTypeFromName(x).equals("bam")){
+			for(String x : insam){ // Get sequence dict from bam, if any				
+				if(Utils.getFileTypeFromName(x).equals(TrackFormat.BAM)){
 					SamReaderFactory srf=SamReaderFactory.make();
 					srf.validationStringency(ValidationStringency.SILENT);
 					SamReader samReader= srf.open(new File(x));

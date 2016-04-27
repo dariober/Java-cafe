@@ -98,6 +98,27 @@ public class TrackCoverageTest {
 		System.out.println(tc.getScorePerDot());
 	}
 
+	@Test
+	public void canPrintCoverageTrackWithZeroHeight() throws IOException, InvalidGenomicCoordsException {
+		int yMaxLines= 0;
+		int windowSize= 10;
+
+		GenomicCoords gc= new GenomicCoords("chr7", 5566770, 5566870, samSeqDict, windowSize, fastaFile);
+		TrackCoverage tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, false);
+		tc.setyMaxLines(yMaxLines);
+		assertEquals("", tc.printToScreen());
+	}
+	
+	// @Test
+	public void canResetToZeroLargeWindow() throws IOException, InvalidGenomicCoordsException {
+		int yMaxLines= 3;
+		int windowSize= 10;
+
+		GenomicCoords gc= new GenomicCoords("chr7", 1, 5566870, samSeqDict, windowSize, fastaFile);
+		TrackCoverage tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, false);
+		tc.setyMaxLines(yMaxLines);
+	}
+	
 	@Test 
 	public void testWithZeroReadsRegion() throws InvalidGenomicCoordsException, IOException{
 		
