@@ -260,6 +260,8 @@ with `tabix`.
 
 # TODO, FIXME etc
 
+* Parsing intercative args: Do not silently ignore invalid input!
+* Reading bed/annotation files: Skip blank lines? 
 * Genomic coords are not checked against sam header!
 * When setting `-d 0 -m 0` parsing bam files should be made faster  
 * If a sam header is available:
