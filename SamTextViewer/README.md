@@ -1,27 +1,27 @@
 <!-- MarkdownTOC -->
 
-- [SamTextViewer: A text based, no GUI genome viewer](#samtextviewer-a-text-based-no-gui-genome-viewer)
+- [SamTextViewer: A text based no GUI genome viewer](#samtextviewer-a-text-based-no-gui-genome-viewer)
 - [Usage](#usage)
   - [Quick start](#quick-start)
   - [Moving around the genome](#moving-around-the-genome)
   - [Display options](#display-options)
   - [Filtering reads](#filtering-reads)
   - [Searching features in annotation files](#searching-features-in-annotation-files)
-  - [Note on regular expression](#note-on-regular-expression)
+  - [Genome option](#genome-option)
   - [Formatting of reads and features](#formatting-of-reads-and-features)
-- [Getting help](#getting-help)
 - [Supported input files](#supported-input-files)
+- [Tips gotchas and miscellanea](#tips-gotchas-and-miscellanea)
+  - [Regular expressions](#regular-expressions)
 - [Requirements and Installation](#requirements-and-installation)
   - [Installation quick start.](#installation-quick-start)
   - [A little more detail](#a-little-more-detail)
-- [Performance](#performance)
 - [TODO, FIXME etc](#todo-fixme-etc)
 - [Credits](#credits)
 
 <!-- /MarkdownTOC -->
 
-# SamTextViewer: A text based, no GUI genome viewer
-
+SamTextViewer: A text based no GUI genome viewer
+================================================
 
 ```SamTextViewer``` is a command line genome viewer useful to browse and visualize sequence alignment and annotation files
 on **console screen**. It aims to be similar to ```samtools tview``` but with the flexibility of
@@ -36,7 +36,8 @@ Features that attempt to combine text based viewers (```tview```) with GUI viewe
 
 ![ex3](https://github.com/dariober/Java-cafe/blob/master/SamTextViewer/screenshots/ex3.png)
 
-# Usage
+Usage
+=====
 
 ## Quick start
 
@@ -83,17 +84,17 @@ Use the following keys and commands to navigate the genome
 
 ```
 f / b 
-        Small step forward/backward 1/10 window
+      Small step forward/backward 1/10 window
 ff / bb
-        Large step forward/backward 1/2 window
+      Large step forward/backward 1/2 window
 zi / zo
-        Zoom in / zoom out
+      Zoom in / zoom out
 p / n
-        Go to previous/next visited position
-:<pos>
-        Go to position <pos> on current chromosome
-[+]/[-]<int>[k,m]
-        Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m
+      Go to previous/next visited position
+<from>-[to]
+      Go to position <from> or to region <from>-[to] on current chromosome. E.g. '10' or '10-1000'
++/-<int>[k,m]
+      Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m or +10k
 ```
 
 To jump directly to a location use the -r option as `-r chr1:1000` or `chr1:1000-2000`
@@ -165,17 +166,21 @@ find <regex> [trackId]
 
 Note that `find` searches the entire lines for matches to the given regular expression. So to find the 'ACTB' gene name use `find .*ACTB.*`, using just `find ACTB` as you would with `grep` will return no matches as no line in a bed file can match just that. 
 
-## Note on regular expression
+## Genome option
 
-The options that take regular expressions assume some familiarity with regexes. In particular remember that lines are scanned as a single string for matches. These are some pointers:
+An optional genome file can be passed to option `-g/--genome` to give a set of allowed sequences and their sizes so that browsing is constrained to the real genomic space. 
+The genome file is also used to represent the position of the current window on the chromosome, which is handy to navigate around.
 
-* Almost always you want to surround your pattern with `.*`, e.g. to find the ACTB gene use `.*ACTB.*`, but note that this will hit LACTB as well unless you are more specific (e.g. `.*"ACTB".*`) or you use fancier regex. E.g. `.*[^A-Z0-9]ACTB[^A-Z0-9].*` will match ACTB but not LACTB or ACTB9. 
+There are three options to pass a genome file:
 
-* Just using 'ACTB' as pattern, as you would do with `grep`, will return nothing as no line should contain only 'ACTB'.
+* A tag identifying a built-in genome, e.g. hg19. See [genomes](http://github.com/dariober/Java-cafe/SamTextViewer/resources/genomes) for available genomes
 
-* Use the `(?i)` modifier to match in case insensitve mode, e.g. '(?i).*actb.*'
+* A local file, tab separated with columns chromosome name and length. See [genomes](http://github.com/dariober/Java-cafe/SamTextViewer/resources/genomes) for examples.
 
-* For reference, regexes are parsed by Java `String.match()` method.
+* A bam file with suitable header.
+
+Note that if the input list of files contains a bam file, the `--genome` option is effectively ignored as the genome dictionary is extracted from the bam header.
+
 
 ## Formatting of reads and features
 
@@ -183,24 +188,9 @@ When aligned reads are show at single base resolution, read bases follow the sam
 Upper case letters and `.` for read align to forward strand, lower case and `,` otherwise; second-in-pair reads are underlined;
 grey-shaded reads have mapping quality of <=5. In bisulfite mode the characters M, U, m, u are used for methylated and unmethylated bases on forward and reverse strands.
 
-# Getting help
 
-From command line:
-
-```
-SamTextViewer -h
-```
-
-Once `SamTextViewer` is started help can be displayed with `h`
-
-```
-SamTextViewer <input files>
-...
-chr1:1-160; 160 bp; 1.0 bp/char; Filters: -q 0 -f 0 -F 4; Mem: 633 MB; 
-[h] for help: h   <-- h HERE to show help
-```
-
-# Supported input files
+Supported input files
+=====================
 
 * **bam** and **cram** files should be sorted and indexed, e.g. with `samtools sort` and `samtools index`. Sam files are not supported
 * **bedGraph** recognized by extension `.bedGraph` or `.bedgraph`
@@ -223,8 +213,37 @@ Bed & gtf file are not required to be sorted or index but in this case they are 
 
 For input format specs see also [UCSC format](https://genome.ucsc.edu/FAQ/FAQformat.html) and for guidelines on the choice of format see [IGV recommendations](https://www.broadinstitute.org/igv/RecommendedFileFormats).
 
+Tips gotchas and miscellanea
+============================
 
-# Requirements and Installation
+* Use UP and DOWN arrow keys to display the previous/next executed command just like on Unix terminal. 
+ Commands can be auto-completed with TAB, like Unix terminal but more rudimentary really. 
+
+* On interactive prompt, no input, *i.e.* just pressing ENTER, repeats the previous command (useful for quick navigation).
+
+* The `next` command does exactly that, it moves to the next feature. If there are no more features after the current position it
+doesn't rewind to the beginning (use `:1` for that) and it doesn't move to another chromosome (use `-r chrom`). 
+
+* **Performance** Alignment files are typically accessed very quickly but `SamTextViewer` becomes slow when the window size grows
+above a few hundreds of kilobases. Annotation files (bed, gff, gtf) are loaded in memory unless they are indexed with `tabix`. 
+
+
+#### Regular expressions
+
+*A programmer has a problem and thinks* "I know, I'll use regular expressions". *Now he has two problems.*
+
+The options that take regular expressions assume some familiarity with regexes and they can be tricky at first. In particular remember that lines are scanned as a single string for matches. These are some pointers:
+
+* Almost always you want to surround your pattern with `.*`, e.g. to find the ACTB gene use `.*ACTB.*`, but note that this will hit LACTB as well unless you are more specific (e.g. `.*"ACTB".*`) or you use fancier regex. E.g. `.*[^A-Z0-9]ACTB[^A-Z0-9].*` will match ACTB but not LACTB or ACTB9. 
+
+* Just using 'ACTB' as pattern, as you would do with `grep`, will return nothing as no line should contain _only_ 'ACTB'.
+
+* Use the `(?i)` modifier to match in case insensitve mode, e.g. '(?i).*actb.*'
+
+* For reference, regexes are parsed by Java `String.match()` method.
+
+Requirements and Installation
+=============================
 
 ## Installation quick start. 
 
@@ -252,21 +271,12 @@ Note the helper is a bash script. To set the amount of memory available to java 
 
 If for some reason the text formatting misbehaves, disable it with the `-nf` option. 
 
-# Performance
-
-Alignment files are typically accessed very quickly but `SamTextViewer` becomes slow when the window size grows
-above a few hundreds of kilobases. Annotation files (bed, gff, gtf) are loaded in memory unless they are indexed
-with `tabix`. 
-
 # TODO, FIXME etc
 
-* Parsing intercative args: Do not silently ignore invalid input!
-* Reading bed/annotation files: Skip blank lines? 
 * Genomic coords are not checked against sam header!
 * When setting `-d 0 -m 0` parsing bam files should be made faster  
 * If a sam header is available:
   ** Add option to print it
-  ** Add track showing the current position on the chromosome
 * Header ` ylim: NaN, NaN; max: 884.69; .= 44.0;` can be confusing. E.g. if ylim is not set it show NaN.
 
 

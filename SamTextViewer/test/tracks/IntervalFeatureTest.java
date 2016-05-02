@@ -36,6 +36,19 @@ public class IntervalFeatureTest {
 		System.out.println(f.toString());
 	}
 
+	//@Test
+	//public void canFormatGtfFeatureString(){
+	//	List<Double> rulerMap= new ArrayList<Double>();
+	//	for(int i= 1; i <= 5; i++){
+	//		rulerMap.add((double)(i));
+	//	}
+	//	IntervalFeature f= new IntervalFeature("chr1\tuknw\texon\t1\t5\t.\t+\t.\tNA", TrackFormat.GFF);
+	//	f.mapToScreen(rulerMap);
+	//	System.out.println(f.getScreenFrom() + "-" + f.getScreenTo());
+	//	boolean noFormat= true;
+	//	assertEquals("EEEEE", f.p(noFormat));
+	//}
+	
 	@Test
 	public void canGetAttribute(){
 		String gtfLine= "chr1\tunknown\texon\t11874\t12227\t.\t+\t.\tgene_id \"DDX11L1\"; transcript_id \"NR_046018_1\"; gene_name \"DDX11L1\"; tss_id \"TSS14523\";";	
@@ -117,4 +130,5 @@ public class IntervalFeatureTest {
 		//System.out.println(f);
 		//System.out.println(rulerMap);
 	}
+	
 }

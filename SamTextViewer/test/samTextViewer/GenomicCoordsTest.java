@@ -75,9 +75,17 @@ public class GenomicCoordsTest {
 		gc.zoomOut();
 		System.out.println(gc);
 		System.out.println(gc2);
-		// assertTrue(gc2.equalCoords(gc));
-		
-		
+		// assertTrue(gc2.equalCoords(gc));		
+	}
+	
+	@Test
+	public void canInitializeSamSeqDictFromGenomeFile() throws IOException{
+	
+		List<String> insam= new ArrayList<String>();
+		// From resource:
+		assertEquals(93, GenomicCoords.getSamSeqDictFromAnyFile(insam, null, "hg19").size());
+		// From bam header:
+		assertEquals(25, GenomicCoords.getSamSeqDictFromAnyFile(insam, null, "test_data/ds051.short.bam").size());
 	}
 	
 	@Test
@@ -85,13 +93,13 @@ public class GenomicCoordsTest {
 		List<String> insam= new ArrayList<String>();
 		insam.add("test_data/ds051.short.bam.bai"); // This will not produce anything
 		insam.add("test_data/ds051.short.bam");
-		SAMSequenceDictionary ssd = GenomicCoords.getSamSeqDictFromAnyFile(insam, null);
+		SAMSequenceDictionary ssd = GenomicCoords.getSamSeqDictFromAnyFile(insam, null, null);
 		assertEquals(25, ssd.size());
 		
 		// From indexed fasta
 		insam= new ArrayList<String>();
 		insam.add("test_data/ds051.short.bam.bai"); // This will not produce anything
-		ssd = GenomicCoords.getSamSeqDictFromAnyFile(null, fastaFile);
+		ssd = GenomicCoords.getSamSeqDictFromAnyFile(null, fastaFile, null);
 		assertEquals(1, ssd.size());		
 	}
 	

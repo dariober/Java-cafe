@@ -50,11 +50,12 @@ public class Main {
 		
 		List<String> insam= opts.getList("insam");
 		String region= opts.getString("region");
+		String genome= opts.getString("genome");
 		int windowSize= opts.getInt("windowSize");
 		String fasta= opts.getString("fasta");
 		boolean rpm= opts.getBoolean("rpm");
 		int maxLines= opts.getInt("maxLines");
-		int maxDepthLines= opts.getInt("maxDepthLines");
+		// int trackHeight= opts.getInt("maxDepthLines");
 		int maxMethylLines= opts.getInt("maxMethylLines");
 		final int maxReadsStack= opts.getInt("maxReadsStack");
 		int f_incl= opts.getInt("f");
@@ -64,6 +65,7 @@ public class Main {
 		boolean noFormat= opts.getBoolean("noFormat");
 		boolean nonInteractive= opts.getBoolean("nonInteractive");
 		boolean withReadName= false; // FIXME: Add to parser?
+		
 		if((F_excl & 4) != 4){ // Always filter out read unmapped
 			F_excl += 4;
 		}
@@ -76,7 +78,7 @@ public class Main {
 		if(windowSize < 0){
 			try{
 				int terminalWidth = jline.TerminalFactory.get().getWidth();
-				windowSize= (int) (terminalWidth * 0.99); 
+				windowSize= (int) (terminalWidth * 0.999); 
 			} catch(Exception e){
 				e.printStackTrace();
 				windowSize= 160;
@@ -100,37 +102,48 @@ public class Main {
 			System.exit(1);
 		}
 		
-		/* Prepare genomics coordinates to fetch */
-		if(region.isEmpty()){
-			for(String x : insam){
-				try {
-					region= Utils.initRegionFromFile(x);
-					break;
-				} catch(Exception e){
-					System.err.println("Could not initilize from file " + x);
-				}
-			}
-		}
 		if((region == null || region.isEmpty()) && fasta != null){ // Try to initilize from fasta
 			IndexedFastaSequenceFile faSeqFile = new IndexedFastaSequenceFile(new File(fasta));
 			region= faSeqFile.nextSequence().getName();
 			faSeqFile.close();
 		}
 		GenomicCoordsHistory gch= new GenomicCoordsHistory();
-		SAMSequenceDictionary samSeqDict = GenomicCoords.getSamSeqDictFromAnyFile(insam, fasta);
+		SAMSequenceDictionary samSeqDict = GenomicCoords.getSamSeqDictFromAnyFile(insam, fasta, genome);
+
+		/* Prepare genomic coordinates to fetch. This should probably be a function in itself */
+		if(region.isEmpty()){
+			if(!samSeqDict.isEmpty()){
+				region= samSeqDict.getSequence(0).getSequenceName();
+			} else {
+				for(String x : insam){
+					try {
+						region= Utils.initRegionFromFile(x);
+						break;
+					} catch(Exception e){
+						System.err.println("Could not initilize from file " + x);
+					}
+				}
+			}
+		}
 		gch.add(new GenomicCoords(region, samSeqDict, windowSize, fasta));
-	
-		/* Files to parse as features (bed, gtf, etc) */
-		// LinkedHashMap<String, IntervalFeatureSet> intervalFiles= Utils.createIntervalFeatureSets(insam); 
 		
+		/* Initailize console */
 		ConsoleReader console = new ConsoleReader();
 		for(String x : insam){
 			console.addCompleter(new StringsCompleter(new File(x).getName()));
 		}
+		for(String x : "next find visible trackHeight ylim dataCol print rNameOn rNameOff history".split(" ")){
+			// Add options. Really you should use a dict for this.
+			if(x.length() > 2){
+				console.addCompleter(new StringsCompleter(x));
+			}
+		}
+		
+		String currentCmd = null; // Used to store the current interactive command and repeat it if no new cmd is given. 
 		
 		boolean printIntervalFeatures= false;
 		TrackSet trackSet= new TrackSet();
-		while(true){ // Each loop processes the user's input.
+		while(true){ // Each loop processes the user's input files.
 
 			/* Prepare filters */
 			List<SamRecordFilter> filters= FlagToFilter.flagToFilterList(f_incl, F_excl);
@@ -143,9 +156,9 @@ public class Main {
 				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BAM)){
 				
 					/* Coverage and methylation track */
-					if(maxDepthLines < 0) {
-						maxDepthLines= 0;
-					}
+					//if(trackHeight < 0) {
+					//	trackHeight= 0;
+					//}
 					String coverageTrackId= new File(sam).getName() + "#" + (idForTrack+1);
 					idForTrack++;
 					if(!trackSet.getTrackSet().containsKey(coverageTrackId)){
@@ -156,7 +169,7 @@ public class Main {
 					TrackCoverage trackCoverage= (TrackCoverage) trackSet.getTrackSet().get(coverageTrackId);
 					trackCoverage.setGc(gch.current());
 					trackCoverage.setFilters(filters);
-					trackCoverage.setyMaxLines(maxDepthLines);
+					// trackCoverage.setyMaxLines(trackHeight);
 					trackCoverage.setRpm(rpm);
 					trackCoverage.update();
 					trackCoverage.printToScreen();				
@@ -196,6 +209,7 @@ public class Main {
 					trackReads.update();
 				} // End processing bam file
 				
+				/* Annotatation */
 				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BED) 
 						|| Utils.getFileTypeFromName(sam).equals(TrackFormat.GFF)){
 					String trackId= new File(sam).getName() + "#" + (idForTrack+1);
@@ -207,6 +221,7 @@ public class Main {
 					}
 					TrackIntervalFeature tif= (TrackIntervalFeature) trackSet.getTrackSet().get(trackId);
 					tif.setGc(gch.current());
+					//tif.setyMaxLines(trackHeight);
 					tif.update();
 				} 
 				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BIGWIG) 
@@ -223,7 +238,7 @@ public class Main {
 					TrackWiggles tw= (TrackWiggles) trackSet.getTrackSet().get(trackId);
 					tw.setGc(gch.current());
 					tw.update();
-					tw.setyMaxLines(maxDepthLines);
+					//tw.setyMaxLines(trackHeight);
 					tw.printToScreen();
 				}
 			} // End loop through files 
@@ -243,16 +258,20 @@ public class Main {
 				} else {
 					System.out.print("\033[0;34m" + tr.getTitle() + "\033[0m");
 				}
-				System.out.println(tr.printToScreen());
-				if(printIntervalFeatures){ 
-					System.out.print(tr.printFeatures());
+				if(tr.getyMaxLines() > 0){
+					System.out.println(tr.printToScreen());
+				}
+				if(printIntervalFeatures){
+					String printable= tr.printFeatures(windowSize);
+					System.out.print(printable);
 				}
 			}
 
 			/* Footers and interactive prompt */
 			/* ****************************** */
 			System.out.print(gch.current().printableRefSeq(noFormat));
-			System.out.println(gch.current().printableRuler(10));
+			String ruler= gch.current().printableRuler(10);
+			System.out.println(ruler.substring(0, ruler.length() <= windowSize ? ruler.length() : windowSize));
 
 			String footer= gch.current().toString() + "; " + Math.rint(gch.current().getBpPerScreenColumn() * 10d)/10d + " bp/char; " 
 					+ "Filters: -q " + mapq  + " -f " + f_incl + " -F " + F_excl
@@ -268,27 +287,33 @@ public class Main {
 				break;
 			}
 			
-			String cmdInput= "";
-			while(cmdInput.isEmpty()){ // Keep asking for input until you get something valid
+			String cmdInput= null;
+			while(cmdInput == null){ // Keep asking for input until you get something valid
 				console.setPrompt("[h] for help: ");
 				cmdInput = console.readLine().trim();
 				
-				if(cmdInput.equals("h")){
+				if (cmdInput.trim().isEmpty()){
+					// Repeat previous command
+					cmdInput= currentCmd;
+				}
+				
+				if(cmdInput == null || cmdInput.equals("h")){
 					String inline= "    N a v i g a t i o n   o p t i o n s\n\n"
 							+ "f / b \n      Small step forward/backward 1/10 window\n"
 							+ "ff / bb\n      Large step forward/backward 1/2 window\n"
 							+ "zi / zo\n      Zoom in / zoom out\n"
 							+ "p / n\n      Go to previous/next visited position\n"
-							+ ":<pos>\n      Go to position <pos> on current chromosome\n" 
-							+ "[+]/[-]<int>[k,m]\n      Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m\n"
+							+ "<from>-[to]\n      Go to position <from> or to region <from>-[to] on current chromosome. E.g. 10 or 10-1000\n" 
+							+ "+/-<int>[k,m]\n      Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m or +10k\n"
 							+ "\n    S e a r c h   o p t i o n s\n\n"
 							+ "next <trackId>\n      Move to the next feature in <trackId> on *current* chromosome\n"
 							+ "find <regex> [trackId]\n      Find the next record in trackId matching regex. Use single quotes for strings containing spaces.\n"
 							+                         "      For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'\n"
 							+ "\n    D i s p l a y   o p t i o n s\n\n"
-							+ "visibile [show regex] [hide regex] [track regex]\n      In annotation tracks, only include rows captured by [show regex] and exclude [hide regex].\n"
+							+ "visible [show regex] [hide regex] [track regex]\n      In annotation tracks, only include rows captured by [show regex] and exclude [hide regex].\n"
 							+                                                   "      Apply to annotation tracks captured by [track regex]. With no optional arguments reset to default: \"'.*' '^$' '.*'\"\n"
 							+                                                   "      Use '.*' to match everything and '^$' to hide nothing. Ex \"visible .*exon.* .*CDS.* .*gtf#.*\"\n"       
+							+ "trackHeight <int> [track regex]\n      Set track height to int lines for all tracks captured by regex. Default regex: '.*'\n"
 							+ "ylim <min> <max> [track regex]\n      Set limits of y axis for all track IDs captured by regex. Default regex: '.*'\n"
 							+ "dataCol <idx> [regex]\n      Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index.\n"
 							+ "print\n      Turn on/off the printing of bed/gtf features in current interval\n"
@@ -299,7 +324,7 @@ public class Main {
 					System.out.println(ArgParse.getDocstrings());
 					System.out.println("q      Quit");
 					System.out.println("See also http://github.com/dariober/Java-cafe/tree/master/SamTextViewer");
-					cmdInput= "";
+					cmdInput= null;
 					continue;
 				} 
 				/* Parse args */
@@ -313,14 +338,13 @@ public class Main {
 						|| cmdInput.equals("b")
 						|| cmdInput.equals("ff") 
 						|| cmdInput.equals("bb")
-						|| cmdInput.matches("^:\\d+")
-						|| cmdInput.matches("^\\-{0,1}\\d+.*") 
-						|| cmdInput.matches("^\\+{0,1}\\d+.*")){ // No cmd line args either f/b ops or ints
-						cmdInput= cmdInput.matches("^\\+.*") ? cmdInput.substring(1) : cmdInput;
+						|| cmdInput.matches("^\\d+.*")
+						|| cmdInput.matches("^\\-\\d+.*") 
+						|| cmdInput.matches("^\\+\\d+.*")){ // No cmd line args either f/b ops or ints
+						// cmdInput= cmdInput.matches("^\\+.*") ? cmdInput.substring(1) : cmdInput;
 						String newRegion= Utils.parseConsoleInput(cmdInput, gch.current()).trim();
 						GenomicCoords newGc= new GenomicCoords(newRegion, samSeqDict, windowSize, fasta);
-						gch.add(newGc);
-						
+						gch.add(newGc);				
 					} else if(cmdInput.startsWith("dataCol ")){
 						
 						StrTokenizer str= new StrTokenizer(cmdInput);
@@ -334,7 +358,7 @@ public class Main {
 							} catch(PatternSyntaxException e){
 						    	System.err.println("Invalid regex in: " + cmdInput);
 						    	System.err.println(e.getDescription());
-								cmdInput= "";
+								cmdInput= null;
 								continue;
 							}
 						}
@@ -345,10 +369,20 @@ public class Main {
 						try{
 							trackSet.setTrackYlimitsForRegex(cmdInput);
 						} catch(InvalidCommandLineException e){
-							cmdInput= "";
+							cmdInput= null;
 							continue;
 						} catch(PatternSyntaxException e) {
-							cmdInput= "";
+							cmdInput= null;
+				        	continue;
+						}
+					} else if(cmdInput.startsWith("trackHeight ")){
+						try{
+							trackSet.setTrackHeightForRegex(cmdInput);
+						} catch(InvalidCommandLineException e){
+							cmdInput= null;
+							continue;
+						} catch(PatternSyntaxException e) {
+							cmdInput= null;
 				        	continue;
 						}
 					} else if (cmdInput.equals("p")) {
@@ -367,7 +401,7 @@ public class Main {
 						for(GenomicCoords x : gch.getHistory()){
 							System.out.println(x);
 						}
-						cmdInput= "";
+						cmdInput= null;
 					} else if(cmdInput.toLowerCase().equals("print")){
 						printIntervalFeatures= (printIntervalFeatures) ? false : true;
 						System.err.println("Print interval features: " + printIntervalFeatures);
@@ -384,7 +418,7 @@ public class Main {
 						List<String> tokens= str.getTokenList();
 						if(tokens.size() < 2){
 							System.err.println("Error in 'find' subcommand. Expected at least 2 args got: " + cmdInput);
-							cmdInput= "";
+							cmdInput= null;
 							continue;
 						}
 						if(tokens.size() == 2){
@@ -398,7 +432,7 @@ public class Main {
 							trackSet.setVisibilityForTrackIntervalFeature(cmdInput);
 						} catch (PatternSyntaxException e){
 							System.err.println("Invalid pattern in " + cmdInput);
-							cmdInput= "";
+							cmdInput= null;
 							continue;							
 						}
 
@@ -408,45 +442,42 @@ public class Main {
 						if(clArgs.indexOf("-r") != -1){
 							int i= clArgs.indexOf("-r") + 1;
 							gch.add(new GenomicCoords(clArgs.get(i), samSeqDict, windowSize, fasta));
-						}
-						if(clArgs.indexOf("-f") != -1){
+						} else if(clArgs.indexOf("-f") != -1){
 							int i= clArgs.indexOf("-f") + 1;
 							f_incl= Integer.parseInt(clArgs.get(i));
-						}
-						if(clArgs.indexOf("-F") != -1){
+						} else if(clArgs.indexOf("-F") != -1){
 							int i= clArgs.indexOf("-F") + 1;
 							F_excl= Integer.parseInt(clArgs.get(i));
 							if((F_excl & 4) != 4){ // Always filter out read unmapped
 								F_excl += 4;
 							}
-						}				
-						if(clArgs.indexOf("-q") != -1){
+						} else if(clArgs.indexOf("-q") != -1){
 							int i= clArgs.indexOf("-q") + 1;
 							mapq= Integer.parseInt(clArgs.get(i));
-						}				
-						if(clArgs.indexOf("-m") != -1){
+						} else if(clArgs.indexOf("-m") != -1){
 							int i= clArgs.indexOf("-m") + 1;
 							maxLines= Integer.parseInt(clArgs.get(i));
-						}				
-						if(clArgs.indexOf("-d") != -1){
-							int i= clArgs.indexOf("-d") + 1;
-							maxDepthLines= Integer.parseInt(clArgs.get(i));
-						}
-						if(clArgs.indexOf("-ml") != -1){
+						//} else if(clArgs.indexOf("-d") != -1){
+						//	int i= clArgs.indexOf("-d") + 1;
+						//	trackHeight= Integer.parseInt(clArgs.get(i));
+						} else if(clArgs.indexOf("-ml") != -1){
 							int i= clArgs.indexOf("-ml") + 1;
 							maxMethylLines= Integer.parseInt(clArgs.get(i));
-						}
-						if(clArgs.indexOf("-rpm") != -1){
+						} else if(clArgs.indexOf("-rpm") != -1){
 							rpm= (rpm) ? false : true; // Invert rpm set.
+						// END OF CMD LINE ARGS
+						} else {
+							System.err.println("Unrecognized argument: " + cmdInput);
+							cmdInput= null;
 						}
 					} // END Command line options from Argparse
 				} catch(Exception e){
-					System.err.println("\nError processing input: " + cmdInput);
-					System.err.println("\nStack trace:\n");
-					e.printStackTrace();
+					System.err.println("\nError processing input: " + cmdInput + "\n");
+					e.printStackTrace(); // Print trace for debugging
 					System.err.println("");
-					cmdInput= "";
+					cmdInput= null;
 				}
+				currentCmd= cmdInput;
 			} // END while loop to get cmLine args
 			System.out.println(StringUtils.repeat("~", gch.current().getUserWindowSize()));
 		} // End while loop keep going until quit or if no interactive input set

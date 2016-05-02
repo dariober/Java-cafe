@@ -1,5 +1,6 @@
 package tracks;
 
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.lang3.math.NumberUtils;
@@ -18,7 +19,7 @@ import com.google.common.collect.Lists;
  * @author berald01
  *
  */
-class IntervalFeature implements Comparable<IntervalFeature> {
+public class IntervalFeature implements Comparable<IntervalFeature>{
 
 	// When reading bed files, we expect fields to be in this order.
 	private String chrom;       // Required
@@ -39,21 +40,7 @@ class IntervalFeature implements Comparable<IntervalFeature> {
 	private int screenTo= -1;
 	
 	/* C o n s t r u c t o r s */
-	
-	/**
-	 * @param chrom
-	 * @param from NB: 1-based. If getting straight from bed add 1.
-	 * @param to
-	 */
-	//public IntervalFeature(String chrom, int from, int to){
-	//	
-	//	this.chrom= chrom.trim();
-	//	this.from= from;
-	//	this.to= to;
-	//	this.format= TrackFormat.BED;
-	//	this.validateIntervalFeature();
-	//}
-	
+		
 	/**
 	 * Create an IntervalFeature from a String. Typically this string is a bed or gtf line read from file.
 	 * @param line
@@ -71,6 +58,10 @@ class IntervalFeature implements Comparable<IntervalFeature> {
 			System.exit(1);
 		}
 	}
+	
+	//public IntervalFeature(IntervalFeature intervalFeature){
+	//	
+	//}
 	
 	/* M e t h o d s */
 	
@@ -266,6 +257,14 @@ class IntervalFeature implements Comparable<IntervalFeature> {
 		return x; 
 	}
 	
+	//protected Object clone() {
+	//	try {
+	//		return super.clone();
+	//	} catch (CloneNotSupportedException e) {
+	//		return null;
+	//	}
+	//}
+	
 	/*   S e t t e r s   and   G e t t e r s   */
 	
 	public String getChrom() {
@@ -336,5 +335,71 @@ class IntervalFeature implements Comparable<IntervalFeature> {
 		    if (i != 0) return i;
 
 		return i;
+	}
+
+	protected String assignTextToFeature(boolean noFormat) {
+
+		/* Map GTF features to characters. Forward capital LETTERS, reverse small letters  
+		 * Feature names are case insensitive */
+		HashMap<String, Character> fwdFeature= new HashMap<String, Character>();
+		HashMap<String, Character> revFeature= new HashMap<String, Character>();
+		HashMap<String, Character> unstrFeature= new HashMap<String, Character>();
+		fwdFeature.put("exon",        'E'); revFeature.put("exon",        'e');
+		fwdFeature.put("cds", 	      'C'); revFeature.put("cds",         'c');
+		fwdFeature.put("start_codon", 'A'); revFeature.put("start_codon", 'a');
+		fwdFeature.put("stop_codon",  'Z'); revFeature.put("stop_codon",  'z');
+		fwdFeature.put("utr",         'U'); revFeature.put("utr",         'u');
+		fwdFeature.put("3utr",        'U'); revFeature.put("3utr",        'u');
+		fwdFeature.put("5utr",        'W'); revFeature.put("3utr",        'w');
+		fwdFeature.put("gene",		  'G'); revFeature.put("gene",        'g');
+		fwdFeature.put("transcript",  'T'); revFeature.put("transcript",  't');
+		fwdFeature.put("mrna",        'M'); revFeature.put("mrna",        'm');
+		fwdFeature.put("trna",        'X'); revFeature.put("trna",        'x');
+		fwdFeature.put("rrna", 		  'R'); revFeature.put("rrna",        'r');
+		fwdFeature.put("mirna",       'I'); revFeature.put("mirna",       'i');
+		fwdFeature.put("ncrna",       'L'); revFeature.put("ncrna",       'l');
+		fwdFeature.put("lncrna",      'L'); revFeature.put("lncrna",      'l');
+		fwdFeature.put("sirna",       'S'); revFeature.put("sirna",       's');
+		fwdFeature.put("pirna",       'P'); revFeature.put("pirna",       'p');
+		fwdFeature.put("snorna",      'O'); revFeature.put("snorna",      'O');
+		
+		// For feature with strand not available, use forward encoding, unless feature unknown
+		unstrFeature.putAll(fwdFeature);
+		fwdFeature.put("other", '>'); 		
+		revFeature.put("other", '<');
+		unstrFeature.put("other", '|');
+		
+		HashMap<Character, HashMap<String, Character>> featureToTextCharDict= 
+					new HashMap<Character, HashMap<String, Character>>();
+		featureToTextCharDict.put('+', fwdFeature);
+		featureToTextCharDict.put('-', revFeature);
+		featureToTextCharDict.put('.', unstrFeature);
+
+		// Get feature strand
+		char strand= '.'; // Default for NA
+		if(this.strand == '+'){
+			strand= '+';
+		} else if(this.strand == '-'){
+			strand= '-';
+		}
+		// Get feature type
+		String feature= this.getFeature().toLowerCase();
+		if(!featureToTextCharDict.get('.').containsKey(feature)){
+			feature= "other"; // Feature type NA or not found in dict
+		}
+
+		// Now you have the right char to be used for this feature type and strand.
+		char text= featureToTextCharDict.get(strand).get(feature);
+
+		// Add formatting if required
+		if(noFormat){
+			return Character.toString(text);
+		} else if(strand == '+') {
+			return "\033[48;5;147;38;5;240m" + text + "\033[0m";
+		} else if(strand == '-') {
+			return "\033[48;5;225;38;5;240m" + text + "\033[0m";
+		} else {
+			return "\033[48;5;250;38;5;240m" + text + "\033[0m";
+		}			
 	}
 }

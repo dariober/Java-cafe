@@ -28,6 +28,51 @@ public class TrackSet {
 	public void addOrReplace(Track track){
 		this.trackSet.put(track.getFileTag(), track);
 	}
+
+	/** From cmdInput extract regex and yMaxLines then iterate through the tracks list to set 
+	 * the yMaxLines in the tracks whose filename matches the regex.
+	 * The input list is updated in place! 
+	*/
+	public void setTrackHeightForRegex(String cmdInput) throws InvalidCommandLineException{
+
+		// MEMO of subcommand syntax:
+		// 0 trackHeight
+		// 1 int    mandatory
+		// 2 regex  optional
+		
+		StrTokenizer str= new StrTokenizer(cmdInput);
+		str.setQuoteChar('\'');
+		List<String> tokens= str.getTokenList();
+		if(tokens.size() < 2){
+			System.err.println("Error in trackHeight subcommand. Expected 2 args got: " + cmdInput);
+			throw new InvalidCommandLineException();
+		}
+		String trackNameRegex= ".*"; // Default: Capture everything
+		if(tokens.size() == 3){ // If size 3 (trackHeight int regex) user has set a regex. Used that instead of default.
+			trackNameRegex= tokens.get(2);
+		}
+		
+		try{
+			Pattern.compile(trackNameRegex); // Validate regex
+		} catch(PatternSyntaxException e){
+	    	System.err.println("Invalid regex in: " + cmdInput);
+	    	System.err.println(e.getDescription());
+		}
+		
+		int trackHeight= 0;
+		try{
+			trackHeight= Integer.parseInt(tokens.get(1));
+			trackHeight= trackHeight < 0 ? 0 : trackHeight;
+		} catch(NumberFormatException e){
+			System.err.println("Number format exception: " + trackHeight);
+		}
+		for(Track tr : this.trackSet.values()){
+			if(tr.getFileTag().matches(trackNameRegex)){
+				tr.setyMaxLines(trackHeight);
+			}
+		}
+	}
+	
 	
 	/** From cmdInput extract regex and ylimits then iterate through the tracks list to set 
 	 * the ylimits in the tracks whose filename matches the regex.
@@ -116,7 +161,7 @@ public class TrackSet {
 		}
 	}
 	
-	public GenomicCoords goToNextFeatureOnFile(String trackId, GenomicCoords curGc) throws InvalidGenomicCoordsException, IOException{
+	public GenomicCoords goToNextFeatureOnFile(String trackId, GenomicCoords curGc) throws InvalidGenomicCoordsException, IOException, InvalidCommandLineException{
 
 		trackId= trackId.trim();
 		
@@ -130,6 +175,9 @@ public class TrackSet {
 		Track tr;
 		if(trackId.isEmpty() && ifTracks.size() == 1){
 			tr= ifTracks.values().iterator().next();
+		} else if (trackId.isEmpty()) {
+			System.err.println("\nPlease specify a track to search from: " + ifTracks.keySet());
+			throw new InvalidCommandLineException();
 		} else if(!ifTracks.containsKey(trackId)){ 	
 			System.err.println("\nTag '" + trackId + "' not found in searchable track set:");
 			System.err.println(ifTracks.keySet() + "\n");

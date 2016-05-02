@@ -5,9 +5,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -426,17 +427,17 @@ public class GenomicCoords implements Cloneable {
 	}
 
 	/**
-	 * Get a SAMSequenceDictionary by querying the input files, if there is any bam, or from the indexed fasta file
-	 * @param insam
-	 * @param fasta
+	 * Get a SAMSequenceDictionary by querying the input files, if there is any bam, or from the indexed fasta file or from genome files.
+	 * @param insam List of input files
+	 * @param fasta Reference sequence
+	 * @param genome 
 	 * @return
 	 * @throws IOException 
 	 */
-	public static SAMSequenceDictionary getSamSeqDictFromAnyFile(List<String> insam, String fasta) throws IOException{
+	public static SAMSequenceDictionary getSamSeqDictFromAnyFile(List<String> insam, String fasta, String genome) throws IOException{
 
 		SAMSequenceDictionary seqDict= new SAMSequenceDictionary(); // null;
-		
-		// TODO: Initialize from genome file
+
 		
 		if(insam != null){
 			for(String x : insam){ // Get sequence dict from bam, if any				
@@ -469,9 +470,60 @@ public class GenomicCoords implements Cloneable {
 			}
 			fa.close();
 		}
+		if(genome != null && !genome.isEmpty()){ // Try genome file as last option
+			seqDict= getSamSeqDictFromGenomeFile(genome);
+			return seqDict;
+		}		
 		return seqDict;
 	}
 	
+	/** Get SamSequenceDictionary either from local file or from built-in resources.
+	 * If reading from resources, "genome" is the tag before '.genome'. E.g. 
+	 * 'hg19' will read file hg19.genome  
+	 * */
+	private static SAMSequenceDictionary getSamSeqDictFromGenomeFile(String genome) throws IOException {
+
+		SAMSequenceDictionary samSeqDict= new SAMSequenceDictionary();
+
+		if(Utils.getFileTypeFromName(genome).equals(TrackFormat.BAM)){
+			// If genome is a bam file, get header from there.
+			SamReaderFactory srf=SamReaderFactory.make();
+			srf.validationStringency(ValidationStringency.SILENT);
+			SamReader samReader= srf.open(new File(genome));
+			samSeqDict= samReader.getFileHeader().getSequenceDictionary();
+			if(!samSeqDict.isEmpty()){
+				return samSeqDict;
+			}
+		}
+		
+		BufferedReader reader=null;
+		try{
+			// Attempt to read from resource
+			InputStream res= Main.class.getResourceAsStream("/genomes/" + genome + ".genome");
+			reader= new BufferedReader(new InputStreamReader(res));
+		} catch (NullPointerException e){
+			try{
+				// Read from local file
+				reader= new BufferedReader(new FileReader(new File(genome)));
+			} catch (FileNotFoundException ex){
+				System.err.println("\nGenome file not found: " + genome + "\n");
+				ex.printStackTrace();
+			}
+		}
+		
+		String line = null;
+		while ((line = reader.readLine()) != null) {
+			if(line.trim().isEmpty() || line.trim().startsWith("#")){
+				continue;
+			}
+			String[] chromLine= line.split("\t");
+			SAMSequenceRecord sequenceRecord = new SAMSequenceRecord(chromLine[0], Integer.parseInt(chromLine[1]));
+			samSeqDict.addSequence(sequenceRecord);
+		}
+		reader.close();
+		return samSeqDict;
+	}
+
 	public boolean equalCoords(GenomicCoords other){
 		return this.chrom.equals(other.chrom) && this.from.equals(other.from) && this.to.equals(other.to); 
 	}

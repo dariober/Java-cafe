@@ -335,7 +335,7 @@ public class TDFUtils {
 	        for (int tileNumber = startTile; tileNumber <= endTile; tileNumber++) {
 	            TDFTile tile = reader.readTile(ds, tileNumber);
 	            if (tile == null) {
-	                System.out.println("Null tile: " + dsName + " [" + tileNumber + "]");
+	                // System.out.println("Null tile: " + dsName + " [" + tileNumber + "]");
 	            } else {
 	                int nTracks = reader.getTrackNames().length;
 	                if(nTracks > 1){

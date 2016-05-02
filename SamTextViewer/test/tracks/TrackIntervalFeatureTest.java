@@ -53,6 +53,31 @@ public class TrackIntervalFeatureTest {
 	}
 
 	@Test
+	public void canAssignFeatureText() throws InvalidGenomicCoordsException, IOException {
+		String intervalFileName= "test_data/hg19_genes_head.gtf";
+		GenomicCoords gc= new GenomicCoords("chr1:11874-12227", null, 5, null);
+		TrackIntervalFeature tif= new TrackIntervalFeature(intervalFileName, gc);
+		tif.setNoFormat(true);
+		assertEquals("EEEEE", tif.printToScreen());
+	}
+	
+	@Test
+	public void canStackFeatures() throws InvalidGenomicCoordsException, IOException{
+		String intervalFileName= "test_data/overlapped.bed";
+		int windowSize= 70;
+		GenomicCoords gc= new GenomicCoords("chr1:1-70", null, windowSize, null);
+		TrackIntervalFeature tif= new TrackIntervalFeature(intervalFileName, gc);
+		tif.setNoFormat(true);           		 
+		assertEquals(windowSize * 2 + 1, tif.printToScreen().length());
+		
+		String exp= "" +
+"||||||||||     |||||||||||||||          ||||||||||                    \n" +
+"     |||||||||||||||                                                  ";
+		assertEquals(exp, tif.printToScreen());
+	
+	}
+	
+	//@Test
 	public void canConstructTrackfromGtf() throws IOException, InvalidGenomicCoordsException{
 		
 		String intervalFileName= "test_data/hg19_genes.gtf.gz";

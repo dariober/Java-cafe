@@ -169,7 +169,7 @@ public class IntervalFeatureSet {
 				// See http://gmod.org/wiki/GFF#GFF3_Sequence_Section
 				break;
 			}
-			if(line.trim().startsWith("#")){
+			if(line.trim().startsWith("#") || line.trim().isEmpty()){
 				continue;
 			}
 			if(isFirst && this.type.equals(TrackFormat.BED)){

@@ -1,9 +1,11 @@
 package samTextViewer;
 
 import static org.junit.Assert.*;
+import static org.hamcrest.CoreMatchers.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -24,6 +26,40 @@ public class UtilsTest {
 	public static String fastaFile= "test_data/chr7.fa";
 
 	@Test
+	public void canTabulateListOfFeatures(){
+		List<String> rawList= new ArrayList<String>();
+		rawList.add("1\tgenedb\tgene\t2964\t45090");
+		rawList.add("chr1\tgenedb_long\tgene\t2964\t45090");
+		rawList.add("1\tfoo\tna\t2"); // Missing last field
+		rawList.add("1\tfoo\tna\t2\t10");
+		rawList.add("1\tfoo\t\t2\t10"); // Empty cell
+		
+
+		List<String> expList= new ArrayList<String>();
+		expList.add("1    genedb      gene 2964 45090");
+		expList.add("chr1 genedb_long gene 2964 45090");
+		expList.add("1    foo         na   2");
+		expList.add("1    foo         na   2    10");
+		expList.add("1    foo              2    10");
+		
+		
+		List<String> obsList= Utils.tabulateList(rawList);
+		assertThat(expList, is(obsList));
+	}
+	
+	//@Test
+	//public void canParseAndReturnPrintFeatureCmd(){
+	//	String cmdInput;
+	//	cmdInput= "print full";
+	//	cmdInput= "print clip";
+	//	cmdInput= "print off";
+	//	String rawString= "chr1\t1\t100\tfoo";
+	//	int windowSize= 4;
+	//	// String obs= Utils.printRawStringCmd(cmdInput, windowSize);
+	//	// assertEquals("chr1", obs);
+	//}
+	
+	@Test
 	public void canTestForTabixIndex() throws IOException{
 		assertTrue(Utils.hasTabixIndex("test_data/test.bedGraph.gz"));
 		assertTrue(! Utils.hasTabixIndex("test_data/test.bedGraph"));
@@ -39,10 +75,11 @@ public class UtilsTest {
 	@Test
 	public void canInitRegion() throws IOException{
 		assertEquals("chrM", Utils.initRegionFromFile("test_data/ds051.short.bam"));
-		assertEquals("chr1", Utils.initRegionFromFile("test_data/refSeq.hg19.short.bed"));
-		assertEquals("chr1", Utils.initRegionFromFile("test_data/refSeq.hg19.short.sort.bed.gz"));
 		assertEquals("chr9", Utils.initRegionFromFile("test_data/hg18_var_sample.wig.v2.1.30.tdf"));
-		assertEquals("chr1", Utils.initRegionFromFile("/Users/berald01/Downloads/wgEncodeCaltechRnaSeqGm12878R2x75Il400SigRep2V2.bigWig"));		
+		assertEquals("chr1", Utils.initRegionFromFile("/Users/berald01/Downloads/wgEncodeCaltechRnaSeqGm12878R2x75Il400SigRep2V2.bigWig"));
+		assertEquals("chr1:67208779", Utils.initRegionFromFile("test_data/refSeq.hg19.short.bed"));
+		assertEquals("chr1:8404074", Utils.initRegionFromFile("test_data/refSeq.hg19.short.sort.bed.gz"));
+		assertEquals("chr1:11874", Utils.initRegionFromFile("test_data/hg19_genes_head.gtf.gz"));
 	}
 	
 	@Test
@@ -95,7 +132,7 @@ public class UtilsTest {
 		//region= Utils.parseConsoleInput("-r chr8", gc);
 		//assertEquals("chr8", region);
 		
-		String region= Utils.parseConsoleInput("10", gc);
+		String region= Utils.parseConsoleInput("+10", gc);
 		assertEquals("chr7:110-210", region);
 
 		region= Utils.parseConsoleInput("-1000", gc);
@@ -105,6 +142,28 @@ public class UtilsTest {
 		List<String> clArgs= Arrays.asList(rawInput.split("\\s+"));
 		// System.out.println(clArgs.indexOf("-R"));		
 	}
+	
+	@Test
+	public void canGetGoToRegionString() throws InvalidGenomicCoordsException, IOException{
+		GenomicCoords gc= new GenomicCoords("chr7:100-200", samSeqDict, 100, fastaFile);
+		String rawInput= "1000";
+		assertEquals("chr7:1000", Utils.parseConsoleInput(rawInput, gc));
+		
+		rawInput= "1000-10000";
+		assertEquals("chr7:1000-10000", Utils.parseConsoleInput(rawInput, gc));
+		
+		rawInput= " 1,000 - 10,000";
+		assertEquals("chr7:1000-10000", Utils.parseConsoleInput(rawInput, gc));
+		
+		rawInput= ":foo"; // Must fail
+		try{
+			System.err.println(Utils.parseConsoleInput(rawInput, gc));
+			fail();
+		} catch (Exception e) {
+			
+		}
+	}
+	
 	
 	// @Test
 	//public void canParseColonOperator(){

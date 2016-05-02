@@ -34,13 +34,18 @@ public class ArgParse {
 			.nargs("*")
 			.help("Input files. bam/cram must be sorted and indexed. Large bed/gtf files should be indexed with tabix.");
 		
-		docstrings.put("-r", "Go to region. Format 1-based as 'chrom:start-end' or 'chrom:start' or 'chrom'");
+		docstrings.put("-r", "Go to region. Format 1-based as 'chrom:start-end' or 'chrom:start' or 'chrom'. E.g. chr1:1-1000");
 		parser.addArgument("--region", "-r")
 			.type(String.class)
 			.required(false)
 			.setDefault("")
 			.help(docstrings.get("-r"));
 
+		parser.addArgument("--genome", "-g")
+			.type(String.class)
+			.setDefault("")
+			.help("A genome file or a tag identifying a genome build (e.g. hg19), or bam file with suitable header");
+		
 		parser.addArgument("--windowSize", "-w")
 			.type(Integer.class)
 			.setDefault(-1)
@@ -81,11 +86,11 @@ public class ArgParse {
 			.help(docstrings.get("-rpm"));
 
 		
-		docstrings.put("-d", "Maximum number of lines to print for coverage tracks");
-		parser.addArgument("--maxDepthLines", "-d")
-			.type(Integer.class)
-			.setDefault(10)
-			.help(docstrings.get("-d"));
+		// docstrings.put("-d", "Maximum number of lines to print for coverage tracks");
+		//parser.addArgument("--maxDepthLines", "-d")
+		//	.type(Integer.class)
+		//	.setDefault(10)
+		//	.help("Track height: Maximum number of lines to print for each track");
 
 		docstrings.put("-ml", "Maximum number of lines to print for each methylation track");
 		parser.addArgument("--maxMethylLines", "-ml")

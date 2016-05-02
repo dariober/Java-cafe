@@ -16,27 +16,19 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import java.util.zip.GZIPInputStream;
 
-import org.apache.commons.lang3.text.StrTokenizer;
 import org.broad.igv.bbfile.BBFileReader;
 import org.broad.igv.tdf.TDFReader;
 
-import exceptions.InvalidCommandLineException;
-import exceptions.InvalidGenomicCoordsException;
 import tracks.IntervalFeatureSet;
-import tracks.Track;
+import tracks.IntervalFeature;
 import tracks.TrackFormat;
-import tracks.TrackIntervalFeature;
-import tracks.TrackReads;
-import tracks.TrackSet;
 
 /**
  * @author berald01
@@ -85,45 +77,31 @@ public class Utils {
 			} 
 			System.err.println("Cannot initialize from " + x);
 			throw new RuntimeException();
-		} else if(x.toLowerCase().endsWith(".gz")){
-			InputStream fileStream = new FileInputStream(x);
-			GZIPInputStream gzipStream = new GZIPInputStream(fileStream);
-			Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
-			BufferedReader br = new BufferedReader(decoder);
-			while(true){
-				if(region == null){
-					break;
-				}
-				region= br.readLine().trim();
-				if(region.startsWith("#") || region.isEmpty() || !IntervalFeatureSet.isValidBedLine(region)){
-					continue;
-				} else {
-					br.close();
-					region= (region.split("\t")[0]).trim();
-					return region;
-				}
-			}
-			br.close();
-			return region;
 		} else {
-			BufferedReader br = new BufferedReader(new FileReader(x));
-			while(true){
-				region= br.readLine();
-				if(region == null){
-					break;
-				}
-				region= region.trim();
-				if(region.startsWith("#") || region.isEmpty() || !IntervalFeatureSet.isValidBedLine(region)){
-					continue;
-				} else {
-					br.close();
-					region= (region.split("\t")[0]).trim();
-					return region;
-				}
+			// Input file appears to be a generic interval file. We expect chrom to be in column 1
+			BufferedReader br;
+			if(x.toLowerCase().endsWith(".gz")){
+				InputStream fileStream = new FileInputStream(x);
+				GZIPInputStream gzipStream = new GZIPInputStream(fileStream);
+				Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
+				br = new BufferedReader(decoder);
+			} else {
+				br = new BufferedReader(new FileReader(x));
 			}
-			br.close();
-			return region;
-		}
+			String line;
+			while ((line = br.readLine()) != null){
+				line= line.trim();
+				if(line.startsWith("#") || line.isEmpty()){
+					continue;
+				}
+				IntervalFeature feature= new IntervalFeature(line, fmt);
+				region= feature.getChrom() + ":" + feature.getFrom(); 
+				br.close();
+				return region;
+			}
+		} 
+		System.err.println("Cannot initialize from " + x);
+		throw new RuntimeException();
 	}
 	
 	public static boolean bamHasIndex(String bam) throws IOException{
@@ -315,8 +293,7 @@ public class Utils {
 		} else if(x.matches("^\\-{0,1}\\d+$") || x.matches("^\\+{0,1}\\d+$")){
 			multiplier= 1;
 		} else {
-			System.err.println("Invalid string to convert to int: " + x);
-			System.exit(1);
+			throw new RuntimeException("Invalid string to convert to int: " + x);
 		}
 		int pos= Integer.parseInt(x) * multiplier; 
 		return pos;
@@ -388,13 +365,10 @@ public class Utils {
 			//from -= step; 
 			//to -= step;
 			//return chrom + ":" + from + "-" + to;
-		} else if(rawInput.trim().startsWith(":")) { // You might want to be more specific than just startsWith(:)
-			String pos= rawInput.trim().replaceFirst(":", "");
-			Integer.parseInt(pos); // Check you actually got an int.
-			return chrom + ":" + pos;
+		} else if(rawInput.trim().matches("\\d+.*")) { // You might want to be more specific
+			return chrom + ":" + parseGoToRegion(rawInput);
 		} else if(rawInput.trim().startsWith("+") 
-				|| rawInput.trim().startsWith("-") 
-				|| Character.isDigit(rawInput.trim().charAt(0))){
+				|| rawInput.trim().startsWith("-")){
 			int offset= parseStringToIntWithUnits(rawInput.trim());
 			from += offset;
 			if(from <= 0){
@@ -407,9 +381,25 @@ public class Utils {
 		}else if (rawInput.equals("q")) {
 			System.exit(0);	
 		} else {
-			System.err.println("Invalid input for " + rawInput);
+			throw new RuntimeException("Invalid input for " + rawInput);
 		}
 		return region;
+	}
+	
+	/**Parse the rawInput string in the form ':123-456' to return either
+	 * the first int or both ints. 
+	 * */
+	private static String parseGoToRegion(String rawInput){
+		String[] fromTo= rawInput.trim().replaceAll(",", "").
+								         replaceAll(" ", "").split("-");
+		if(fromTo.length == 1){
+			Integer.parseInt(fromTo[0]); // Check you actually got an int.
+			return fromTo[0];
+		} else {
+			Integer.parseInt(fromTo[0]); // Check you actually got an int.
+			Integer.parseInt(fromTo[1]);
+			return fromTo[0] + "-" + fromTo[1];
+		}
 	}
 	
 	public static boolean isInteger(String s) {
@@ -520,5 +510,63 @@ public class Utils {
 			throw new RuntimeException(msg);
 		}
 		return mapping;
+	}
+
+	/*Nicely tabulate list of rows. Each row is tab separated **/
+	public static List<String> tabulateList(List<String> rawList) {
+		
+		// * Split each row in a list of strings. I.e. make list of lists
+		List<ArrayList<String>> rawTable= new ArrayList<ArrayList<String>>();
+		int ncol= 0;
+		for(String x : rawList){
+			List<String> row = new ArrayList<String>();
+			for(String item : x.split("\t")){
+				row.add(item);
+			}
+			rawTable.add((ArrayList<String>) row);
+			// * Get max number of columns (max list length)
+			if(row.size() > ncol){
+				ncol= row.size(); 
+			}
+		}
+				
+		// * Iterate through each column 
+		List<ArrayList<String>> paddedTable= new ArrayList<ArrayList<String>>();
+		
+		for(int i= 0; i < ncol; i++){
+			// Collect all items in column i in a list. I.e. select column i
+			List<String> col= new ArrayList<String>();
+			for(ArrayList<String> row : rawTable){
+				if(row.size() > i){
+					col.add(row.get(i));
+				} else { // If a row doesn't have enough columns add a dummy field 
+					col.add("");
+				}
+			}
+			// Get the longest string in this column
+			int maxStr= 0;
+			for(String x : col){
+				if(x.length() > maxStr){
+					maxStr= x.length();
+				}
+			}
+			// ** Pass thorugh the column again and pad with spaces to match length of longest string
+			// maxStr+=1; // +1 is for separating
+			for(int j= 0; j < col.size(); j++){
+				String padded= String.format("%-" + maxStr + "s", col.get(j));
+				col.set(j, padded);
+			}
+			paddedTable.add((ArrayList<String>) col);
+		}
+		// Each list in padded table is a column. We need to create rows as strings
+		List<String> outputTable= new ArrayList<String>();
+		for(int r= 0; r < paddedTable.get(0).size(); r++){
+			StringBuilder row= new StringBuilder();
+			for(int c= 0; c < paddedTable.size(); c++){
+				row.append(paddedTable.get(c).get(r) + " ");
+			}
+			outputTable.add(row.toString().trim());
+		}
+		return outputTable;
 	}		
 }

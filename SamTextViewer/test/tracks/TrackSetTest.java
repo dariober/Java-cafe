@@ -34,6 +34,23 @@ public class TrackSetTest {
 	}
 	
 	@Test
+	public void canSetTrackHeight() throws InvalidCommandLineException, IOException, InvalidGenomicCoordsException{
+				
+		TrackSet ts= new TrackSet();
+		Track t1= new Track(); t1.setFilename("foo.gz"); t1.setFileTag("#1"); ts.addOrReplace(t1);
+		Track t2= new Track(); t2.setFilename("foo.txt"); t2.setFileTag("#20"); ts.addOrReplace(t2);
+		Track t3= new Track(); t3.setFilename("bla.gz"); t3.setFileTag("#3"); ts.addOrReplace(t3);
+
+		String cmdInput= "trackHeight 2 #\\d";
+		ts.setTrackHeightForRegex(cmdInput);
+				
+		assertEquals(2, ts.getTrackSet().get("#1").getyMaxLines());
+		assertEquals(10, ts.getTrackSet().get("#20").getyMaxLines()); 
+		assertEquals(2, ts.getTrackSet().get("#1").getyMaxLines());
+
+	}
+	
+	@Test
 	public void canSetYlimits() throws InvalidCommandLineException{
 				
 		String cmdInput= "ylim 0 10 #\\d+";

@@ -27,7 +27,7 @@ public class Track {
 		return null;
 	}
 
-	public String printFeatures(){
+	public String printFeatures(int windowSize){
 		return "";
 	};
 	
