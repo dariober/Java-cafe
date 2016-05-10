@@ -46,10 +46,10 @@ public class ArgParse {
 			.setDefault("")
 			.help("A genome file or a tag identifying a genome build (e.g. hg19), or bam file with suitable header");
 		
-		parser.addArgument("--windowSize", "-w")
-			.type(Integer.class)
-			.setDefault(-1)
-			.help("Window size to display. Default to terminal width x0.95");
+//		parser.addArgument("--windowSize", "-w")
+//			.type(Integer.class)
+//			.setDefault(-1)
+//			.help("Window size to display. Default to terminal width x0.95");
 		
 		parser.addArgument("--fasta", "-fa")
 			.type(String.class)

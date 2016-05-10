@@ -64,9 +64,9 @@ public class TrackSetTest {
 		
 		ts.setTrackYlimitsForRegex(cmdInput);
 				
-		assertEquals(0, ts.getTrackSet().get("#1").getYmin(), 0.001);
-		assertEquals(0, ts.getTrackSet().get("#20").getYmin(), 0.001);
-		assertEquals(10, ts.getTrackSet().get("#1").getYmax(), 0.001);
+		assertEquals(0, ts.getTrackSet().get("#1").getYLimitMin(), 0.001);
+		assertEquals(0, ts.getTrackSet().get("#20").getYLimitMin(), 0.001);
+		assertEquals(10, ts.getTrackSet().get("#1").getYLimitMax(), 0.001);
 	}
 	
 }

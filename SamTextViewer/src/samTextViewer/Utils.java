@@ -16,8 +16,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -560,7 +558,7 @@ public class Utils {
 		}
 		// Each list in padded table is a column. We need to create rows as strings
 		List<String> outputTable= new ArrayList<String>();
-		for(int r= 0; r < paddedTable.get(0).size(); r++){
+		for(int r= 0; r < rawList.size(); r++){
 			StringBuilder row= new StringBuilder();
 			for(int c= 0; c < paddedTable.size(); c++){
 				row.append(paddedTable.get(c).get(r) + " ");
@@ -568,5 +566,47 @@ public class Utils {
 			outputTable.add(row.toString().trim());
 		}
 		return outputTable;
-	}		
+	}
+
+	/** Function to round x and y to a number of digits enough to show the difference in range
+	 * This is for pretty printing only.
+	 * */
+	public static double[] roundToSignificantDigits(double x, double y, int nSignif) {
+
+		double[] rounded= new double[2];
+		
+	    double diff= Math.abs(x - y);
+	    if (diff < 1e-16){
+	    	rounded[0]= x;
+	    	rounded[1]= y;
+	    	return rounded;
+	    }
+	    if(diff > 1){
+	    	// Round to 2 digits regardless of how large is the diff
+	    	rounded[0]= Math.rint(x * Math.pow(10.0, nSignif))/Math.pow(10.0, nSignif);
+	    	rounded[1]= Math.rint(y * Math.pow(10.0, nSignif))/Math.pow(10.0, nSignif);
+			return rounded;
+	    } else {
+	    	// Diff is small, < 1. See how many digits you need to approximate
+	    	// Get number of leading zeros
+	    	int nzeros= (int) (Math.ceil(Math.abs(Math.log10(diff))) + nSignif);
+	    	rounded[0]= Math.rint(x * Math.pow(10.0, nzeros))/Math.pow(10.0, nzeros);
+	    	rounded[1]= Math.rint(y * Math.pow(10.0, nzeros))/Math.pow(10.0, nzeros);
+	    	return rounded;
+	    }   	        		
+	}
+	
+	/** From http://stackoverflow.com/questions/202302/rounding-to-an-arbitrary-number-of-significant-digits */
+	public static double roundToSignificantFigures(double num, int n) {
+	    if(num == 0) {
+	        return 0;
+	    }
+
+	    final double d = Math.ceil(Math.log10(num < 0 ? -num: num));
+	    final int power = n - (int) d;
+
+	    final double magnitude = Math.pow(10, power);
+	    final long shifted = Math.round(num*magnitude);
+	    return shifted/magnitude;
+	}
 }

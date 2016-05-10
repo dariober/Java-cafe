@@ -13,14 +13,41 @@ public class Track {
 	private String fileTag= "N/A"; // File name for title
 	private List<Double> screenScores= new ArrayList<Double>();
 	private GenomicCoords gc;
-	private boolean rpm= false;
 	private boolean noFormat= false; 
-	private double ymin= Double.NaN; // Same as R ylim()
-	private double ymax= Double.NaN;
+	private double yLimitMin= Double.NaN; // Same as R ylim()
+	private double yLimitMax= Double.NaN;
 	private List<SamRecordFilter> filters= new ArrayList<SamRecordFilter>();
 	private boolean bs; 
-
+	/** Max size of genomic region before the track shuts down to prevent excessive slow down */
+	protected final int MAX_REGION_SIZE= 100000;   
+	
 //	public Track(){}
+
+	/* Min value of screen scores. Not to be confused with the y limit **/
+	public double getMinScreenScores(){
+		Double ymin= Double.NaN;
+	 	for(Double x : this.screenScores){
+	 		if(ymin.isNaN() && !x.isNaN()){
+	 			ymin= x;
+	 		} else if (x < ymin){
+	 			ymin= x;
+	 		}
+	 	}
+	 	return ymin;
+	}
+	
+	/* Max value of screen scores. Not to be confused with the y limit **/
+	public double getMaxScreenScores(){
+		Double ymax= Double.NaN;
+	 	for(Double x : this.screenScores){
+	 		if(ymax.isNaN() && !x.isNaN()){
+	 			ymax= x;
+	 		} else if (x > ymax){
+	 			ymax= x;
+	 		}
+	 	}
+	 	return ymax;
+	}
 	
 	/* Printers */
 	public String printToScreen(){
@@ -73,22 +100,14 @@ public class Track {
 		this.gc = gc;
 	}
 
-	public boolean isRpm() {
-		return rpm;
-	}
-
-	public void setRpm(boolean rpm) {
-		this.rpm = rpm;
-	}
-
 	public boolean isNoFormat() { return noFormat; }
 	public void setNoFormat(boolean noFormat) { this.noFormat = noFormat; }
 
-	public double getYmin() { return ymin;}
-	public void setYmin(double ymin) { this.ymin = ymin;}
+	public double getYLimitMin() { return yLimitMin;}
+	public void setYLimitMin(double ymin) { this.yLimitMin = ymin;}
 
-	public double getYmax() { return ymax; }
-	public void setYmax(double ymax) { this.ymax = ymax; }
+	public double getYLimitMax() { return yLimitMax; }
+	public void setYLimitMax(double ymax) { this.yLimitMax = ymax; }
 
 	public List<SamRecordFilter> getFilters() { return filters; }
 	public void setFilters(List<SamRecordFilter> filters) { this.filters = filters; }

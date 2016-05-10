@@ -98,4 +98,11 @@ public class TrackReadsTest {
 		System.out.println(tr.printToScreen());
 	}
 	
+	@Test
+	public void canResetToZeroLargeWindow() throws IOException, InvalidGenomicCoordsException {
+		// If the genomic window is too large do not process the bam file and return zero height track.
+		GenomicCoords gc= new GenomicCoords("chr7", 1, 100000000, samSeqDict, 100, fastaFile);
+		TrackReads tr= new TrackReads("test_data/ds051.actb.bam", gc, filters, 1000);
+		assertEquals("", tr.printToScreen());
+	}
 }

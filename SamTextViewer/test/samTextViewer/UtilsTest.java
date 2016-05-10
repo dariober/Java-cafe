@@ -41,24 +41,15 @@ public class UtilsTest {
 		expList.add("1    foo         na   2");
 		expList.add("1    foo         na   2    10");
 		expList.add("1    foo              2    10");
-		
-		
+
+		// Handling region with no features to print
+		rawList= new ArrayList<String>();
 		List<String> obsList= Utils.tabulateList(rawList);
+		expList= new ArrayList<String>();
 		assertThat(expList, is(obsList));
+		
 	}
-	
-	//@Test
-	//public void canParseAndReturnPrintFeatureCmd(){
-	//	String cmdInput;
-	//	cmdInput= "print full";
-	//	cmdInput= "print clip";
-	//	cmdInput= "print off";
-	//	String rawString= "chr1\t1\t100\tfoo";
-	//	int windowSize= 4;
-	//	// String obs= Utils.printRawStringCmd(cmdInput, windowSize);
-	//	// assertEquals("chr1", obs);
-	//}
-	
+		
 	@Test
 	public void canTestForTabixIndex() throws IOException{
 		assertTrue(Utils.hasTabixIndex("test_data/test.bedGraph.gz"));
@@ -164,45 +155,34 @@ public class UtilsTest {
 		}
 	}
 	
-	
-	// @Test
-	//public void canParseColonOperator(){
-	//	// Test : operator
-	//	GenomicCoords gc= new GenomicCoords("chr7:100-200", samSeqDict);
-	//	assertEquals("chr7:200", Utils.parseConsoleInput(":200", gc));
-	//}
-	//
-	// @Test
-	//public void canparseConsoleInputOperator_f_b(){
-		// Test : operator
-	//	GenomicCoords gc= new GenomicCoords("chr7:100-200", samSeqDict);
-	//	assertEquals("chr7:110-210", Utils.parseConsoleInput("f", gc));
-	//	assertEquals("chr7:90-190", Utils.parseConsoleInput("b", gc));
-	//	// Smallest step is 1bp
-	//	gc= new GenomicCoords("chr7:100-102", samSeqDict);
-	//	assertEquals("chr7:101-103", Utils.parseConsoleInput("f", gc));
-	//	assertEquals("chr7:99-101", Utils.parseConsoleInput("b", gc));
-	//}
-	
-	//public void canGetStartOfBamFile(){
-	//	GenomicCoords gc= Utils.getStartCoordsOfBAM("test_data/ds051.short.bam");
-	//	assertEquals("chr7", gc.getChrom());
-	//	assertEquals(5566778, (int)gc.getFrom());
-	//	assertEquals(gc.getFrom(), gc.getTo());
-	//}
-	//
-	//public void canGetStartOfChrom(){
-	//	GenomicCoords gc= Utils.getStartCoordsOfBAM("test_data/ds051.short.bam", "chr7");
-	//	assertEquals("chr7", gc.getChrom());
-	//	assertEquals(5566778, (int)gc.getFrom());
-	//	assertEquals(gc.getFrom(), gc.getTo());
-	//	
-	//	// null for chrom with no reads. Fails if chrom does not exist in header.
-	//	gc= Utils.getStartCoordsOfBAM("test_data/ds051.short.bam", "chrY");
-	//	assertEquals(null, gc.getChrom());
-	//	assertEquals(null, gc.getFrom());
-	//	assertEquals(null, gc.getTo());
-	//}
-	
+	@Test
+	public void canRoundNumbersToSignificantDigits(){
+		
+		double x= 1000.123456789;
+		double y= 1001.123456789;
+		int nSignif= 3;
+		double[] rounded= Utils.roundToSignificantDigits(x, y, nSignif);
+		assertEquals(1000.123, rounded[0], 0.001); // Regular rounding
+		assertEquals(1001.123, rounded[1], 0.001);
+		
+		x= 1000.00012345;
+		y= 1000.0012345;
+		nSignif= 2;
+		rounded= Utils.roundToSignificantDigits(x, y, nSignif);
+		assertEquals(1000.00012, rounded[0], 1e-16);
+		assertEquals(1000.00123, rounded[1], 1e-16);		
+		
+		x= 1000.0009876;
+		y= 1000.00987654;
+		nSignif= 3;
+		rounded= Utils.roundToSignificantDigits(x, y, nSignif);
+		assertEquals(1000.000988, rounded[0], 1e-16);
+		assertEquals(1000.009877, rounded[1], 1e-16);		
 
+	}
+	
+	@Test
+	public void canRoundToSiginficantDigits(){
+		System.out.println(Utils.roundToSignificantFigures(0.01234, 5));
+	}
 }

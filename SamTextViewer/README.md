@@ -192,7 +192,7 @@ grey-shaded reads have mapping quality of <=5. In bisulfite mode the characters 
 Supported input files
 =====================
 
-* **bam** and **cram** files should be sorted and indexed, e.g. with `samtools sort` and `samtools index`. Sam files are not supported
+* **bam** files should be sorted and indexed, e.g. with `samtools sort` and `samtools index`. **cram** and sam files are not supported
 * **bedGraph** recognized by extension `.bedGraph` or `.bedgraph`
 * **bigWig** recognized by extension `.bw` or `.bigWig`
 * **bed**, **gtf**, **gff** recognized by respective extensions
@@ -252,6 +252,8 @@ In the commands below replace version number with the latest from [releases](htt
 ```
 wget https://github.com/dariober/Java-cafe/releases/download/v0.1.0/SamTextViewer-0.1.0.zip
 unzip SamTextViewer-0.1.0.zip
+cd SamTextViewer-0.1.0/
+chmod a+x SamTextViewer
 cp SamTextViewer.jar /usr/local/bin/ # Or ~/bin/
 cp SamTextViewer /usr/local/bin/     # Or ~/bin/ 
 ```

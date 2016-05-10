@@ -1,9 +1,11 @@
 package samTextViewer;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -23,6 +25,7 @@ import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import tracks.TrackFormat;
 //import readWriteBAMUtils.ReadWriteBAMUtils;
+import tracks.TrackWiggles;
 
 /**
  * Class to set up the horizontal axis on screen. 
@@ -43,6 +46,7 @@ public class GenomicCoords implements Cloneable {
 	private int windowSize; // Size of the screen window
 	private byte[] refSeq;
 	private String fastaFile= null;
+	private String gcProfileFileTag= "CG_percent";
 	
 	/* Constructors */
 	public GenomicCoords(String chrom, Integer from, Integer to, SAMSequenceDictionary samSeqDict, int windowSize, String fastaFile) 
@@ -363,7 +367,6 @@ public class GenomicCoords implements Cloneable {
 		return map.toString();
 	}
 	
-	
 	/** For debugging only */
 	public String toStringVerbose(int windowSize){
 		List<Double> mapping = seqFromToLenOut();
@@ -536,6 +539,70 @@ public class GenomicCoords implements Cloneable {
 			return null;
 		}
 	}
+
+	/** Return GC profile in region by sliding window of given step size 
+	 * @throws IOException 
+	 * */
+	public TrackWiggles getGCProfile() throws IOException {
+		if(this.fastaFile == null){
+			return null; 
+		}
+		
+		// Read fasta sequence in a single string. 
+		// Really there is no need to put the whole thing in memory, but it gives easier implementation.
+		IndexedFastaSequenceFile faSeqFile = null;
+		faSeqFile = new IndexedFastaSequenceFile(new File(this.fastaFile));
+		String fa = new String(faSeqFile.getSubsequenceAt(this.chrom, this.from, this.to).getBases());
+		faSeqFile.close();
+		
+		// Determine step size:
+		int step= (int) (this.getBpPerScreenColumn() < 10 ? 10 : Math.rint(this.getBpPerScreenColumn()));
+		
+		// * Write a temp bedgraph file with coordinates given by step
+		File temp = File.createTempFile("gcProfile.", ".tmp.bedgraph");
+		temp.deleteOnExit();
+		BufferedWriter bw= new BufferedWriter(new FileWriter(temp)); 
+		double ymin= 100;
+		double ymax= 0;
+		for(int xfrom= 0; xfrom < fa.length(); xfrom += step){
+			int xto= xfrom + step;
+			// Look ahead: If the next round is going to be the last one and the step
+			// is not a mulitple of the sequence length, merge thi sround with the next in a 
+			// longer sequence. This is to avoid the last chunk to be too skewed in percentage.
+			if(((xto+step) > fa.length())){
+				xto= fa.length();
+			}
+			String chunk= fa.substring(xfrom, xto).toUpperCase();
+
+			int gcCnt= StringUtils.countMatches(chunk, 'C') + StringUtils.countMatches(chunk, 'G');
+			float pct= (float) ((float)gcCnt / chunk.length() * 100.0);
+			if(pct < ymin){
+				ymin= pct;
+			} 
+			if(pct > ymax){
+				ymax= pct;
+			} 
+			// Shouldn't use + to concatenate...
+			String line= this.chrom + "\t" + (this.from + xfrom - 1) + "\t" + (this.from + xto - 1) + "\t" + pct;
+			bw.write(line + "\n");
+			if(xto >= fa.length()){
+				break;
+			}
+		}
+		bw.close();
+		// * Read this bedGraph via TrackWiggles 
+		TrackWiggles cgWiggle= new TrackWiggles(temp.getAbsolutePath(), this, 4);
+		temp.delete();
+		cgWiggle.setFileTag(this.gcProfileFileTag);
+		cgWiggle.setyMaxLines(5);
+		cgWiggle.setYLimitMin(0);
+		cgWiggle.setYLimitMax(100);
+		// cgWiggle.setYmin(Math.round(ymin * 10.0)/10.0);
+		// cgWiggle.setYmax(Math.round(ymax * 10.0)/10.0); 
+		// cgWiggle.update();
+		return cgWiggle;
+	}
+
 	
 	/* Getters and setters */
 	
@@ -571,5 +638,9 @@ public class GenomicCoords implements Cloneable {
 	
 	public String getFastaFile(){
 		return this.fastaFile;
+	}
+
+	public String getGcProfileFileTag(){
+		return this.gcProfileFileTag;
 	}
 }

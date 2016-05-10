@@ -51,7 +51,7 @@ public class Main {
 		List<String> insam= opts.getList("insam");
 		String region= opts.getString("region");
 		String genome= opts.getString("genome");
-		int windowSize= opts.getInt("windowSize");
+		//int windowSize= opts.getInt("windowSize");
 		String fasta= opts.getString("fasta");
 		boolean rpm= opts.getBoolean("rpm");
 		int maxLines= opts.getInt("maxLines");
@@ -75,14 +75,12 @@ public class Main {
 			bs= false;
 		}
 		
-		if(windowSize < 0){
-			try{
-				int terminalWidth = jline.TerminalFactory.get().getWidth();
-				windowSize= (int) (terminalWidth * 0.999); 
-			} catch(Exception e){
-				e.printStackTrace();
-				windowSize= 160;
-			}
+		int windowSize= 160;
+		try{
+			int terminalWidth = jline.TerminalFactory.get().getWidth();
+			windowSize= (int) (terminalWidth * 0.999); 
+		} catch(Exception e){
+			e.printStackTrace();
 		}
 		
 		/* Test input files exist */
@@ -107,9 +105,10 @@ public class Main {
 			region= faSeqFile.nextSequence().getName();
 			faSeqFile.close();
 		}
+
 		GenomicCoordsHistory gch= new GenomicCoordsHistory();
 		SAMSequenceDictionary samSeqDict = GenomicCoords.getSamSeqDictFromAnyFile(insam, fasta, genome);
-
+		
 		/* Prepare genomic coordinates to fetch. This should probably be a function in itself */
 		if(region.isEmpty()){
 			if(!samSeqDict.isEmpty()){
@@ -126,13 +125,13 @@ public class Main {
 			}
 		}
 		gch.add(new GenomicCoords(region, samSeqDict, windowSize, fasta));
-		
+
 		/* Initailize console */
 		ConsoleReader console = new ConsoleReader();
 		for(String x : insam){
 			console.addCompleter(new StringsCompleter(new File(x).getName()));
 		}
-		for(String x : "next find visible trackHeight ylim dataCol print rNameOn rNameOff history".split(" ")){
+		for(String x : "next find visible trackHeight ylim dataCol print printFull rNameOn rNameOff history".split(" ")){
 			// Add options. Really you should use a dict for this.
 			if(x.length() > 2){
 				console.addCompleter(new StringsCompleter(x));
@@ -142,14 +141,23 @@ public class Main {
 		String currentCmd = null; // Used to store the current interactive command and repeat it if no new cmd is given. 
 		
 		boolean printIntervalFeatures= false;
+		boolean printIntervalFeaturesFull= false;
 		TrackSet trackSet= new TrackSet();
+
+		/* Initialize GC profile */
+		if(fasta != null){
+			TrackWiggles cgWiggle= gch.current().getGCProfile();
+			trackSet.addOrReplace(cgWiggle);
+		}
+				
 		while(true){ // Each loop processes the user's input files.
 
 			/* Prepare filters */
 			List<SamRecordFilter> filters= FlagToFilter.flagToFilterList(f_incl, F_excl);
 			filters.add(new MappingQualityFilter(mapq));
 			
-			for(int i= 0; i < insam.size(); i++){ // Iterate through each input file
+			for(int i= 0; i < insam.size(); i++){ 
+				/* Iterate through each input file */
 				int idForTrack= i;
 				String sam= insam.get(i);
 				
@@ -174,7 +182,7 @@ public class Main {
 					trackCoverage.update();
 					trackCoverage.printToScreen();				
 					
-					if(bs){
+					if(bs && trackCoverage.getScreenLocusInfoList().size() > 0){
 						if(maxMethylLines < 0){
 							maxMethylLines= 0;
 						}
@@ -224,6 +232,7 @@ public class Main {
 					//tif.setyMaxLines(trackHeight);
 					tif.update();
 				} 
+				/* Wiggles */
 				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BIGWIG) 
 						|| Utils.getFileTypeFromName(sam).equals(TrackFormat.TDF) 
 						|| Utils.getFileTypeFromName(sam).equals(TrackFormat.BEDGRAPH)){
@@ -252,6 +261,9 @@ public class Main {
 				System.out.println(gch.current().getChromIdeogram());
 			}			
 			for(Track tr : trackSet.getTrackSet().values()){
+				if(tr.getFileTag() == gch.current().getGcProfileFileTag()){
+					continue;
+				}
 				tr.setNoFormat(noFormat);
 				if(tr.isNoFormat()){
 					System.out.print(tr.getTitle());
@@ -265,10 +277,35 @@ public class Main {
 					String printable= tr.printFeatures(windowSize);
 					System.out.print(printable);
 				}
+				if(printIntervalFeaturesFull){
+					String printable= tr.printFeatures(Integer.MAX_VALUE);
+					System.out.print(printable);
+				}
 			}
 
 			/* Footers and interactive prompt */
 			/* ****************************** */
+			// GC content profile
+			if(trackSet.getTrackSet().containsKey(gch.current().getGcProfileFileTag())){
+				// There is a bad hack here: We get yMaxLines from the TrackSet, but we don't plot the wiggle profile in the track set. 
+				// Instead we get wiggle from GenomicCoords object and replace yMaxLines in GenomicCoords with the one from the TrackSet.
+				// This is because the TrackSet profile is not updated.
+				int yMaxLines= trackSet.getTrackSet().get(gch.current().getGcProfileFileTag()).getyMaxLines();
+				double yLimitMin= trackSet.getTrackSet().get(gch.current().getGcProfileFileTag()).getYLimitMin();
+				double yLimitMax= trackSet.getTrackSet().get(gch.current().getGcProfileFileTag()).getYLimitMax();
+				if(yMaxLines > 0){
+					TrackWiggles tw= gch.current().getGCProfile();				
+					tw.setyMaxLines(yMaxLines);
+					tw.setYLimitMin(yLimitMin);
+					tw.setYLimitMax(yLimitMax);
+					System.out.print(tw.getTitle());
+					String gcPrintable= tw.printToScreen();
+					if(!noFormat){
+						gcPrintable= "\033[0;33m" + gcPrintable + "\033[0m";
+					}
+					System.out.print(gcPrintable + "\n");
+				}
+			}
 			System.out.print(gch.current().printableRefSeq(noFormat));
 			String ruler= gch.current().printableRuler(10);
 			System.out.println(ruler.substring(0, ruler.length() <= windowSize ? ruler.length() : windowSize));
@@ -314,9 +351,10 @@ public class Main {
 							+                                                   "      Apply to annotation tracks captured by [track regex]. With no optional arguments reset to default: \"'.*' '^$' '.*'\"\n"
 							+                                                   "      Use '.*' to match everything and '^$' to hide nothing. Ex \"visible .*exon.* .*CDS.* .*gtf#.*\"\n"       
 							+ "trackHeight <int> [track regex]\n      Set track height to int lines for all tracks captured by regex. Default regex: '.*'\n"
-							+ "ylim <min> <max> [track regex]\n      Set limits of y axis for all track IDs captured by regex. Default regex: '.*'\n"
+							+ "ylim <min> <max> [track regex]\n      Set limits of y axis for all track IDs captured by regex. Use na to fit to min and/or max. Default: 'na na .*'\n"
 							+ "dataCol <idx> [regex]\n      Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index.\n"
-							+ "print\n      Turn on/off the printing of bed/gtf features in current interval\n"
+							+ "print / printFull\n      Turn on/off the printing of bed/gtf features.\n"
+							+                    "      print clip lines to fit the screen, printFull will wrap the long lines\n"
 							+ "rNameOn / rNameOff\n      Show/Hide read names\n"
 							+ "history\n      Show visited positions\n";
 					System.out.println(inline);
@@ -404,7 +442,12 @@ public class Main {
 						cmdInput= null;
 					} else if(cmdInput.toLowerCase().equals("print")){
 						printIntervalFeatures= (printIntervalFeatures) ? false : true;
+						printIntervalFeaturesFull= false;
 						System.err.println("Print interval features: " + printIntervalFeatures);
+					} else if(cmdInput.toLowerCase().equals("printfull")){
+						printIntervalFeaturesFull= (printIntervalFeaturesFull) ? false : true;
+						printIntervalFeatures= false;
+						System.err.println("Print full interval features: " + printIntervalFeaturesFull);
 					} else if(cmdInput.toLowerCase().equals("rnameon")){
 						withReadName= true;
 					} else if(cmdInput.toLowerCase().equals("rnameoff")) {

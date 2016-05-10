@@ -55,29 +55,34 @@ public class TrackReads extends Track{
 	/* M e t h o d s */
 	
 	public void update(){
-		SamReaderFactory srf=SamReaderFactory.make();
-		srf.validationStringency(ValidationStringency.SILENT);
-		SamReader samReader = srf.open(new File(this.getFilename()));
-
-		long cnt= countReadsInWindow(this.getFilename(), this.getGc(), this.getFilters());
-		float probSample= (float) this.maxReadStack / cnt;
 		
-		Iterator<SAMRecord> sam= samReader.query(this.getGc().getChrom(), this.getGc().getFrom(), this.getGc().getTo(), false);
-		List<TextRead> textReads= new ArrayList<TextRead>();
-		AggregateFilter aggregateFilter= new AggregateFilter(this.getFilters());
+		this.readStack= new ArrayList<List<TextRead>>();
+		if(this.getGc().getGenomicWindowSize() < this.MAX_REGION_SIZE){
 		
-		while(sam.hasNext() && textReads.size() < this.maxReadStack){
-
-			SAMRecord rec= sam.next();
-			if( !aggregateFilter.filterOut(rec) ){
-				Random rand = new Random();
-				if(rand.nextFloat() < probSample){ // Downsampler
-					TextRead tr= new TextRead(rec, this.getGc());
-					textReads.add(tr);
+			SamReaderFactory srf=SamReaderFactory.make();
+			srf.validationStringency(ValidationStringency.SILENT);
+			SamReader samReader = srf.open(new File(this.getFilename()));
+	
+			long cnt= countReadsInWindow(this.getFilename(), this.getGc(), this.getFilters());
+			float probSample= (float) this.maxReadStack / cnt;
+			
+			Iterator<SAMRecord> sam= samReader.query(this.getGc().getChrom(), this.getGc().getFrom(), this.getGc().getTo(), false);
+			List<TextRead> textReads= new ArrayList<TextRead>();
+			AggregateFilter aggregateFilter= new AggregateFilter(this.getFilters());
+			
+			while(sam.hasNext() && textReads.size() < this.maxReadStack){
+	
+				SAMRecord rec= sam.next();
+				if( !aggregateFilter.filterOut(rec) ){
+					Random rand = new Random();
+					if(rand.nextFloat() < probSample){ // Downsampler
+						TextRead tr= new TextRead(rec, this.getGc());
+						textReads.add(tr);
+					}
 				}
 			}
-		}
-		this.readStack= stackReads(textReads);
+			this.readStack= stackReads(textReads);
+		} 
 	}
 	
 	/** 

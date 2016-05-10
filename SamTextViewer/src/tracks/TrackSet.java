@@ -100,14 +100,18 @@ public class TrackSet {
 		}
 		
 		double ymin= Double.NaN;
-        double ymax= Double.NaN;
 		try{
 			ymin= Double.parseDouble(tokens.get(1));
-			ymax= Double.parseDouble(tokens.get(2));
 		} catch(NumberFormatException e){
 			ymin= Double.NaN;
+		}
+		double ymax= Double.NaN;
+		try{
+			ymax= Double.parseDouble(tokens.get(2));
+		} catch(NumberFormatException e){
 			ymax= Double.NaN;
 		}
+
 		if(ymin >= ymax){
 			System.err.println("Warning ymin >= ymax. Resetting to default.");
 			ymin= Double.NaN;
@@ -115,8 +119,8 @@ public class TrackSet {
 		}
 		for(Track tr : this.trackSet.values()){
 			if(tr.getFileTag().matches(trackNameRegex)){
-				tr.setYmin(ymin);
-				tr.setYmax(ymax);
+				tr.setYLimitMin(ymin);
+				tr.setYLimitMax(ymax);
 			}
 		}
 	}

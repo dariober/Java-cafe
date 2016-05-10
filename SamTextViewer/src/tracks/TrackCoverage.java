@@ -3,11 +3,8 @@ package tracks;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Joiner;
@@ -34,9 +31,8 @@ public class TrackCoverage extends Track {
 	/** Each dot in the screen output track corresponds to this many units of 
 	 * score in the input. Typically this "reads per dot". */
 	private double scorePerDot;   
-	private double maxDepth;
-	/** Max window size allowed before resettig yMaxLines to 0 */
-	private int MAX_WINDOW_SIZE= 500000;
+	private boolean rpm= false;
+	
 	
 	/* C o n s t r u c t o r */
 	
@@ -64,36 +60,37 @@ public class TrackCoverage extends Track {
 
 	public void update() throws IOException{
 		
-		// this.setyMaxLines(this.yMaxLines);
+		this.screenLocusInfoList= new ArrayList<ScreenLocusInfo>();
+		if(this.getGc().getGenomicWindowSize() < this.MAX_REGION_SIZE){
 		
-		SamReaderFactory srf=SamReaderFactory.make();
-		srf.validationStringency(ValidationStringency.SILENT);
-		SamReader samReader= srf.open(new File(this.getFilename()));
+			SamReaderFactory srf=SamReaderFactory.make();
+			srf.validationStringency(ValidationStringency.SILENT);
+			SamReader samReader= srf.open(new File(this.getFilename()));
+			
+			IntervalList il= new IntervalList(samReader.getFileHeader());
+			il.add(new Interval(this.getGc().getChrom(), this.getGc().getFrom(), this.getGc().getTo()));
+			SamLocusIterator samLocIter= new SamLocusIterator(samReader, il, true);
+			samLocIter.setSamFilters(this.getFilters());
+			Iterator<samTextViewer.SamLocusIterator.LocusInfo> iter= samLocIter.iterator();
 		
-		IntervalList il= new IntervalList(samReader.getFileHeader());
-		il.add(new Interval(this.getGc().getChrom(), this.getGc().getFrom(), this.getGc().getTo()));
-		SamLocusIterator samLocIter= new SamLocusIterator(samReader, il, true);
-		samLocIter.setSamFilters(this.getFilters());
-		Iterator<samTextViewer.SamLocusIterator.LocusInfo> iter= samLocIter.iterator();
-	
-		screenLocusInfoList= new ArrayList<ScreenLocusInfo>();
-		for(int i= 0; i < this.getGc().getMapping().size(); i++){
-			screenLocusInfoList.add(new ScreenLocusInfo());	
-		}
-		
-		// if(this.getyMaxLines() != 0){
-		while(iter.hasNext()){			
-			samTextViewer.SamLocusIterator.LocusInfo locusInfo= iter.next();
-			int screenPos= Utils.getIndexOfclosestValue(locusInfo.getPosition(), this.getGc().getMapping());
-			byte refBase= '\0';
-			if(this.getGc().getRefSeq() != null){
-				refBase= this.getGc().getRefSeq()[screenPos];
+			for(int i= 0; i < this.getGc().getMapping().size(); i++){
+				this.screenLocusInfoList.add(new ScreenLocusInfo());	
 			}
-			screenLocusInfoList.get(screenPos).increment(locusInfo, refBase, this.isBs());
-		}
-		// }
-		samLocIter.close();
-		samReader.close();		
+		
+			while(iter.hasNext()){			
+				samTextViewer.SamLocusIterator.LocusInfo locusInfo= iter.next();
+				int screenPos= Utils.getIndexOfclosestValue(locusInfo.getPosition(), this.getGc().getMapping());
+				byte refBase= '\0';
+				if(this.getGc().getRefSeq() != null){
+					refBase= this.getGc().getRefSeq()[screenPos];
+				}
+				this.screenLocusInfoList.get(screenPos).increment(locusInfo, refBase, this.isBs());
+			}
+			samLocIter.close();
+			samReader.close();	
+		} 
+		this.setYLimitMin(this.getYLimitMin());
+		this.setYLimitMax(this.getYLimitMax());
 	}
 	
 	/**
@@ -106,20 +103,29 @@ public class TrackCoverage extends Track {
 	@Override
 	public String printToScreen(){
 				
-		if(this.getyMaxLines() == 0){return "";}
+		if(this.getyMaxLines() == 0){
+			return "";
+		} else if(this.screenLocusInfoList.size() == 0){
+			if(this.getGc().getGenomicWindowSize() >= this.MAX_REGION_SIZE){
+				return "Track not shown: Window is too large";
+			}
+			return "";
+		}
 		
 		List<Double> yValues= new ArrayList<Double>();
 		for(ScreenLocusInfo x : screenLocusInfoList){
 			yValues.add(x.getMeanDepth());
 		}
-		TextProfile textProfile= new TextProfile(yValues, this.getyMaxLines(), this.getYmin(), this.getYmax());
+		this.setScreenScores(yValues);
+		TextProfile textProfile= new TextProfile(yValues, this.getyMaxLines(), this.getYLimitMin(), this.getYLimitMax());
 				
-		this.maxDepth= textProfile.getMaxDepth();
 		this.scorePerDot= textProfile.getScorePerDot();
-		if(this.isRpm()){
+		if(this.rpm){
 			long libSize= getAlignedReadCount(new File(this.getFilename()));
-			this.maxDepth= this.maxDepth / libSize * 1000000;
-			this.scorePerDot= this.scorePerDot / libSize * 1000000;
+			this.scorePerDot= this.scorePerDot / libSize * 1000000.0;
+			for(int i= 0; i < yValues.size(); i++){
+				yValues.set(i, yValues.get(i)/libSize * 1000000.0);
+			}
 		}
 		
 		ArrayList<String> lineStrings= new ArrayList<String>();
@@ -151,34 +157,27 @@ public class TrackCoverage extends Track {
     
     /* S e t t e r s   and   G e t t e r s */
     
-    /* This method makes sense calling only after having set the profile. Typically after  
-     * */
-    public double getScorePerDot(){
-    	return this.scorePerDot;
-    }
-    public double getMaxDepth(){
-    	this.printToScreen(); //  It's silly to call this just to set maxDepth.
-    	return this.maxDepth;
-    }    
+    /* This method makes sense calling only after having set the profile. Typically after */
     public List<ScreenLocusInfo> getScreenLocusInfoList(){
     	return screenLocusInfoList;
     }
 
-	@Override
-	public String getTitle(){
-		return this.getFileTag() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
-				Math.rint((this.getMaxDepth())*100)/100 + "; .= " + Math.rint((this.scorePerDot)) + ";\n";
+	public void setRpm(boolean rpm) {
+		this.rpm = rpm;
 	}
 
-	//@Override
-	/**Number of text lines assigned to y-axis. Overridden to allow resetting
-	 * to zero if window size becomes too large
-	 * */
-	//public void setyMaxLines(int yMaxLines){
-	//	if(this.getGc().getGenomicWindowSize() > this.MAX_WINDOW_SIZE){
-	//		this.yMaxLines = 0;
-	//	} else {
-	//		this.yMaxLines = yMaxLines;
-	//	}
-	//}
+	@Override
+	public String getTitle(){
+		
+		// Strip trailing zeros
+		String s= Double.toString(Utils.roundToSignificantFigures(this.getMaxScreenScores(), 4));
+		String maxScreenScore= s.indexOf(".") < 0 ? s : s.replaceAll("0*$", "").replaceAll("\\.$", "");
+		s= Double.toString(Utils.roundToSignificantFigures(this.scorePerDot, 4));
+		String scoreXDot= s.indexOf(".") < 0 ? s : s.replaceAll("0*$", "").replaceAll("\\.$", "");
+		
+		return this.getFileTag() 
+				+ "; ylim: [" + this.getYLimitMin() + " " + this.getYLimitMax() + "]" 
+				+ "; max: " + maxScreenScore 
+				+ "; .= " + scoreXDot + ";\n";
+	}
 }

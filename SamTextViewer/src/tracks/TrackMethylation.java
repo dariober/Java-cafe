@@ -165,7 +165,7 @@ public class TrackMethylation extends Track {
 	
 	@Override
 	public String getTitle(){
-		return this.getFileTag() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
+		return this.getFileTag() + "; ylim: " + this.getYLimitMin() + ", " + this.getYLimitMax() + "; max: " + 
 				Math.rint((this.getMaxDepth())*100)/100 + "; .= " + Math.rint((this.scorePerDot)) + ";\n";
 	}
 	

@@ -10,6 +10,8 @@ import java.util.List;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import tracks.TrackWiggles;
+
 import org.junit.Test;
 
 import exceptions.InvalidGenomicCoordsException;
@@ -51,9 +53,7 @@ public class GenomicCoordsTest {
 	public void printRefSeq() throws InvalidGenomicCoordsException, IOException{
 		GenomicCoords gc= new GenomicCoords("chr7", 5540580, 5540590, null, 100, "test_data/chr7.fa");
 		//GenomicCoords gc= new GenomicCoords("chr7", 5540580, 5540590, samSeqDict, 100, null);
-		System.out.println("START");
 		System.out.println(gc.printableRefSeq(true));
-		System.out.println("DONE");
 	}
 	
 	@Test
@@ -226,195 +226,25 @@ public class GenomicCoordsTest {
 	
 	}
 	
-	/*
 	@Test
-	public void canGoToRegionAndReset(){
+	public void canGetGCProfileInRegion() throws InvalidGenomicCoordsException, IOException{
+				
+		GenomicCoords gc= new GenomicCoords("chr7", 1000000, 1000500, samSeqDict, 50, null);
+		assertEquals(null, gc.getGCProfile()); // null fasta
 		
-		GenomicCoords gc= GenomicCoords.goToRegion("chr1:1-10", "test_data/ds051.short.bam", 100);
-		assertEquals("chr1", gc.getChrom());
-		assertEquals(1, (int)gc.getFrom());
-		assertEquals(10, (int)gc.getTo());
+		gc= new GenomicCoords("chr7", 1, 100, samSeqDict, 50, fastaFile);
+		System.out.println("START");
+		System.out.println(gc.getGCProfile().getFileTag());
+		System.out.println(gc.getGCProfile().printToScreen());
 		
-		gc= GenomicCoords.goToRegion("chr1:1", "test_data/ds051.short.bam", 100);
-		assertEquals("chr1", gc.getChrom());
-		assertEquals(1, (int)gc.getFrom());
-		assertEquals(100, (int)gc.getTo());
-		
-		gc= GenomicCoords.goToRegion("chr1:1", "test_data/ds051.short.bam", 100);
-		assertEquals("chr1", gc.getChrom());
-		assertEquals(1, (int)gc.getFrom());
-		assertEquals(100, (int)gc.getTo());
-
-		gc= GenomicCoords.goToRegion("chr1:100000-100200", "test_data/ds051.short.bam", 100);
-		
-		assertEquals("chr1", gc.getChrom());
-		assertEquals(100000, (int)gc.getFrom());
-		assertEquals(100200, (int)gc.getTo());
-
-		gc= GenomicCoords.goToRegion("chrM:16550", "test_data/ds051.short.bam", 100);
-		assertEquals(16472, (int)gc.getFrom());
-		assertEquals(16571, (int)gc.getTo());
-
-		gc= GenomicCoords.goToRegion("chrM:16550-17000", "test_data/ds051.short.bam", 100);
-		assertEquals(16472, (int)gc.getFrom());
-		assertEquals(16571, (int)gc.getTo());
-
-		gc= GenomicCoords.goToRegion("nonsense", "test_data/ds051.short.bam", 100);
-		assertEquals(null, gc.getChrom());
-		assertEquals(null, gc.getFrom());
-		assertEquals(null, gc.getTo());
-
-//		gc= GenomicCoords.goToRegion("chrM:-1000", "test/test_data/ds051.short.bam", 100);
-//		System.out.println(gc);
-//		assertEquals(null, gc.getChrom());
-//		assertEquals(null, gc.getFrom());
-//		assertEquals(null, gc.getTo());
-		
+		gc= new GenomicCoords("seq", 1, 120, null, 50, "test_data/seq_cg.fa");
+		TrackWiggles gcCnt= gc.getGCProfile();
+		gcCnt.setyMaxLines(2);
+		String exp= "                                  ::::::::::::::::\n" +
+                    "::::::::::::::::.________________:::::::::::::::::";
+		assertEquals(exp, gcCnt.printToScreen());
+		System.out.println(gcCnt.getTitle());
+		System.out.println(gcCnt.printToScreen());
 	}
-	
-	@Test 
-	public void returnNullForChromNotFoundInSam(){
-		
-		GenomicCoords gc= new GenomicCoords("nonsense:1-10", samSeqDict, 100);
-		assertEquals(null, gc.getChrom());
-		assertEquals(null, gc.getFrom());
-		assertEquals(null, gc.getTo());
-		
-		gc= new GenomicCoords("nonsense", samSeqDict, 100);
-		assertEquals(null, gc.getChrom());
-		assertEquals(null, gc.getFrom());
-		assertEquals(null, gc.getTo());	
-	}
-
-	@Test
-	public void canParseAndGetCoords() {		
-		
-		String region= "chrX:1-100";
-		GenomicCoords gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals("chrX", gc.getChrom());
-		assertEquals(1, (int)gc.getFrom());
-		assertEquals(100, (int)gc.getTo());
-		
-		region= "chrX : 1 -    100";
-		
-		gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals("chrX", gc.getChrom());
-		assertEquals(1, (int)gc.getFrom());
-		assertEquals(100, (int)gc.getTo());
-		
-		region= "chrX:1,000,000-1,100,000";
-		gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals(1000000, (int)gc.getFrom());
-		assertEquals(1100000, (int)gc.getTo());
-
-		region= "chrX:1,000,000-1,100,000";
-		gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals(1000000, (int)gc.getFrom());
-		
-		region= "chrX:-1";
-		gc= new GenomicCoords(region, samSeqDict, 100);
-		//assertEquals(null, gc.getFrom());
-
-	}
-	
-	@Test
-	public void canHandleNonSenseCoords(){
-		
-		// These cases should be user input errors.
-		
-		String region= "chrX:1,0,0,0,000-1100000"; // Take care, this should fail
-		GenomicCoords gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals(1000000, (int)gc.getFrom());
-
-		region= "chrX:110-100"; // start > end
-		//gc= new GenomicCoords(region, samSeqDict, 100);
-		//assertEquals(null, gc.getFrom());
-
-		region= "chrX:-1-1000"; // Negative start: Non sense
-		gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals(null, gc.getFrom());
-
-		region= "chrX:0-1000"; // 
-		gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals(null, gc.getFrom());
-
-		region= "chrX: 1,100,000,000"; // 
-		gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals(155270560, (int)gc.getFrom()); // Reset to chrom size
-		assertEquals(null, gc.getTo());
-	}
-	
-	@Test
-	public void canHandleChromsWithMetachars(){
-	
-		String weird= "chr:X-Y";
-		samSeqDict.addSequence(new SAMSequenceRecord(weird, 10000));
-		String region= weird + ":1-100"; // Names with colon and hyphen ok.
-		GenomicCoords gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals(weird, gc.getChrom());
-		assertEquals(1, (int)gc.getFrom());
-		assertEquals(100, (int)gc.getTo());
-	}
-	
-	@Test
-	public void canGetChromAndFromWithoutTo(){
-
-		String region= " chrX : 100 ";
-		GenomicCoords gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals("chrX", gc.getChrom());
-		assertEquals(100, (int)gc.getFrom());
-		assertEquals(null, gc.getTo());
-		
-	}
-	
-	@Test
-	public void canParseStringToGenomicCoords(){
-		String x= "\"bla:192121-10\":10-100";
-		x= "chr7:10-100";
-		x= "chr7:1-1000";
-		GenomicCoords gc= new GenomicCoords(x, samSeqDict, 100);	
-	}
-	
-	@Test
-	public void canGetChromOnly(){
-		String region= " chrX";
-		GenomicCoords gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals("chrX", gc.getChrom());
-		assertEquals(null, gc.getFrom());
-		assertEquals(null, gc.getTo());		
-	}
-
-
-	@Test//(expected=NumberFormatException.class)
-	public void formatNotValid(){ // This should be better handled. What if chrom names contain ':'?
-		String region= "chrX:chr2";
-		GenomicCoords gc= new GenomicCoords(region, samSeqDict, 100);
-		assertEquals("chrX", gc.getChrom());
-		assertEquals(null, gc.getFrom());
-		assertEquals(null, gc.getTo());
-	}
-	
-	@Test
-	public void canResetCoords(){
-		String region= "chrM:1000000";
-		GenomicCoords gc= new GenomicCoords(region, samSeqDict, 100);
-		gc.correctCoordsAgainstSeqDict(samSeqDict);
-		assertEquals(null, gc.getTo());
-		assertEquals(16571, (int)gc.getFrom());
-		
-		region= "chrM:20000-30000";
-		gc= new GenomicCoords(region, samSeqDict, 100);
-		gc.correctCoordsAgainstSeqDict(samSeqDict);
-		assertEquals(16571, (int)gc.getTo());
-		assertEquals(16571, (int)gc.getFrom());
-
-		region= "nonsense";
-		gc= new GenomicCoords(region, samSeqDict, 100);
-		gc.correctCoordsAgainstSeqDict(samSeqDict);
-		assertEquals(null, gc.getChrom());
-		assertEquals(null, gc.getTo());
-		assertEquals(null, gc.getFrom());
-
-	} */
 			
 }

@@ -47,7 +47,7 @@ public class IntervalFeature implements Comparable<IntervalFeature>{
 	 * @param type Format of this line
 	 */
 	public IntervalFeature(String line, TrackFormat type){
-		if(type.equals(TrackFormat.BED)){
+		if(type.equals(TrackFormat.BED) || type.equals(TrackFormat.BEDGRAPH)){
 			intervalFeatureFromBedLine(line);
 			this.format= TrackFormat.BED;
 		} else if(type.equals(TrackFormat.GFF)){
@@ -55,7 +55,7 @@ public class IntervalFeature implements Comparable<IntervalFeature>{
 			this.format= TrackFormat.GFF;
 		} else {
 			System.err.println("Format " + type + " not supported");
-			System.exit(1);
+			throw new RuntimeException();
 		}
 	}
 	
@@ -361,7 +361,7 @@ public class IntervalFeature implements Comparable<IntervalFeature>{
 		fwdFeature.put("lncrna",      'L'); revFeature.put("lncrna",      'l');
 		fwdFeature.put("sirna",       'S'); revFeature.put("sirna",       's');
 		fwdFeature.put("pirna",       'P'); revFeature.put("pirna",       'p');
-		fwdFeature.put("snorna",      'O'); revFeature.put("snorna",      'O');
+		fwdFeature.put("snorna",      'O'); revFeature.put("snorna",      'o');
 		
 		// For feature with strand not available, use forward encoding, unless feature unknown
 		unstrFeature.putAll(fwdFeature);

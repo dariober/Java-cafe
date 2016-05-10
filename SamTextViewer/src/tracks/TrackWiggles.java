@@ -29,7 +29,6 @@ import samTextViewer.Utils;
  * bigBed, bigWig, */
 public class TrackWiggles extends Track {
 
-	private double maxDepth;
 	private double scorePerDot;
 	private List<ScreenWiggleLocusInfo> screenWiggleLocusInfoList;
 	private int bdgDataColIdx= 4; 
@@ -49,6 +48,9 @@ public class TrackWiggles extends Track {
 		this.update();
 		
 	};
+	
+
+	/*  M e t h o d s  */
 	
 	public void update() throws IOException {
 
@@ -92,10 +94,29 @@ public class TrackWiggles extends Track {
 		} else {
 			throw new RuntimeException("Extension (i.e. file type) not recognized for " + this.getFilename());
 		}
+		this.setYLimitMin(this.getYLimitMin());
+		this.setYLimitMax(this.getYLimitMax());
 	}
 
+	@Override
+	public String printToScreen(){ // int yMaxLines, Double ymin, Double ymax
 	
-	/*  M e t h o d s  */
+		if(this.getyMaxLines() == 0){return "";}
+		TextProfile textProfile= new TextProfile(this.getScreenScores(), this.getyMaxLines(), this.getYLimitMin(), this.getYLimitMax());
+		
+		this.scorePerDot= textProfile.getScorePerDot();
+		// this.setYLimitMax(textProfile.getYMaxLimit());
+		// this.setYLimitMin(textProfile.getYMinLimit());
+		// this.maxDepth= textProfile.getMaxDepth();
+
+		ArrayList<String> lineStrings= new ArrayList<String>();
+		for(int i= (textProfile.getProfile().size() - 1); i >= 0; i--){
+			List<String> xl= textProfile.getProfile().get(i);
+			lineStrings.add(StringUtils.join(xl, ""));
+		}		
+		return Joiner.on("\n").join(lineStrings);
+	}
+	
 	/**
 	 * Block compress input file and create associated tabix index. Newly created file and index are
 	 * deleted on exit if deleteOnExit true.
@@ -103,7 +124,7 @@ public class TrackWiggles extends Track {
 	 * */
 	private void blockCompressAndIndex(String in, String bgzfOut, boolean deleteOnExit) throws IOException {
 		
-		System.err.print("Compressing: " + in + " to file: " + bgzfOut + "... ");
+		// System.err.print("Compressing: " + in + " to file: " + bgzfOut + "... ");
 		
 		File inFile= new File(in);
 		File outFile= new File(bgzfOut);
@@ -126,7 +147,7 @@ public class TrackWiggles extends Track {
 		}
 		writer.flush();
 		
-		System.err.print("Indexing... ");
+		// System.err.print("Indexing... ");
 		
 		File tbi= new File(bgzfOut + TabixUtils.STANDARD_INDEX_EXTENSION);
 		if(tbi.exists() && tbi.isFile()){
@@ -137,7 +158,7 @@ public class TrackWiggles extends Track {
 		index.writeBasedOnFeatureFile(outFile);
 		writer.close();
 
-		System.err.println("Done");
+		// System.err.println("Done");
 		
 		if(deleteOnExit){
 			outFile.deleteOnExit();
@@ -226,31 +247,9 @@ public class TrackWiggles extends Track {
 		this.setScreenScores(screenScores);
 		return;
 	}
-	
-	@Override
-	public String printToScreen(){ // int yMaxLines, Double ymin, Double ymax
-		
-		if(this.getyMaxLines() == 0){return "";}
-		
-		TextProfile textProfile= new TextProfile(this.getScreenScores(), this.getyMaxLines(), this.getYmin(), this.getYmax());
-		
-		this.scorePerDot= textProfile.getScorePerDot();
-		this.maxDepth= textProfile.getMaxDepth();
-
-		ArrayList<String> lineStrings= new ArrayList<String>();
-		for(int i= (textProfile.getProfile().size() - 1); i >= 0; i--){
-			List<String> xl= textProfile.getProfile().get(i);
-			lineStrings.add(StringUtils.join(xl, ""));
-		}
-		return Joiner.on("\n").join(lineStrings);
-	}
 		
 	/*   S e t t e r s   and   G e t t e r s */
 	
-	public double getMaxDepth() {
-		return maxDepth;
-	}
-
 	public double getScorePerDot() {
 		return scorePerDot;
 	}
@@ -260,8 +259,16 @@ public class TrackWiggles extends Track {
 
 	@Override
 	public String getTitle(){
-		return this.getFileTag() + "; ylim: " + this.getYmin() + ", " + this.getYmax() + "; max: " + 
-				Math.rint((this.maxDepth)*100)/100 + "; .= " + Math.rint((this.scorePerDot)*100)/100 + ";\n";
+		
+		double[] rounded= Utils.roundToSignificantDigits(this.getMinScreenScores(), this.getMaxScreenScores(), 2);
+		
+		String s= Double.toString(Utils.roundToSignificantFigures(this.scorePerDot, 4));
+		String scoreXDot= s.indexOf(".") < 0 ? s : s.replaceAll("0*$", "").replaceAll("\\.$", "");
+
+		return this.getFileTag() 
+				+ "; ylim[" + this.getYLimitMin() + " " + this.getYLimitMax() + "]" 
+				+ "; range[" + rounded[0] + " " + rounded[1] + "]"
+				+ "; .= " + scoreXDot + ";\n";
 	}
 	
 }

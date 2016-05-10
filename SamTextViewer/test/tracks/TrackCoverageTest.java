@@ -82,7 +82,7 @@ public class TrackCoverageTest {
 		TrackCoverage tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, false);
 		tc.setyMaxLines(yMaxLines);
 		tc.setRpm(true);
-		assertEquals(1000000, tc.getMaxDepth(), 0.1);
+		// assertEquals(1000000, tc.getMaxDepth(), 0.1);
 	}
 	
 	@Test
@@ -95,7 +95,7 @@ public class TrackCoverageTest {
 		tc.setyMaxLines(yMaxLines);
 		System.out.println(gc.toString());
 		System.out.println(tc.printToScreen());
-		System.out.println(tc.getScorePerDot());
+		// System.out.println(tc.getScorePerDot());
 	}
 
 	@Test
@@ -109,14 +109,13 @@ public class TrackCoverageTest {
 		assertEquals("", tc.printToScreen());
 	}
 	
-	// @Test
+	@Test
 	public void canResetToZeroLargeWindow() throws IOException, InvalidGenomicCoordsException {
-		int yMaxLines= 3;
-		int windowSize= 10;
-
-		GenomicCoords gc= new GenomicCoords("chr7", 1, 5566870, samSeqDict, windowSize, fastaFile);
-		TrackCoverage tc= new TrackCoverage("test_data/ds051.short.bam", gc, filters, false);
-		tc.setyMaxLines(yMaxLines);
+		// If the genomic window is too large do not process the bam file and return zero height track.
+		GenomicCoords gc= new GenomicCoords("chr7", 1, 100000000, samSeqDict, 100, fastaFile);
+		TrackCoverage tc= new TrackCoverage("test_data/ds051.actb.bam", gc, filters, false);
+		assertEquals(0, tc.getScreenLocusInfoList().size());
+		assertTrue(tc.printToScreen().startsWith("Track"));
 	}
 	
 	@Test 
@@ -140,6 +139,5 @@ public class TrackCoverageTest {
 		tc.setyMaxLines(yMaxLines);
 		System.out.println(gc.toString());
 		System.out.println(tc.printToScreen());
-		System.out.println(tc.getScorePerDot());
 	}
 }

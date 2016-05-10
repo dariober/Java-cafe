@@ -8,8 +8,8 @@ import samTextViewer.Utils;
 /** Text representation of a continuous profile along the screen positions */
 class TextProfile {
 	
-	private Double maxDepth= Double.NaN;   // Store the max depth of the track
-	private Double minDepth= Double.NaN;
+	private Double yMaxLimit= Double.NaN;   // Store the max depth of the track
+	private Double yMinLimit= Double.NaN;
 	private double scorePerDot; // Store the scaling factor: Each dot in the profile cooresponds to
 	                            // this many units of yValues. 
 	// Text representation of yValues scled by yMaxLines. Each inner list is a line on screen.
@@ -28,14 +28,42 @@ class TextProfile {
 	/**
 	 * @param yValues Values on the y-axis. Should be of the same length as the windowSize
 	 * @param yMaxLines The yValues will be rescaled to fit this many lines of text.
-	 * @param ymim, ymax Min and max values for y-axis. 
+	 * @param yMimUser, yMaxUser Min and max values for y-axis as set by user. 
+	 * If NaN use min and max from yValues  
 	 */
-	public TextProfile(List<Double> yValues, int yMaxLines, Double ymin, Double ymax){
+	public TextProfile(List<Double> yValues, int yMaxLines, Double yMinUser, Double yMaxUser){
 		
+		// * Get ymin and ymax of input yValues
+		double ymin= Double.MAX_VALUE;
+		double ymax= Double.MIN_VALUE;
+		for(double x : yValues){
+			if(x > ymax){
+				ymax= x;
+			} 
+			if(x < ymin){
+				ymin= x;
+			}
+		}
+		// * If yMinUser is NaN set it to ymin. Same for yMaxUser  
+		if(yMinUser.isNaN()){
+			yMinUser= ymin;
+		}
+		if(yMaxUser.isNaN()){
+			yMaxUser= ymax;
+		}
+		if(yMinUser > 0){ // FIXME: min and max should be allowed to be <0
+			yMinUser= 0.0;
+		}
+		if(yMaxUser < 0){
+			yMaxUser= 0.0;
+		}
+		this.yMinLimit= yMinUser;
+		this.yMaxLimit= yMaxUser;
+		/*
 		if(ymin.isNaN() != ymax.isNaN()){
 			throw new RuntimeException("ymin and ymax must be both defined or both NaN");
 		}
-		if(ymin >= ymax){
+		if(ymin > ymax){
 			throw new RuntimeException("Cannot have ymin >= ymax. Got ymin= " + ymin + "; ymax= " + ymax);
 		}
 		
@@ -46,29 +74,30 @@ class TextProfile {
 				if(y > this.maxDepth){
 					this.maxDepth= y;
 				}
-				if(y < minDepth){
-					minDepth= y;
+				if(y < this.minDepth){
+					this.minDepth= y;
 				}
 			}
-			if(minDepth > 0){
-				minDepth= 0.0;
+			if(this.minDepth > 0){
+				this.minDepth= 0.0;
 			}
-			if(maxDepth < 0){
-			 	maxDepth= 0.0;
+			if(this.maxDepth < 0){
+				this.maxDepth= 0.0;
 			}
 		} else {
 			this.maxDepth= ymax;
 			this.minDepth= ymin;
 		}
-		this.scorePerDot= (double)(this.maxDepth - minDepth) / (yMaxLines * 2); // * 2 because we use ':' for 2 units in a single line.
+		*/
+		this.scorePerDot= (double)(yMaxUser - yMinUser) / ((double)yMaxLines * 2); // * 2 because we use ':' for 2 units in a single line.
 		
 		// Locate zero on y axis. It's silly to generate a sequence just to find the index closest to zero. But anyway...
-		List<Double> yAxis = Utils.seqFromToLenOut(minDepth, maxDepth, yMaxLines);
+		List<Double> yAxis = Utils.seqFromToLenOut(yMinUser, yMaxUser, yMaxLines);
 		int y0= Utils.getIndexOfclosestValue(0, yAxis);
 		List<List<String>> profile= new ArrayList<List<String>>();
 		for(int i= 0; i < yValues.size(); i++){
 			double y= yValues.get(i);
-			List<String> strDepth = prepareYColumn(y, yMaxLines, y0, this.scorePerDot);
+			List<String> strDepth = prepareYColumn(y, yMaxLines, y0);
 			profile.add(strDepth);
 			yColumnSanityCheck(strDepth, y0, y);
 		}
@@ -82,9 +111,9 @@ class TextProfile {
 	 * @param scorePerDot
 	 * @return
 	 */
-	private List<String> prepareYColumn(double yValue, int yMaxLines, int y0, double scorePerDot){
+	private List<String> prepareYColumn(double yValue, int yMaxLines, int y0){
 	
-		Double yPosDotU= Math.abs(yValue / scorePerDot); // Y positions in dot units, not line units. 
+		Double yPosDotU= Math.abs(yValue / this.scorePerDot); // Y positions in dot units, not line units. 
 		if((int)Math.rint(yPosDotU) == 0){ // For zero coverage
 			ArrayList<String> strDepth= new ArrayList<String>();
 			for(int j= 0; j < yMaxLines; j++){
@@ -193,10 +222,14 @@ class TextProfile {
 	}
 	
 	/*  G e t t e r s  */
-	protected double getMaxDepth() {
-		return maxDepth;
+	protected double getYMaxLimit() {
+		return yMaxLimit;
 	}
 
+	protected double getYMinLimit() {
+		return yMinLimit;
+	}
+	
 	protected double getScorePerDot() {
 		return scorePerDot;
 	}
