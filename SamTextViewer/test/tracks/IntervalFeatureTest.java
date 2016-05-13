@@ -130,5 +130,4 @@ public class IntervalFeatureTest {
 		//System.out.println(f);
 		//System.out.println(rulerMap);
 	}
-	
 }

@@ -2,13 +2,18 @@ package tracks;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.UrlValidator;
+
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
@@ -54,15 +59,24 @@ public class TrackReads extends Track{
 	
 	/* M e t h o d s */
 	
-	public void update(){
+	public void update() throws MalformedURLException{
 		
 		this.readStack= new ArrayList<List<TextRead>>();
 		if(this.getGc().getGenomicWindowSize() < this.MAX_REGION_SIZE){
-		
+
+			/*  ------------------------------------------------------ */
+			/* This chunk prepares SamReader from local bam or URL bam */
+			UrlValidator urlValidator = new UrlValidator();
 			SamReaderFactory srf=SamReaderFactory.make();
 			srf.validationStringency(ValidationStringency.SILENT);
-			SamReader samReader = srf.open(new File(this.getFilename()));
-	
+			SamReader samReader;
+			if(urlValidator.isValid(this.getFilename())){
+				samReader = srf.open(SamInputResource.of(new URL(this.getFilename())).index(new URL(this.getFilename() + ".bai")));
+			} else {
+				samReader= srf.open(new File(this.getFilename()));
+			}
+			/*  ------------------------------------------------------ */
+			
 			long cnt= countReadsInWindow(this.getFilename(), this.getGc(), this.getFilters());
 			float probSample= (float) this.maxReadStack / cnt;
 			
@@ -185,14 +199,28 @@ public class TrackReads extends Track{
 	 * @param gc
 	 * @param filters List of filters to apply
 	 * @return
+	 * @throws MalformedURLException 
 	 */
-	private long countReadsInWindow(String bam, GenomicCoords gc, List<SamRecordFilter> filters) {
+	private long countReadsInWindow(String bam, GenomicCoords gc, List<SamRecordFilter> filters) throws MalformedURLException {
 
-		long cnt= 0;
-		
+		/*  ------------------------------------------------------ */
+		/* This chunk prepares SamReader from local bam or URL bam */
+		UrlValidator urlValidator = new UrlValidator();
 		SamReaderFactory srf=SamReaderFactory.make();
 		srf.validationStringency(ValidationStringency.SILENT);
-		SamReader samReader = srf.open(new File(bam));
+		SamReader samReader;
+		if(urlValidator.isValid(bam)){
+			samReader = srf.open(SamInputResource.of(new URL(bam)).index(new URL(bam + ".bai")));
+		} else {
+			samReader= srf.open(new File(bam));
+		}
+		/*  ------------------------------------------------------ */
+		
+		long cnt= 0;
+		
+		//SamReaderFactory srf=SamReaderFactory.make();
+		//srf.validationStringency(ValidationStringency.SILENT);
+		//SamReader samReader = srf.open(new File(bam));
 
 		Iterator<SAMRecord> sam= samReader.query(gc.getChrom(), gc.getFrom(), gc.getTo(), false);
 		AggregateFilter aggregateFilter= new AggregateFilter(filters);

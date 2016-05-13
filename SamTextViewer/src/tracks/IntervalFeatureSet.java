@@ -8,14 +8,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
+
+import org.apache.commons.validator.routines.UrlValidator;
 
 import exceptions.InvalidGenomicCoordsException;
 import htsjdk.tribble.readers.TabixReader;
@@ -43,12 +45,12 @@ public class IntervalFeatureSet {
 	
 	/** Construct from bed or gtf file.
 	 * @throws IOException */
-	public IntervalFeatureSet(File infile) throws IOException{
+	public IntervalFeatureSet(String infile) throws IOException{
 		
-		this.type= Utils.getFileTypeFromName(infile.getName());
+		this.type= Utils.getFileTypeFromName(new File(infile).getName());
 		
-		if(Utils.hasTabixIndex(infile.getAbsolutePath())){
-			this.tabixReader= new TabixReader(infile.getAbsolutePath());
+		if(Utils.hasTabixIndex(new File(infile).getAbsolutePath())){
+			this.tabixReader= new TabixReader(new File(infile).getAbsolutePath());
 			this.isTabix= true;
 		} else {
 			this.intervalMap= loadFileIntoIntervalMap(infile);
@@ -145,18 +147,26 @@ public class IntervalFeatureSet {
 		return true;
 	}
 	
-	private Map <String, List<IntervalFeature>> loadFileIntoIntervalMap(File infile) throws IOException{
+	private Map <String, List<IntervalFeature>> loadFileIntoIntervalMap(String infile) throws IOException{
 		
-		System.err.print("Reading file '" + infile.getName() + "'...");
+		System.err.print("Reading file '" + infile + "'...");
 		
 		Map <String, List<IntervalFeature>> intervalMap= new HashMap<String, List<IntervalFeature>>(); 
 		
 		BufferedReader br= null;
 		InputStream gzipStream= null;
-		if(infile.getName().endsWith(".gz")){
-			InputStream fileStream = new FileInputStream(infile);
-			gzipStream = new GZIPInputStream(fileStream);
+		UrlValidator urlValidator = new UrlValidator();
+		if(infile.endsWith(".gz")){
+			if(urlValidator.isValid(infile)) {
+				gzipStream = new GZIPInputStream(new URL(infile).openStream());
+			} else {
+				gzipStream = new GZIPInputStream(new FileInputStream(infile));
+			}
 			Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
+			br = new BufferedReader(decoder);
+		} else if(urlValidator.isValid(infile)) {
+			InputStream instream= new URL(infile).openStream();
+			Reader decoder = new InputStreamReader(instream, "UTF-8");
 			br = new BufferedReader(decoder);
 		} else {
 			br = new BufferedReader(new FileReader(infile));

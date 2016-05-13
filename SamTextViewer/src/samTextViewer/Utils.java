@@ -1,5 +1,6 @@
 package samTextViewer;
 
+import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
@@ -15,12 +16,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
 
+import org.apache.commons.validator.routines.UrlValidator;
 import org.broad.igv.bbfile.BBFileReader;
 import org.broad.igv.tdf.TDFReader;
 
@@ -51,16 +55,24 @@ public class Utils {
 	/** Get the first chrom string from first line of input file. As you add support for more filetypes you should update 
 	 * this function. This method is very dirty and shouldn't be trusted 100% */
 	public static String initRegionFromFile(String x) throws IOException{
+		UrlValidator urlValidator = new UrlValidator();
 		String region= "";
 		TrackFormat fmt= Utils.getFileTypeFromName(x); 
 		if(fmt.equals(TrackFormat.BAM)){
-			SamReaderFactory srf=SamReaderFactory.make();
-			srf.validationStringency(ValidationStringency.SILENT);
-			SamReader samReader = srf.open(new File(x));
+			
+			SamReader samReader;
+			if(urlValidator.isValid(x)){
+				samReader = SamReaderFactory.makeDefault().open(SamInputResource.of(new URL(x)));
+			} else {			
+				SamReaderFactory srf=SamReaderFactory.make();
+				srf.validationStringency(ValidationStringency.SILENT);
+				samReader = srf.open(new File(x));
+			}
 			region= samReader.getFileHeader().getSequence(0).getSequenceName();
 			samReader.close();
 			return region;
-		} else if(fmt.equals(TrackFormat.BIGWIG)){
+		} else if(fmt.equals(TrackFormat.BIGWIG) && !urlValidator.isValid(x)){
+			// Loading from URL is painfully slow so do not initialize from URL
 			BBFileReader reader= new BBFileReader(x);
 			region= reader.getChromosomeNames().get(0);
 			reader.close();
@@ -78,13 +90,24 @@ public class Utils {
 		} else {
 			// Input file appears to be a generic interval file. We expect chrom to be in column 1
 			BufferedReader br;
+			GZIPInputStream gzipStream;
 			if(x.toLowerCase().endsWith(".gz")){
-				InputStream fileStream = new FileInputStream(x);
-				GZIPInputStream gzipStream = new GZIPInputStream(fileStream);
+				if(urlValidator.isValid(x)) {
+					gzipStream = new GZIPInputStream(new URL(x).openStream());
+				} else {
+					InputStream fileStream = new FileInputStream(x);
+					gzipStream = new GZIPInputStream(fileStream);
+				}
 				Reader decoder = new InputStreamReader(gzipStream, "UTF-8");
 				br = new BufferedReader(decoder);
 			} else {
-				br = new BufferedReader(new FileReader(x));
+				if(urlValidator.isValid(x)) {
+					InputStream instream= new URL(x).openStream();
+					Reader decoder = new InputStreamReader(instream, "UTF-8");
+					br = new BufferedReader(decoder);
+				} else {
+					br = new BufferedReader(new FileReader(x));
+				}
 			}
 			String line;
 			while ((line = br.readLine()) != null){
@@ -104,9 +127,24 @@ public class Utils {
 	
 	public static boolean bamHasIndex(String bam) throws IOException{
 
+		/*  ------------------------------------------------------ */
+		/* This chunk prepares SamReader from local bam or URL bam */
+		UrlValidator urlValidator = new UrlValidator();
 		SamReaderFactory srf=SamReaderFactory.make();
 		srf.validationStringency(ValidationStringency.SILENT);
-		SamReader samReader = srf.open(new File(bam));
+		SamReader samReader;
+		if(urlValidator.isValid(bam)){
+			samReader = SamReaderFactory.makeDefault().open(
+					SamInputResource.of(new URL(bam)).index(new URL(bam + ".bai"))
+			);
+		} else {
+			samReader= srf.open(new File(bam));
+		}
+		/*  ------------------------------------------------------ */
+		
+		// SamReaderFactory srf=SamReaderFactory.make();
+		// srf.validationStringency(ValidationStringency.SILENT);
+		// SamReader samReader = srf.open(new File(bam));
 		boolean hasIndex= samReader.hasIndex();
 		samReader.close();
 		return hasIndex;
@@ -177,7 +215,7 @@ public class Utils {
 	public static LinkedHashMap<String, IntervalFeatureSet> createIntervalFeatureSets(List<String> fileNames) throws IOException{
 		LinkedHashMap<String, IntervalFeatureSet> ifsets= new LinkedHashMap<String, IntervalFeatureSet>();
 		for(String x : fileNames){
-			File f= new File(x);
+			String f= x;
 			if(getFileTypeFromName(x).equals(TrackFormat.BED) || getFileTypeFromName(x).equals(TrackFormat.GFF)){
 				if(!ifsets.containsKey(x)){ // If the input has duplicates, do not reload duplicates!
 					IntervalFeatureSet ifs= new IntervalFeatureSet(f);
@@ -293,7 +331,7 @@ public class Utils {
 		} else {
 			throw new RuntimeException("Invalid string to convert to int: " + x);
 		}
-		int pos= Integer.parseInt(x) * multiplier; 
+		int pos= (int) (Double.parseDouble(x) * multiplier);
 		return pos;
 	}
 	
@@ -460,11 +498,21 @@ public class Utils {
 			}
 		}
 		if(closest < 0){
-			System.err.println("Invalid index position.");
-			System.exit(1);
+			throw new RuntimeException("Invalid index position: " + closest);
 		}
 		return closest;
 	}
+	
+	/** Return true  */
+	public static boolean allIsNaN(Iterable<Double> x){
+		for(Double y : x){
+			if(!y.isNaN()){
+				return false;
+			}
+		}
+		return true;
+	}
+
 	
 	public static List<Double> seqFromToLenOut(double from, double to, int lengthOut){
 		
@@ -608,5 +656,46 @@ public class Utils {
 	    final double magnitude = Math.pow(10, power);
 	    final long shifted = Math.round(num*magnitude);
 	    return shifted/magnitude;
+	}
+	
+	/** Returns true if URL file exists. 
+	 * NB: Returns true also if the url path exists but it's just a directory and not a file! 
+	 * From http://stackoverflow.com/questions/4596447/check-if-file-exists-on-remote-server-using-its-url
+	 * */
+	public static boolean urlFileExists(String URLName){
+		
+	    try {
+	        HttpURLConnection.setFollowRedirects(false);
+	        // note : you may also need
+	        //        HttpURLConnection.setInstanceFollowRedirects(false)
+	        HttpURLConnection con =
+	           (HttpURLConnection) new URL(URLName).openConnection();
+	        con.setRequestMethod("HEAD");
+	        return (con.getResponseCode() == HttpURLConnection.HTTP_OK);
+	      }
+	      catch (Exception e) {
+	         return false;
+	      }
+	}
+	
+	/** Add track(s) to list of input files 
+	 * @param inputFileList Existing list of files to be extended
+	 * @param newFileNames List of files to append
+	 */
+	public static void addTrack(List<String> inputFileList, List<String> newFileNames) {
+
+		List<String> dropMe= new ArrayList<String>();
+		for(String x : newFileNames){
+			x= x.trim();
+			if(!new File(x).exists() && !Utils.urlFileExists(x)){
+				dropMe.add(x);
+			} 
+		}
+		for(String x : dropMe){
+			System.err.println("\nWarning: Dropping file " + x + " as it does not exist.\n");
+			newFileNames.remove(x);
+		}
+		inputFileList.addAll(newFileNames);
+		
 	}
 }

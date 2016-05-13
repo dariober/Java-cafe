@@ -9,16 +9,19 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.UrlValidator;
 
 import exceptions.InvalidGenomicCoordsException;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
@@ -441,13 +444,27 @@ public class GenomicCoords implements Cloneable {
 
 		SAMSequenceDictionary seqDict= new SAMSequenceDictionary(); // null;
 
-		
 		if(insam != null){
 			for(String x : insam){ // Get sequence dict from bam, if any				
 				if(Utils.getFileTypeFromName(x).equals(TrackFormat.BAM)){
+					
+					/*  ------------------------------------------------------ */
+					/* This chunk prepares SamReader from local bam or URL bam */
+					UrlValidator urlValidator = new UrlValidator();
 					SamReaderFactory srf=SamReaderFactory.make();
 					srf.validationStringency(ValidationStringency.SILENT);
-					SamReader samReader= srf.open(new File(x));
+					SamReader samReader;
+					if(urlValidator.isValid(x)){
+						samReader = srf.open(SamInputResource.of(new URL(x)).index(new URL(x + ".bai")));
+					} else {
+						samReader= srf.open(new File(x));
+					}
+					/*  ------------------------------------------------------ */
+					
+					//SamReaderFactory srf=SamReaderFactory.make();
+					//srf.validationStringency(ValidationStringency.SILENT);
+					//SamReader samReader= srf.open(new File(x));
+					
 					seqDict= samReader.getFileHeader().getSequenceDictionary();
 					if(!seqDict.isEmpty()){
 						return seqDict;
@@ -476,7 +493,7 @@ public class GenomicCoords implements Cloneable {
 		if(genome != null && !genome.isEmpty()){ // Try genome file as last option
 			seqDict= getSamSeqDictFromGenomeFile(genome);
 			return seqDict;
-		}		
+		}
 		return seqDict;
 	}
 	
@@ -634,6 +651,10 @@ public class GenomicCoords implements Cloneable {
 
 	public SAMSequenceDictionary getSamSeqDict(){
 		return this.samSeqDict;
+	}
+	
+	public void setSamSeqDict(SAMSequenceDictionary samSeqDict){
+		this.samSeqDict= samSeqDict;
 	}
 	
 	public String getFastaFile(){

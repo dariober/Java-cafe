@@ -74,6 +74,12 @@ public class UtilsTest {
 	}
 	
 	@Test
+	public void canInitRegionFromURLBam() throws IOException{
+		String reg= Utils.initRegionFromFile("http://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/wgEncodeHaibTfbsA549Atf3V0422111Etoh02AlnRep1.bam");
+		assertEquals("chr1", reg);
+	}
+	
+	@Test
 	public void testBamHasIndex() throws IOException{
 		assertTrue(Utils.bamHasIndex("test_data/ds051.short.bam"));
 		assertTrue(!Utils.bamHasIndex("test_data/ds051.noindex.bam"));
@@ -108,6 +114,20 @@ public class UtilsTest {
 		assertEquals(1, Utils.seqFromToLenOut(0, 10, 1).size());
 		assertEquals(0, Utils.seqFromToLenOut(0, 10, 1).get(0), 0.00001);
 		assertEquals(0, Utils.seqFromToLenOut(0, 10, 0).size()); // Zero-length sequence
+		
+		assertEquals((Double)Double.NaN, Utils.seqFromToLenOut(Double.NaN, Double.NaN, 10).get(0));
+	}
+	
+	@Test
+	public void canTestForAllNaN(){
+		ArrayList<Double> x= new ArrayList<Double>();
+		x.add(Double.NaN);
+		x.add(Double.NaN);
+		x.add(Double.NaN);
+		assertTrue(Utils.allIsNaN(x));
+		
+		x.add((Double) 1.0);
+		assertFalse(Utils.allIsNaN(x));
 	}
 	
 	@Test
@@ -183,6 +203,30 @@ public class UtilsTest {
 	
 	@Test
 	public void canRoundToSiginficantDigits(){
-		System.out.println(Utils.roundToSignificantFigures(0.01234, 5));
+		assertEquals(0.001234, Utils.roundToSignificantFigures(0.001234, 5), 1e-16);
+		assertEquals(1200, (int)Utils.roundToSignificantFigures(1234, 2));
+	}
+	
+	@Test
+	public void canTestForExistingURLFile(){
+		String urlStr= "http://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/wgEncodeHaibTfbsA549Atf3V0422111Etoh02PkRep1.broadPeak.gz";
+		assertTrue(Utils.urlFileExists(urlStr));
+		assertFalse(Utils.urlFileExists(urlStr + "foobar"));
+
+		// This should return false but it doesn't
+		// urlStr= "http://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/";
+		// assertFalse(Utils.urlFileExists(urlStr));
+	}
+	
+	@Test
+	public void canAddTracksToList() throws IOException, InvalidGenomicCoordsException{
+		List<String> inputFileList= new ArrayList<String>();
+		inputFileList.add("foo");
+		inputFileList.add("bar");
+		List<String> newFileNames= new ArrayList<String>();
+		newFileNames.add("test_data/ds051.actb.bam");
+		newFileNames.add("nonsense");
+		Utils.addTrack(inputFileList, newFileNames);
+		assertEquals(3, inputFileList.size());
 	}
 }

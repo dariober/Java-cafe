@@ -13,5 +13,10 @@
 	<classpathentry kind="lib" path="/Users/berald01/eclipse/libraries/biojava/biojava-genome-4.1.0.jar"/>
 	<classpathentry kind="lib" path="/Users/berald01/eclipse/libraries/slf4j/slf4j-1.7.13/slf4j-api-1.7.13.jar"/>
 	<classpathentry kind="lib" path="/Users/berald01/eclipse/libraries/htsjdk/htsjdk-2.1.1/dist/htsjdk-2.1.1.jar"/>
+	<classpathentry kind="lib" path="/Users/berald01/eclipse/libraries/commons-validator/commons-validator-1.5.1/commons-validator-1.5.1.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/Users/berald01/eclipse/libraries/commons-validator/commons-validator-1.5.1/commons-validator-1.5.1-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

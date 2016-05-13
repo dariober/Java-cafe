@@ -29,10 +29,10 @@ import samTextViewer.Utils;
  * bigBed, bigWig, */
 public class TrackWiggles extends Track {
 
-	private double scorePerDot;
+	// private double scorePerDot;
 	private List<ScreenWiggleLocusInfo> screenWiggleLocusInfoList;
 	private int bdgDataColIdx= 4; 
-	
+	private BBFileReader bigWigReader;
 	/* C o n s t r u c t o r s */
 
 	/**
@@ -45,6 +45,14 @@ public class TrackWiggles extends Track {
 		this.setGc(gc);
 		this.setFilename(filename);
 		this.bdgDataColIdx= bdgDataColIdx;
+
+		if(Utils.getFileTypeFromName(this.getFilename()).equals(TrackFormat.BIGWIG)){
+			this.bigWigReader=new BBFileReader(this.getFilename()); // or url for remote access.
+			if(!this.bigWigReader.getBBFileHeader().isBigWig()){
+				throw new RuntimeException("Invalid file type " + this.getFilename());
+			}
+		}
+		
 		this.update();
 		
 	};
@@ -61,12 +69,7 @@ public class TrackWiggles extends Track {
 
 		if(Utils.getFileTypeFromName(this.getFilename()).equals(TrackFormat.BIGWIG)){
 			
-			BBFileReader reader=new BBFileReader(this.getFilename()); // or url for remote access.
-			if(!reader.getBBFileHeader().isBigWig()){
-				System.err.println("Invalid file type " + this.getFilename());
-				System.exit(1);			
-			}
-			bigWigToScores(reader);
+			bigWigToScores(this.bigWigReader);
 			
 		} else if(Utils.getFileTypeFromName(this.getFilename()).equals(TrackFormat.TDF)){
 
@@ -104,11 +107,6 @@ public class TrackWiggles extends Track {
 		if(this.getyMaxLines() == 0){return "";}
 		TextProfile textProfile= new TextProfile(this.getScreenScores(), this.getyMaxLines(), this.getYLimitMin(), this.getYLimitMax());
 		
-		this.scorePerDot= textProfile.getScorePerDot();
-		// this.setYLimitMax(textProfile.getYMaxLimit());
-		// this.setYLimitMin(textProfile.getYMinLimit());
-		// this.maxDepth= textProfile.getMaxDepth();
-
 		ArrayList<String> lineStrings= new ArrayList<String>();
 		for(int i= (textProfile.getProfile().size() - 1); i >= 0; i--){
 			List<String> xl= textProfile.getProfile().get(i);
@@ -151,8 +149,8 @@ public class TrackWiggles extends Track {
 		
 		File tbi= new File(bgzfOut + TabixUtils.STANDARD_INDEX_EXTENSION);
 		if(tbi.exists() && tbi.isFile()){
-			System.err.println("Index file exists: " + tbi);
-			System.exit(1);
+			writer.close();
+			throw new RuntimeException("Index file exists: " + tbi);
 		}
 		Index index = indexCreator.finalizeIndex(writer.getFilePointer());
 		index.writeBasedOnFeatureFile(outFile);
@@ -167,6 +165,20 @@ public class TrackWiggles extends Track {
 		}
 	}
 
+	@Override
+	public String getTitle(){
+
+		double[] rounded= Utils.roundToSignificantDigits(this.getMinScreenScores(), this.getMaxScreenScores(), 2);
+		
+		// String s= Double.toString(Utils.roundToSignificantFigures(this.scorePerDot, 4));
+		// String scoreXDot= s.indexOf(".") < 0 ? s : s.replaceAll("0*$", "").replaceAll("\\.$", "");
+
+		return this.getFileTag() 
+				+ "; ylim[" + this.getYLimitMin() + " " + this.getYLimitMax() + "]" 
+				+ "; range[" + rounded[0] + " " + rounded[1] + "]\n";
+		//		+ "; .= " + scoreXDot + ";\n";
+	}
+	
 	/** Return true if line looks like a valid bedgraph record  
 	 * */
 	public static boolean isValidBedGraphLine(String line){
@@ -187,9 +199,9 @@ public class TrackWiggles extends Track {
 	private void bigWigToScores(BBFileReader reader){
 
 		// List of length equal to screen size. Each inner map contains info about the screen locus 
-		List<ScreenWiggleLocusInfo> screenWiggleLocusInfoList= new ArrayList<ScreenWiggleLocusInfo>();
+		List<ScreenWiggleLocusInfo> screenWigLocInfoList= new ArrayList<ScreenWiggleLocusInfo>();
 		for(int i= 0; i < getGc().getUserWindowSize(); i++){
-			screenWiggleLocusInfoList.add(new ScreenWiggleLocusInfo());
+			screenWigLocInfoList.add(new ScreenWiggleLocusInfo());
 		}
 		
 		BigWigIterator iter = reader.getBigWigIterator(getGc().getChrom(), getGc().getFrom(), getGc().getChrom(), getGc().getTo(), false);
@@ -197,12 +209,11 @@ public class TrackWiggles extends Track {
 			WigItem bw = iter.next();
 			for(int i= bw.getStartBase(); i <= bw.getEndBase(); i++){
 				int idx= Utils.getIndexOfclosestValue(i, getGc().getMapping()); // Where should this position be mapped on screen?
-				screenWiggleLocusInfoList.get(idx).increment(bw.getWigValue());
+				screenWigLocInfoList.get(idx).increment(bw.getWigValue());
 			} 
 		}
-		reader.close();
 		ArrayList<Double> screenScores= new ArrayList<Double>();
-		for(ScreenWiggleLocusInfo x : screenWiggleLocusInfoList){
+		for(ScreenWiggleLocusInfo x : screenWigLocInfoList){
 			screenScores.add((double)x.getMeanScore());
 		}
 		this.setScreenScores(screenScores);		
@@ -212,9 +223,9 @@ public class TrackWiggles extends Track {
 	 * */
 	private void bedGraphToScores(String fileName) throws IOException{
 		
-		List<ScreenWiggleLocusInfo> screenWiggleLocusInfoList= new ArrayList<ScreenWiggleLocusInfo>();
+		List<ScreenWiggleLocusInfo> screenWigLocInfoList= new ArrayList<ScreenWiggleLocusInfo>();
 		for(int i= 0; i < getGc().getUserWindowSize(); i++){
-			screenWiggleLocusInfoList.add(new ScreenWiggleLocusInfo());
+			screenWigLocInfoList.add(new ScreenWiggleLocusInfo());
 		}
 		
 		try {
@@ -230,7 +241,7 @@ public class TrackWiggles extends Track {
 				int screenTo= Utils.getIndexOfclosestValue(Integer.valueOf(tokens[2]), this.getGc().getMapping());
 				float value= Float.valueOf(tokens[this.bdgDataColIdx-1]);
 				for(int i= screenFrom; i <= screenTo; i++){
-					screenWiggleLocusInfoList.get(i).increment(value);
+					screenWigLocInfoList.get(i).increment(value);
 				}
 			}
 		} catch (IOException e) {			
@@ -241,7 +252,7 @@ public class TrackWiggles extends Track {
 			System.err.println("tabix -p bed " + fileName + "\n");
 		}
 		ArrayList<Double> screenScores= new ArrayList<Double>();
-		for(ScreenWiggleLocusInfo x : screenWiggleLocusInfoList){
+		for(ScreenWiggleLocusInfo x : screenWigLocInfoList){
 			screenScores.add((double)x.getMeanScore());
 		}
 		this.setScreenScores(screenScores);
@@ -250,25 +261,11 @@ public class TrackWiggles extends Track {
 		
 	/*   S e t t e r s   and   G e t t e r s */
 	
-	public double getScorePerDot() {
-		return scorePerDot;
-	}
+	// public double getScorePerDot() {
+	// 	return scorePerDot;
+	//}
 
 	protected int getBdgDataColIdx() { return bdgDataColIdx; }
 	protected void setBdgDataColIdx(int bdgDataColIdx) { this.bdgDataColIdx = bdgDataColIdx; }
-
-	@Override
-	public String getTitle(){
-		
-		double[] rounded= Utils.roundToSignificantDigits(this.getMinScreenScores(), this.getMaxScreenScores(), 2);
-		
-		String s= Double.toString(Utils.roundToSignificantFigures(this.scorePerDot, 4));
-		String scoreXDot= s.indexOf(".") < 0 ? s : s.replaceAll("0*$", "").replaceAll("\\.$", "");
-
-		return this.getFileTag() 
-				+ "; ylim[" + this.getYLimitMin() + " " + this.getYLimitMax() + "]" 
-				+ "; range[" + rounded[0] + " " + rounded[1] + "]"
-				+ "; .= " + scoreXDot + ";\n";
-	}
 	
 }

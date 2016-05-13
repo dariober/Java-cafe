@@ -34,14 +34,16 @@ class TextProfile {
 	public TextProfile(List<Double> yValues, int yMaxLines, Double yMinUser, Double yMaxUser){
 		
 		// * Get ymin and ymax of input yValues
-		double ymin= Double.MAX_VALUE;
-		double ymax= Double.MIN_VALUE;
-		for(double x : yValues){
-			if(x > ymax){
-				ymax= x;
-			} 
-			if(x < ymin){
-				ymin= x;
+		Double ymin= Double.NaN;
+		Double ymax= Double.NaN;
+		for(Double x : yValues){
+			if(!x.isNaN()){
+				if(x > ymax || ymax.isNaN()){
+					ymax= x;
+				} 
+				if(x < ymin || ymin.isNaN()){
+					ymin= x;
+				}
 			}
 		}
 		// * If yMinUser is NaN set it to ymin. Same for yMaxUser  
@@ -51,59 +53,39 @@ class TextProfile {
 		if(yMaxUser.isNaN()){
 			yMaxUser= ymax;
 		}
-		if(yMinUser > 0){ // FIXME: min and max should be allowed to be <0
-			yMinUser= 0.0;
-		}
-		if(yMaxUser < 0){
-			yMaxUser= 0.0;
-		}
 		this.yMinLimit= yMinUser;
 		this.yMaxLimit= yMaxUser;
-		/*
-		if(ymin.isNaN() != ymax.isNaN()){
-			throw new RuntimeException("ymin and ymax must be both defined or both NaN");
-		}
-		if(ymin > ymax){
-			throw new RuntimeException("Cannot have ymin >= ymax. Got ymin= " + ymin + "; ymax= " + ymax);
-		}
-		
-		if(ymax.isNaN()){
-			this.maxDepth= (double) Integer.MIN_VALUE;;
-	        this.minDepth= (double) Integer.MAX_VALUE; 
-			for(double y : yValues){
-				if(y > this.maxDepth){
-					this.maxDepth= y;
-				}
-				if(y < this.minDepth){
-					this.minDepth= y;
-				}
-			}
-			if(this.minDepth > 0){
-				this.minDepth= 0.0;
-			}
-			if(this.maxDepth < 0){
-				this.maxDepth= 0.0;
-			}
-		} else {
-			this.maxDepth= ymax;
-			this.minDepth= ymin;
-		}
-		*/
 		this.scorePerDot= (double)(yMaxUser - yMinUser) / ((double)yMaxLines * 2); // * 2 because we use ':' for 2 units in a single line.
+
+		// Shift the yValues to zero by subtracting the ymin or ymax.
+		double offset= 0;
+		if(yMinUser > 0){
+			offset= yMinUser; 
+		} 
+		if(yMaxUser < 0){
+			offset= yMaxUser; 
+		}
+		List<Double> yValuesOffset= new ArrayList<Double>();
+		for(double x : yValues){
+			yValuesOffset.add(x - offset);
+		}
 		
 		// Locate zero on y axis. It's silly to generate a sequence just to find the index closest to zero. But anyway...
 		List<Double> yAxis = Utils.seqFromToLenOut(yMinUser, yMaxUser, yMaxLines);
-		int y0= Utils.getIndexOfclosestValue(0, yAxis);
+		int y0= 0;
+		if(!Utils.allIsNaN(yAxis)){
+			y0= Utils.getIndexOfclosestValue(0, yAxis);
+		}
 		List<List<String>> profile= new ArrayList<List<String>>();
-		for(int i= 0; i < yValues.size(); i++){
-			double y= yValues.get(i);
+		for(int i= 0; i < yValuesOffset.size(); i++){
+			double y= yValuesOffset.get(i);
 			List<String> strDepth = prepareYColumn(y, yMaxLines, y0);
 			profile.add(strDepth);
 			yColumnSanityCheck(strDepth, y0, y);
 		}
 		this.profile= Utils.transpose(profile);
 	}
-
+	
 	/** Prepare a list of strings representing vertical bar. Bar height is yValue, rescaled to fit a y span of 
 	 * yMaxLines of text. 
 	 * @param yValue

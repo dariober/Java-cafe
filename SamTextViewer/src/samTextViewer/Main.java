@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.StrTokenizer;
 
 import exceptions.InvalidCommandLineException;
@@ -48,7 +47,7 @@ public class Main {
 		 * *** If you change something here change also in console input ***/
 		Namespace opts= ArgParse.argParse(args);
 		
-		List<String> insam= opts.getList("insam");
+		List<String> inputFileList= opts.getList("insam");
 		String region= opts.getString("region");
 		String genome= opts.getString("genome");
 		//int windowSize= opts.getInt("windowSize");
@@ -85,17 +84,17 @@ public class Main {
 		
 		/* Test input files exist */
 		List<String> dropMe= new ArrayList<String>();
-		for(String x : insam){
-			if(!new File(x).exists()){
-				System.err.println("\nWarning: Dropping file " + x + " as it does not exist.\n");
+		for(String x : inputFileList){
+			if(!new File(x).exists() && !Utils.urlFileExists(x)){
 				dropMe.add(x);
-			}
+			} 
 		}
 		for(String x : dropMe){
-			insam.remove(x);
+			System.err.println("\nWarning: Dropping file " + x + " as it does not exist.\n");
+			inputFileList.remove(x);
 		}
 		
-		if(insam.size() == 0 && fasta == null){
+		if(inputFileList.size() == 0 && fasta == null){
 			System.err.println("\nNo files in input: Nothing to be done!\n");
 			System.exit(1);
 		}
@@ -107,31 +106,34 @@ public class Main {
 		}
 
 		GenomicCoordsHistory gch= new GenomicCoordsHistory();
-		SAMSequenceDictionary samSeqDict = GenomicCoords.getSamSeqDictFromAnyFile(insam, fasta, genome);
+		SAMSequenceDictionary samSeqDict = GenomicCoords.getSamSeqDictFromAnyFile(inputFileList, fasta, genome);
 		
 		/* Prepare genomic coordinates to fetch. This should probably be a function in itself */
 		if(region.isEmpty()){
+			System.err.print("Initializing coordinates... ");
 			if(!samSeqDict.isEmpty()){
 				region= samSeqDict.getSequence(0).getSequenceName();
 			} else {
-				for(String x : insam){
+				for(String x : inputFileList){
 					try {
 						region= Utils.initRegionFromFile(x);
+						System.err.println("Done from: " + x);
 						break;
 					} catch(Exception e){
-						System.err.println("Could not initilize from file " + x);
+						System.err.println("\nCould not initilize from file " + x);
 					}
 				}
 			}
 		}
 		gch.add(new GenomicCoords(region, samSeqDict, windowSize, fasta));
 
-		/* Initailize console */
+		/* Initialize console */
 		ConsoleReader console = new ConsoleReader();
-		for(String x : insam){
+		// console.addCompleter(new FileNameCompleter());
+		for(String x : inputFileList){
 			console.addCompleter(new StringsCompleter(new File(x).getName()));
 		}
-		for(String x : "next find visible trackHeight ylim dataCol print printFull rNameOn rNameOff history".split(" ")){
+		for(String x : "next find addTracks visible trackHeight ylim dataCol print printFull rNameOn rNameOff history".split(" ")){
 			// Add options. Really you should use a dict for this.
 			if(x.length() > 2){
 				console.addCompleter(new StringsCompleter(x));
@@ -149,35 +151,31 @@ public class Main {
 			TrackWiggles cgWiggle= gch.current().getGCProfile();
 			trackSet.addOrReplace(cgWiggle);
 		}
-				
+		
+		int idForTrack= 0;
 		while(true){ // Each loop processes the user's input files.
 
 			/* Prepare filters */
 			List<SamRecordFilter> filters= FlagToFilter.flagToFilterList(f_incl, F_excl);
 			filters.add(new MappingQualityFilter(mapq));
 			
-			for(int i= 0; i < insam.size(); i++){ 
+			for(int i= 0; i < inputFileList.size(); i++){ 
 				/* Iterate through each input file */
-				int idForTrack= i;
-				String sam= insam.get(i);
+				String inputFileName= inputFileList.get(i);
 				
-				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BAM)){
+				if(Utils.getFileTypeFromName(inputFileName).equals(TrackFormat.BAM)){
 				
 					/* Coverage and methylation track */
-					//if(trackHeight < 0) {
-					//	trackHeight= 0;
-					//}
-					String coverageTrackId= new File(sam).getName() + "#" + (idForTrack+1);
+					String coverageTrackId= new File(inputFileName).getName() + "#" + (idForTrack+1);
 					idForTrack++;
 					if(!trackSet.getTrackSet().containsKey(coverageTrackId)){
-						TrackCoverage trackCoverage= new TrackCoverage(sam, gch.current(), filters, bs);
+						TrackCoverage trackCoverage= new TrackCoverage(inputFileName, gch.current(), filters, bs);
 						trackCoverage.setFileTag(coverageTrackId);
 						trackSet.addOrReplace(trackCoverage);
 					}
 					TrackCoverage trackCoverage= (TrackCoverage) trackSet.getTrackSet().get(coverageTrackId);
 					trackCoverage.setGc(gch.current());
 					trackCoverage.setFilters(filters);
-					// trackCoverage.setyMaxLines(trackHeight);
 					trackCoverage.setRpm(rpm);
 					trackCoverage.update();
 					trackCoverage.printToScreen();				
@@ -186,10 +184,10 @@ public class Main {
 						if(maxMethylLines < 0){
 							maxMethylLines= 0;
 						}
-						coverageTrackId= new File(sam).getName() + "#" + (idForTrack+1);
+						coverageTrackId= new File(inputFileName).getName() + "#" + (idForTrack+1);
 						idForTrack++;
 						if(!trackSet.getTrackSet().containsKey(coverageTrackId)){
-							TrackMethylation trackMethylation= new TrackMethylation(sam, trackCoverage.getScreenLocusInfoList());
+							TrackMethylation trackMethylation= new TrackMethylation(inputFileName, trackCoverage.getScreenLocusInfoList());
 							trackMethylation.setFileTag(coverageTrackId);
 							trackSet.addOrReplace(trackMethylation);
 						}
@@ -199,13 +197,13 @@ public class Main {
 					}
 										
 					/* Reads */
-					String trackId= new File(sam).getName() + "#" + (idForTrack+1);
+					String trackId= new File(inputFileName).getName() + "#" + (idForTrack+1);
 					idForTrack++;
 					if(!trackSet.getTrackSet().containsKey(trackId)){
-						TrackReads trackReads= new TrackReads(sam, gch.current(), filters, maxReadsStack);
+						TrackReads trackReads= new TrackReads(inputFileName, gch.current(), filters, maxReadsStack);
 						trackReads.setFileTag(trackId);
 						trackSet.addOrReplace(trackReads);
-						trackReads.setFilename(sam);
+						trackReads.setFilename(inputFileName);
 						trackReads.setFileTag(trackId);
 					}
 					TrackReads trackReads= (TrackReads) trackSet.getTrackSet().get(trackId);
@@ -218,12 +216,12 @@ public class Main {
 				} // End processing bam file
 				
 				/* Annotatation */
-				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BED) 
-						|| Utils.getFileTypeFromName(sam).equals(TrackFormat.GFF)){
-					String trackId= new File(sam).getName() + "#" + (idForTrack+1);
+				if(Utils.getFileTypeFromName(inputFileName).equals(TrackFormat.BED) 
+						|| Utils.getFileTypeFromName(inputFileName).equals(TrackFormat.GFF)){
+					String trackId= new File(inputFileName).getName() + "#" + (idForTrack+1);
 					idForTrack++;
 					if(!trackSet.getTrackSet().containsKey(trackId)){
-						TrackIntervalFeature tif= new TrackIntervalFeature(sam, gch.current());
+						TrackIntervalFeature tif= new TrackIntervalFeature(inputFileName, gch.current());
 						tif.setFileTag(trackId);
 						trackSet.addOrReplace(tif);
 					}
@@ -233,21 +231,20 @@ public class Main {
 					tif.update();
 				} 
 				/* Wiggles */
-				if(Utils.getFileTypeFromName(sam).equals(TrackFormat.BIGWIG) 
-						|| Utils.getFileTypeFromName(sam).equals(TrackFormat.TDF) 
-						|| Utils.getFileTypeFromName(sam).equals(TrackFormat.BEDGRAPH)){
+				if(Utils.getFileTypeFromName(inputFileName).equals(TrackFormat.BIGWIG) 
+						|| Utils.getFileTypeFromName(inputFileName).equals(TrackFormat.TDF) 
+						|| Utils.getFileTypeFromName(inputFileName).equals(TrackFormat.BEDGRAPH)){
 
-					String trackId= new File(sam).getName() + "#" + (idForTrack+1);
+					String trackId= new File(inputFileName).getName() + "#" + (idForTrack+1);
 					idForTrack++;
 					if(!trackSet.getTrackSet().containsKey(trackId)){
-						TrackWiggles tw= new TrackWiggles(sam, gch.current(), 4);
+						TrackWiggles tw= new TrackWiggles(inputFileName, gch.current(), 4);
 						tw.setFileTag(trackId);
 						trackSet.addOrReplace(tw);
 					}
 					TrackWiggles tw= (TrackWiggles) trackSet.getTrackSet().get(trackId);
 					tw.setGc(gch.current());
 					tw.update();
-					//tw.setyMaxLines(trackHeight);
 					tw.printToScreen();
 				}
 			} // End loop through files 
@@ -335,18 +332,19 @@ public class Main {
 				}
 				
 				if(cmdInput == null || cmdInput.equals("h")){
-					String inline= "    N a v i g a t i o n   o p t i o n s\n\n"
+					String inline= "    N a v i g a t i o n\n\n"
 							+ "f / b \n      Small step forward/backward 1/10 window\n"
 							+ "ff / bb\n      Large step forward/backward 1/2 window\n"
 							+ "zi / zo\n      Zoom in / zoom out\n"
 							+ "p / n\n      Go to previous/next visited position\n"
 							+ "<from>-[to]\n      Go to position <from> or to region <from>-[to] on current chromosome. E.g. 10 or 10-1000\n" 
 							+ "+/-<int>[k,m]\n      Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m or +10k\n"
-							+ "\n    S e a r c h   o p t i o n s\n\n"
+							+ "\n    S e a r c h\n\n"
 							+ "next <trackId>\n      Move to the next feature in <trackId> on *current* chromosome\n"
 							+ "find <regex> [trackId]\n      Find the next record in trackId matching regex. Use single quotes for strings containing spaces.\n"
 							+                         "      For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'\n"
-							+ "\n    D i s p l a y   o p t i o n s\n\n"
+							+ "\n    D i s p l a y\n\n"
+							+ "addTracks [file/url] [file/url] ...\n      Add tracks to set\n" 
 							+ "visible [show regex] [hide regex] [track regex]\n      In annotation tracks, only include rows captured by [show regex] and exclude [hide regex].\n"
 							+                                                   "      Apply to annotation tracks captured by [track regex]. With no optional arguments reset to default: \"'.*' '^$' '.*'\"\n"
 							+                                                   "      Use '.*' to match everything and '^$' to hide nothing. Ex \"visible .*exon.* .*CDS.* .*gtf#.*\"\n"       
@@ -423,6 +421,19 @@ public class Main {
 							cmdInput= null;
 				        	continue;
 						}
+					} else if(cmdInput.startsWith("addTracks ")){
+						StrTokenizer str= new StrTokenizer(cmdInput);
+						str.setQuoteChar('\'');
+						List<String> newFileNames= str.getTokenList();
+						newFileNames.remove(0);
+						Utils.addTrack(inputFileList, newFileNames);
+			
+						if(gch.current().getSamSeqDict().size() == 0){
+							samSeqDict = GenomicCoords.getSamSeqDictFromAnyFile(inputFileList, null, null);
+							GenomicCoords gc= gch.current();
+							gc.setSamSeqDict(samSeqDict);
+						}
+						
 					} else if (cmdInput.equals("p")) {
 						gch.previous();
 					} else if (cmdInput.equals("n")) {
@@ -522,7 +533,7 @@ public class Main {
 				}
 				currentCmd= cmdInput;
 			} // END while loop to get cmLine args
-			System.out.println(StringUtils.repeat("~", gch.current().getUserWindowSize()));
+			idForTrack= 0;
 		} // End while loop keep going until quit or if no interactive input set
 	}
 }

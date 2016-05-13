@@ -20,7 +20,7 @@ public class TrackIntervalFeature extends Track {
 	public TrackIntervalFeature(String filename, GenomicCoords gc) throws IOException{
 		this.setGc(gc);
 		this.setFilename(filename);
-		this.intervalFeatureSet= new IntervalFeatureSet(new File(filename));
+		this.intervalFeatureSet= new IntervalFeatureSet(filename);
 		this.update();
 	}
 	

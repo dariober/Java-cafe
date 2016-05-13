@@ -2,15 +2,18 @@ package tracks;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.UrlValidator;
 
 import com.google.common.base.Joiner;
 
 import htsjdk.samtools.BAMIndex;
 import htsjdk.samtools.SAMFileReader;
+import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
@@ -30,7 +33,7 @@ public class TrackCoverage extends Track {
 
 	/** Each dot in the screen output track corresponds to this many units of 
 	 * score in the input. Typically this "reads per dot". */
-	private double scorePerDot;   
+	// private double scorePerDot;   
 	private boolean rpm= false;
 	
 	
@@ -58,14 +61,27 @@ public class TrackCoverage extends Track {
 	
 	/* M e t h o d s */
 
+    //private SeekableStream myIndexSeekableStream() {
+    //   throw new UnsupportedOperationException();
+    // }
+	
 	public void update() throws IOException{
 		
 		this.screenLocusInfoList= new ArrayList<ScreenLocusInfo>();
 		if(this.getGc().getGenomicWindowSize() < this.MAX_REGION_SIZE){
-		
+			
+			/*  ------------------------------------------------------ */
+			/* This chunk prepares SamReader from local bam or URL bam */
+			UrlValidator urlValidator = new UrlValidator();
 			SamReaderFactory srf=SamReaderFactory.make();
 			srf.validationStringency(ValidationStringency.SILENT);
-			SamReader samReader= srf.open(new File(this.getFilename()));
+			SamReader samReader;
+			if(urlValidator.isValid(this.getFilename())){
+				samReader = srf.open(SamInputResource.of(new URL(this.getFilename())).index(new URL(this.getFilename() + ".bai")));
+			} else {
+				samReader= srf.open(new File(this.getFilename()));
+			}
+			/*  ------------------------------------------------------ */
 			
 			IntervalList il= new IntervalList(samReader.getFileHeader());
 			il.add(new Interval(this.getGc().getChrom(), this.getGc().getFrom(), this.getGc().getTo()));
@@ -117,17 +133,17 @@ public class TrackCoverage extends Track {
 			yValues.add(x.getMeanDepth());
 		}
 		this.setScreenScores(yValues);
-		TextProfile textProfile= new TextProfile(yValues, this.getyMaxLines(), this.getYLimitMin(), this.getYLimitMax());
 				
-		this.scorePerDot= textProfile.getScorePerDot();
+		// this.scorePerDot= textProfile.getScorePerDot();
 		if(this.rpm){
 			long libSize= getAlignedReadCount(new File(this.getFilename()));
-			this.scorePerDot= this.scorePerDot / libSize * 1000000.0;
+			// this.scorePerDot= this.scorePerDot / libSize * 1000000.0;
 			for(int i= 0; i < yValues.size(); i++){
 				yValues.set(i, yValues.get(i)/libSize * 1000000.0);
 			}
 		}
-		
+
+		TextProfile textProfile= new TextProfile(yValues, this.getyMaxLines(), this.getYLimitMin(), this.getYLimitMax());
 		ArrayList<String> lineStrings= new ArrayList<String>();
 		for(int i= (textProfile.getProfile().size() - 1); i >= 0; i--){
 			List<String> xl= textProfile.getProfile().get(i);
@@ -169,15 +185,14 @@ public class TrackCoverage extends Track {
 	@Override
 	public String getTitle(){
 		
-		// Strip trailing zeros
-		String s= Double.toString(Utils.roundToSignificantFigures(this.getMaxScreenScores(), 4));
-		String maxScreenScore= s.indexOf(".") < 0 ? s : s.replaceAll("0*$", "").replaceAll("\\.$", "");
-		s= Double.toString(Utils.roundToSignificantFigures(this.scorePerDot, 4));
-		String scoreXDot= s.indexOf(".") < 0 ? s : s.replaceAll("0*$", "").replaceAll("\\.$", "");
+		double[] rounded= Utils.roundToSignificantDigits(this.getMinScreenScores(), this.getMaxScreenScores(), 2);
 		
+		// String s= Double.toString(Utils.roundToSignificantFigures(this.scorePerDot, 4));
+		// String scoreXDot= s.indexOf(".") < 0 ? s : s.replaceAll("0*$", "").replaceAll("\\.$", "");
+
 		return this.getFileTag() 
-				+ "; ylim: [" + this.getYLimitMin() + " " + this.getYLimitMax() + "]" 
-				+ "; max: " + maxScreenScore 
-				+ "; .= " + scoreXDot + ";\n";
+				+ "; ylim[" + this.getYLimitMin() + " " + this.getYLimitMax() + "]" 
+				+ "; range[" + rounded[0] + " " + rounded[1] + "]\n";
+				// + "; .= " + scoreXDot + ";\n";
 	}
 }

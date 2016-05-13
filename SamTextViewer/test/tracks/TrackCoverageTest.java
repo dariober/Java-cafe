@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -12,9 +13,13 @@ import org.junit.Test;
 
 import exceptions.InvalidGenomicCoordsException;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
@@ -98,6 +103,35 @@ public class TrackCoverageTest {
 		// System.out.println(tc.getScorePerDot());
 	}
 
+	@Test
+	public void canReadBAMFromURL() throws IOException, InvalidGenomicCoordsException {
+		
+		String urlStr= "http://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/wgEncodeHaibTfbsA549Atf3V0422111Etoh02AlnRep1.bam";
+
+		long t0= System.currentTimeMillis();
+		
+		SamReaderFactory srf=SamReaderFactory.make();
+		srf.validationStringency(ValidationStringency.SILENT);
+		SamReader samReader= SamReaderFactory.makeDefault().open(SamInputResource.of(new URL(urlStr)).index(new URL(urlStr + ".bai")));
+		// SamReader samReader= srf.open(SamInputResource.of(new File("test_data/ear045.oxBS.actb.bam")).index(new File(urlStr + ".bai")));
+		long t1= System.currentTimeMillis();
+		System.out.println(t1-t0);
+		SAMRecordIterator iter= samReader.iterator();
+		int n= 0;
+		while(iter.hasNext()){
+			SAMRecord rec= iter.next();
+			if(n % 10000 == 0){
+				System.out.println(n);
+			}
+			n++;
+		}
+		samReader.close();
+		
+		// int windowSize= 101;
+		// GenomicCoords gc= new GenomicCoords("chr7", 1, 10000, samSeqDict, windowSize, fastaFile);
+		// TrackCoverage tc= new TrackCoverage(urlStr, gc, filters, false);
+	}
+	
 	@Test
 	public void canPrintCoverageTrackWithZeroHeight() throws IOException, InvalidGenomicCoordsException {
 		int yMaxLines= 0;
