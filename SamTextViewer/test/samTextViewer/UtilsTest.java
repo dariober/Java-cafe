@@ -3,11 +3,18 @@ package samTextViewer;
 import static org.junit.Assert.*;
 import static org.hamcrest.CoreMatchers.*;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
+
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -24,7 +31,25 @@ public class UtilsTest {
 	public static SAMSequenceDictionary samSeqDict= samReader.getFileHeader().getSequenceDictionary();
 	
 	public static String fastaFile= "test_data/chr7.fa";
-
+	
+	@Test
+	public void canParseGoToRegion(){
+		assertEquals("1-1000", Utils.parseGoToRegion("1-1000"));
+		assertEquals("1-1000", Utils.parseGoToRegion("1 - 1,000  "));
+		assertEquals("1000", Utils.parseGoToRegion("1,000  "));		
+	}
+	
+	@Test 
+	public void canParseZoomArg(){
+		assertEquals(2, Utils.parseZoom("zo 2", 1));
+		assertEquals(3, Utils.parseZoom("zo 3 foo", 1));
+		assertEquals(4, Utils.parseZoom("zo   4  ", 1));
+		assertEquals(0, Utils.parseZoom("zo   0", 1));
+		assertEquals(1, Utils.parseZoom("zo", 1));
+		assertEquals(1, Utils.parseZoom("zo -3", 1));
+		assertEquals(1, Utils.parseZoom("zo 3.3", 1));
+	}
+	
 	@Test
 	public void canTabulateListOfFeatures(){
 		List<String> rawList= new ArrayList<String>();
@@ -208,12 +233,22 @@ public class UtilsTest {
 	}
 	
 	@Test
+	public void canAddMetricSuffixToInt(){
+		assertEquals("123M", Utils.parseIntToMetricSuffix(123000000));
+		assertEquals("123k", Utils.parseIntToMetricSuffix(123000));
+		assertEquals("123", Utils.parseIntToMetricSuffix(123));
+	}
+	
+	@Test
 	public void canTestForExistingURLFile(){
 		String urlStr= "http://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/wgEncodeHaibTfbsA549Atf3V0422111Etoh02PkRep1.broadPeak.gz";
 		assertTrue(Utils.urlFileExists(urlStr));
 		assertFalse(Utils.urlFileExists(urlStr + "foobar"));
 
-		// This should return false but it doesn't
+		assertTrue(Utils.urlFileExists("ftp://ftp.ensembl.org/pub/release-84/gtf/homo_sapiens/Homo_sapiens.GRCh38.84.abinitio.gtf.gz"));
+		assertFalse(Utils.urlFileExists("ftp://ftp.ensembl.org/pub/release-84/gtf/homo_sapiens/foobar"));
+		
+		/* This should return false but it doesn't */
 		// urlStr= "http://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/";
 		// assertFalse(Utils.urlFileExists(urlStr));
 	}
@@ -228,5 +263,14 @@ public class UtilsTest {
 		newFileNames.add("nonsense");
 		Utils.addTrack(inputFileList, newFileNames);
 		assertEquals(3, inputFileList.size());
+	}
+	
+	@Test
+	public void canPrintSequenceDict(){
+		assertTrue(Utils.printSamSeqDict(samSeqDict, 30).startsWith("chrM  16571"));
+		assertTrue(Utils.printSamSeqDict(samSeqDict, 30).endsWith("chrY  59373566  |||||||"));
+		SAMSequenceDictionary emptyDict= new SAMSequenceDictionary();
+		Utils.printSamSeqDict(emptyDict, 30);
+		Utils.printSamSeqDict(null, 30);
 	}
 }

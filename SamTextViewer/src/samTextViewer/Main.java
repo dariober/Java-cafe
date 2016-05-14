@@ -133,7 +133,7 @@ public class Main {
 		for(String x : inputFileList){
 			console.addCompleter(new StringsCompleter(new File(x).getName()));
 		}
-		for(String x : "next find addTracks visible trackHeight ylim dataCol print printFull rNameOn rNameOff history".split(" ")){
+		for(String x : "next goto find showGenome addTracks visible trackHeight ylim dataCol print printFull rNameOn rNameOff history".split(" ")){
 			// Add options. Really you should use a dict for this.
 			if(x.length() > 2){
 				console.addCompleter(new StringsCompleter(x));
@@ -254,8 +254,8 @@ public class Main {
 			console.clearScreen();
 			console.flush();
 			
-			if(gch.current().getChromIdeogram() != null){
-				System.out.println(gch.current().getChromIdeogram());
+			if(gch.current().getChromIdeogram(20) != null){
+				System.out.println(gch.current().getChromIdeogram(20));
 			}			
 			for(Track tr : trackSet.getTrackSet().values()){
 				if(tr.getFileTag() == gch.current().getGcProfileFileTag()){
@@ -332,31 +332,34 @@ public class Main {
 				}
 				
 				if(cmdInput == null || cmdInput.equals("h")){
-					String inline= "    N a v i g a t i o n\n\n"
+					String inline= "\n    N a v i g a t i o n\n\n"
 							+ "f / b \n      Small step forward/backward 1/10 window\n"
 							+ "ff / bb\n      Large step forward/backward 1/2 window\n"
-							+ "zi / zo\n      Zoom in / zoom out\n"
+							+ "zi / zo [x]\n      Zoom in / zoom out x times (default x= 1). Each zoom halves or doubles the window size\n"
+							+ "goto chrom:from-to\n      Go to given region. E.g. \"goto chr1:1-1000\" or chr1:10 or chr1. goto keyword can be replaced with ':' (like goto in vim)\n"
+							+ "<from> [to]\n      Go to position <from> or to region \"from to\" on current chromosome. E.g. 10 or \"10 1000\" or \"10-1000\"\n" 
+							+ "+/-<int>[k,m]\n      Move forward/backward by <int> bases. Suffixes k (kilo) and M (mega) allowed. E.g. -2m or +10k\n"
 							+ "p / n\n      Go to previous/next visited position\n"
-							+ "<from>-[to]\n      Go to position <from> or to region <from>-[to] on current chromosome. E.g. 10 or 10-1000\n" 
-							+ "+/-<int>[k,m]\n      Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m or +10k\n"
 							+ "\n    S e a r c h\n\n"
 							+ "next <trackId>\n      Move to the next feature in <trackId> on *current* chromosome\n"
 							+ "find <regex> [trackId]\n      Find the next record in trackId matching regex. Use single quotes for strings containing spaces.\n"
-							+                         "      For case insensitive matching prepend (?i) to regex e.g. '(?i).*actb.*'\n"
+							+                         "      For case insensitive matching prepend (?i) to regex. E.g. \"next '(?i).*actb.*' myTrack#1\"\n"
 							+ "\n    D i s p l a y\n\n"
-							+ "addTracks [file/url] [file/url] ...\n      Add tracks to set\n" 
 							+ "visible [show regex] [hide regex] [track regex]\n      In annotation tracks, only include rows captured by [show regex] and exclude [hide regex].\n"
-							+                                                   "      Apply to annotation tracks captured by [track regex]. With no optional arguments reset to default: \"'.*' '^$' '.*'\"\n"
-							+                                                   "      Use '.*' to match everything and '^$' to hide nothing. Ex \"visible .*exon.* .*CDS.* .*gtf#.*\"\n"       
+							+                                                   "      Apply to tracks captured by [track regex]. With no optional arguments reset to default: \"'.*' '^$' '.*'\"\n"
+							+                                                   "      Use '.*' to match everything and '^$' to hide nothing. E.g. \"visible .*exon.* .*CDS.* .*gtf#.*\"\n"       
 							+ "trackHeight <int> [track regex]\n      Set track height to int lines for all tracks captured by regex. Default regex: '.*'\n"
-							+ "ylim <min> <max> [track regex]\n      Set limits of y axis for all track IDs captured by regex. Use na to fit to min and/or max. Default: 'na na .*'\n"
+							+ "ylim <min> <max> [track regex]\n      Set limits of y axis for all track IDs captured by regex. Use na to autoscale to min and/or max.\n"
+							+                                 "      E.g. ylim 0 na. If regex is omitted all tracks will be captured. Default: \"ylim na na .*\"\n"
 							+ "dataCol <idx> [regex]\n      Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index.\n"
 							+ "print / printFull\n      Turn on/off the printing of bed/gtf features.\n"
 							+                    "      print clip lines to fit the screen, printFull will wrap the long lines\n"
-							+ "rNameOn / rNameOff\n      Show/Hide read names\n"
+							// + "rNameOn / rNameOff\n      Show/Hide read names\n"
+							+ "showGenome\n      Print the genome file\n"
+							+ "addTracks [file/url]...\n      Add tracks\n" 
 							+ "history\n      Show visited positions\n";
 					System.out.println(inline);
-					System.out.println("\n    M i s c e l l a n e a\n");
+					System.out.println("    M i s c e l l a n e a\n");
 					System.out.println(ArgParse.getDocstrings());
 					System.out.println("q      Quit");
 					System.out.println("See also http://github.com/dariober/Java-cafe/tree/master/SamTextViewer");
@@ -377,10 +380,12 @@ public class Main {
 						|| cmdInput.matches("^\\d+.*")
 						|| cmdInput.matches("^\\-\\d+.*") 
 						|| cmdInput.matches("^\\+\\d+.*")){ // No cmd line args either f/b ops or ints
-						// cmdInput= cmdInput.matches("^\\+.*") ? cmdInput.substring(1) : cmdInput;
 						String newRegion= Utils.parseConsoleInput(cmdInput, gch.current()).trim();
 						GenomicCoords newGc= new GenomicCoords(newRegion, samSeqDict, windowSize, fasta);
-						gch.add(newGc);				
+						gch.add(newGc);	
+					} else if(cmdInput.startsWith("goto") || cmdInput.startsWith(":")){
+						String reg= cmdInput.replaceFirst("goto|:", "").trim();
+						gch.add(new GenomicCoords(reg, samSeqDict, windowSize, fasta));
 					} else if(cmdInput.startsWith("dataCol ")){
 						
 						StrTokenizer str= new StrTokenizer(cmdInput);
@@ -433,18 +438,23 @@ public class Main {
 							GenomicCoords gc= gch.current();
 							gc.setSamSeqDict(samSeqDict);
 						}
-						
 					} else if (cmdInput.equals("p")) {
 						gch.previous();
 					} else if (cmdInput.equals("n")) {
 						gch.next();
-					} else if(cmdInput.equals("zo")){
-						GenomicCoords gc= (GenomicCoords)gch.current().clone();
-						gc.zoomOut();
+					} else if(cmdInput.startsWith("zo")){
+						int nz= Utils.parseZoom(cmdInput, 1);
+						GenomicCoords gc = (GenomicCoords)gch.current().clone();
+						for(int i= 0; i < nz; i++){
+							gc.zoomOut();
+						}
 						gch.add(gc);
-					} else if(cmdInput.equals("zi")){
-						GenomicCoords gc= (GenomicCoords)gch.current().clone();
-						gc.zoomIn();
+					} else if(cmdInput.startsWith("zi")){
+						int nz= Utils.parseZoom(cmdInput, 1);
+						GenomicCoords gc = (GenomicCoords)gch.current().clone();
+						for(int i= 0; i < nz; i++){
+							gc.zoomIn();
+						}
 						gch.add(gc);
 					} else if(cmdInput.equals("history")){
 						for(GenomicCoords x : gch.getHistory()){
@@ -489,14 +499,14 @@ public class Main {
 							cmdInput= null;
 							continue;							
 						}
-
+					} else if(cmdInput.equals("showGenome")) {
+						System.out.println(Utils.printSamSeqDict(gch.current().getSamSeqDict(), 30));
+						cmdInput= null;
+						continue;
 					// Command line options from Argparse
 					} else { 
 						List<String> clArgs= Arrays.asList(cmdInput.split("\\s+"));
-						if(clArgs.indexOf("-r") != -1){
-							int i= clArgs.indexOf("-r") + 1;
-							gch.add(new GenomicCoords(clArgs.get(i), samSeqDict, windowSize, fasta));
-						} else if(clArgs.indexOf("-f") != -1){
+						if(clArgs.indexOf("-f") != -1){
 							int i= clArgs.indexOf("-f") + 1;
 							f_incl= Integer.parseInt(clArgs.get(i));
 						} else if(clArgs.indexOf("-F") != -1){
@@ -511,9 +521,6 @@ public class Main {
 						} else if(clArgs.indexOf("-m") != -1){
 							int i= clArgs.indexOf("-m") + 1;
 							maxLines= Integer.parseInt(clArgs.get(i));
-						//} else if(clArgs.indexOf("-d") != -1){
-						//	int i= clArgs.indexOf("-d") + 1;
-						//	trackHeight= Integer.parseInt(clArgs.get(i));
 						} else if(clArgs.indexOf("-ml") != -1){
 							int i= clArgs.indexOf("-ml") + 1;
 							maxMethylLines= Integer.parseInt(clArgs.get(i));

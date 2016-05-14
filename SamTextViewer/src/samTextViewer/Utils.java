@@ -1,5 +1,7 @@
 package samTextViewer;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -19,6 +21,7 @@ import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -425,16 +428,15 @@ public class Utils {
 	/**Parse the rawInput string in the form ':123-456' to return either
 	 * the first int or both ints. 
 	 * */
-	private static String parseGoToRegion(String rawInput){
-		String[] fromTo= rawInput.trim().replaceAll(",", "").
-								         replaceAll(" ", "").split("-");
+	protected static String parseGoToRegion(String rawInput){
+		String[] fromTo= rawInput.trim().replaceAll(",", "").replaceAll("-", " ").split(" +");
 		if(fromTo.length == 1){
-			Integer.parseInt(fromTo[0]); // Check you actually got an int.
-			return fromTo[0];
+			Integer.parseInt(fromTo[0].trim()); // Check you actually got an int.
+			return fromTo[0].trim();
 		} else {
-			Integer.parseInt(fromTo[0]); // Check you actually got an int.
-			Integer.parseInt(fromTo[1]);
-			return fromTo[0] + "-" + fromTo[1];
+			Integer.parseInt(fromTo[0].trim()); // Check you actually got an int.
+			Integer.parseInt(fromTo[1].trim());
+			return fromTo[0].trim() + "-" + fromTo[1].trim();
 		}
 	}
 	
@@ -658,11 +660,33 @@ public class Utils {
 	    return shifted/magnitude;
 	}
 	
+	/** Convert 000 and 000,000 to k and M suffix. E.g. 1000 -> "1k"; 123000000 -> 123M
+	 * See also roundToSignificantFigures() to round numbers.  
+	 * */
+	public static String parseIntToMetricSuffix(int x){
+		String xint= String.valueOf(x);
+		if(xint.endsWith("000000")){
+			xint= xint.replaceAll("000000$", "M");
+		} else if(xint.endsWith("000")){
+			xint= xint.replaceAll("000$", "k");
+		}
+		return xint;
+	}
+
+	
 	/** Returns true if URL file exists. 
 	 * NB: Returns true also if the url path exists but it's just a directory and not a file! 
 	 * From http://stackoverflow.com/questions/4596447/check-if-file-exists-on-remote-server-using-its-url
 	 * */
 	public static boolean urlFileExists(String URLName){
+
+		try{ // For ftp files
+			InputStream ftp = new URL(URLName).openStream();
+			ftp.close();
+			return true;
+		} catch(Exception e){
+			//
+		}
 		
 	    try {
 	        HttpURLConnection.setFollowRedirects(false);
@@ -697,5 +721,56 @@ public class Utils {
 		}
 		inputFileList.addAll(newFileNames);
 		
+	}
+
+	public static String printSamSeqDict(SAMSequenceDictionary samSeqDict, int graphSize){
+		
+		if(samSeqDict == null || samSeqDict.isEmpty()){
+			return "Sequence dictionary not available.";
+		}
+		
+		// Prepare a list of strings. Each string is a row tab separated
+		List<String> tabList= new ArrayList<String>();
+		int maxChromLen= -1;
+		for(SAMSequenceRecord x : samSeqDict.getSequences()){
+			String row= x.getSequenceName() + "\t" + x.getSequenceLength();
+			tabList.add(row);
+			if(x.getSequenceLength() > maxChromLen){
+				maxChromLen= x.getSequenceLength(); 
+			}
+		}
+		double bpPerChar= (double)maxChromLen / (double)graphSize;
+		for(int i= 0; i < samSeqDict.getSequences().size(); i++){
+			SAMSequenceRecord x= samSeqDict.getSequences().get(i);
+			int n= (int)Math.rint(x.getSequenceLength()/bpPerChar);
+			String bar= String.join("", Collections.nCopies(n, "|"));
+			String row= tabList.get(i) + "\t" + bar;
+			tabList.set(i, row);
+		}
+		List<String> table= Utils.tabulateList(tabList);
+		StringBuilder out= new StringBuilder();
+		for(String x : table){
+			out.append(x).append("\n");
+		}
+		return out.toString().trim();
+	}
+	
+	/** Parse cmdInput to extract the integer after the arg. (see tests)
+	 * @param defaultInt Default value if parsing returns nonsense
+	 * */
+	public static int parseZoom(String cmdInput, int defaultInt) {
+		String[] zz= cmdInput.trim().split(" +");
+		int nz= defaultInt;
+		if(zz.length >= 2){
+			try{
+				nz= Integer.parseInt(zz[1]);
+				if(nz < 0){
+					nz= defaultInt; 
+				}
+			} catch(Exception e){
+				// Leave default
+			}
+		} 
+		return nz;
 	}
 }

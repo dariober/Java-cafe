@@ -9,7 +9,7 @@
   - [Searching features in annotation files](#searching-features-in-annotation-files)
   - [Genome option](#genome-option)
   - [Formatting of reads and features](#formatting-of-reads-and-features)
-- [Supported input files](#supported-input-files)
+- [Supported input](#supported-input)
 - [Tips gotchas and miscellanea](#tips-gotchas-and-miscellanea)
   - [Regular expressions](#regular-expressions)
 - [Requirements and Installation](#requirements-and-installation)
@@ -76,7 +76,9 @@ For visualizing BS-Seq data add the `-bs` flag and provide a reference fasta fil
 <img src="screenshots/exBSmode-2.png" width="450">
 
 
-After starting `SamTextViewer` you can navigate the genome with the following interactive commands. Note that some options can be set either at start time or interactively, e.g. `-r`. 
+After starting `SamTextViewer` you can navigate the genome with the following interactive commands. 
+
+<img src="screenshots/bedCluster.png" width="450">
 
 ## Moving around the genome
 
@@ -96,8 +98,6 @@ p / n
 +/-<int>[k,m]
       Move forward/backward by <int> bases. Suffixes k and m allowed. E.g. -2m or +10k
 ```
-
-To jump directly to a location use the -r option as `-r chr1:1000` or `chr1:1000-2000`
 
 ## Display options
 
@@ -189,15 +189,23 @@ Upper case letters and `.` for read align to forward strand, lower case and `,` 
 grey-shaded reads have mapping quality of <=5. In bisulfite mode the characters M, U, m, u are used for methylated and unmethylated bases on forward and reverse strands.
 
 
-Supported input files
-=====================
+Supported input
+===============
 
-* **bam** files should be sorted and indexed, e.g. with `samtools sort` and `samtools index`. **cram** and sam files are not supported
+* **bam** files should be sorted and indexed, e.g. with `samtools sort` and `samtools index`. 
+  Paths to remote URLs are supported but painfully slow.
 * **bedGraph** recognized by extension `.bedGraph` or `.bedgraph`
-* **bigWig** recognized by extension `.bw` or `.bigWig`
-* **bed**, **gtf**, **gff** recognized by respective extensions
+* **bigWig** recognized by extension `.bw` or `.bigWig`. Remote URLs supported.
+* **bed**, **gtf**, **gff** recognized by respective extensions. Remote URLs supported. 
 * **tdf** This is very useful for quickly displaying very large intervals like tens of megabases or entire chromosomes see [tdf](https://www.broadinstitute.org/igv/TDF)
-* Other extensions: Will be treated as bed files, provided the format is actually bed!
+* Other extensions (e.g. txt, narrowPeak) will be treated as bed files, provided the format is actually bed!
+* Notable formats currently **not** supported:  cram, bigBed, vcf.
+
+To read remote files just use the appropriate URL. *E.g.* to load one of the [ENCODE](http://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/) peak files:
+
+```
+samTextViewer http://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/wgEncodeHaibTfbsA549Ets1V0422111Etoh02PkRep1.broadPeak.gz
+```
 
 All plain text formats (bed, bedgraph, etc) can be read as gzipped and there is no need to decompress them.
 

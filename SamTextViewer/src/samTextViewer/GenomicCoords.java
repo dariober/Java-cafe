@@ -344,30 +344,56 @@ public class GenomicCoords implements Cloneable {
 	}
 	
 	/**
-	 * Produce a string representation of the current position on the chromosome  
+	 * Produce a string representation of the current position on the chromosome
+	 * @param nDist: Distance between labels   
 	 * */
-	public String getChromIdeogram() {
+	public String getChromIdeogram(int nDist) {
+		String SPACER= "-"; // Background character as spacer
+		String TICKED= "*"; // Char to use to mark region
 		if(this.samSeqDict == null || this.samSeqDict.size() == 0){
 			return null;
 		}
-		// Set up map
-		StringBuilder map= new StringBuilder();
-		for(int i= 0; i < this.windowSize; i++){
-			map.append('-');
-		}
-		map.setCharAt(0, '|');
-		map.setCharAt(this.windowSize-1, '|');
-		
-		// Generate a sequence of length equal the window size. Then fid the index of the 
-		// points closest to from and to.
 		List<Double> positionMap = Utils.seqFromToLenOut(1, this.samSeqDict.getSequence(this.chrom).getSequenceLength(), this.windowSize);
+		// This code taken from printableRuler() above.
+		String numberLine= "";
+    	int prevLen= 0;
+    	int j= 0;
+		while(j < positionMap.size()){
+			int num= (int)Math.rint(Utils.roundToSignificantFigures(positionMap.get(j), 2));
+			String posMark= Utils.parseIntToMetricSuffix(num); // String.valueOf(num);
+			if(j == 0){
+				numberLine= posMark;
+				j += posMark.length();
+			} else if((numberLine.length() - prevLen) >= nDist){
+				prevLen= numberLine.length();
+				numberLine= numberLine + posMark;
+				j += posMark.length();
+			} else {
+				numberLine= numberLine + SPACER;
+				j++;
+			}
+		}
+		List<String> map= new ArrayList<String>();
+		for(int i= 0; i < numberLine.length(); i++){
+			map.add(numberLine.charAt(i) +"");
+		}
+		
+		// ------------------
+		
 		int fromTextPos= Utils.getIndexOfclosestValue(this.from, positionMap);
 		int toTextPos= Utils.getIndexOfclosestValue(this.to, positionMap);
 
+		boolean isFirst= true;
+		int lastTick= -1;
 		for(int i= fromTextPos; i <= toTextPos; i++){
-			map.setCharAt(i, '*');
+			if(isFirst || map.get(i).equals(SPACER)){
+				map.set(i, TICKED);
+				isFirst= false;
+			}
+			lastTick= i;
 		}
-		return map.toString();
+		map.set(lastTick, TICKED);
+		return String.join("", map);
 	}
 	
 	/** For debugging only */

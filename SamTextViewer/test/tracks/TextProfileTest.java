@@ -9,7 +9,12 @@ import org.junit.Test;
 
 public class TextProfileTest {
 
-	// @Test
+	@Test
+	public void testNaN(){
+		System.out.println((int)Double.NaN);
+	}
+	
+	@Test
 	public void canSetMinMax(){
 		List<Double> yValues= new ArrayList<Double>();
 		yValues.add((double)1);

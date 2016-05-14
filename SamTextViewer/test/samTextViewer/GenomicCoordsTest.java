@@ -29,24 +29,25 @@ public class GenomicCoordsTest {
 			
 		GenomicCoords gc= new GenomicCoords("chr7", 1, 1, samSeqDict, 10, null);
 		
-		String chromMap= gc.getChromIdeogram();		
-		assertEquals("*--------|", chromMap);
-		
+		String chromMap= gc.getChromIdeogram(10);		
+		assertEquals("*---------", chromMap);
+
+		gc= new GenomicCoords("chr7", 1, 1, samSeqDict, 117, null);
+		chromMap= gc.getChromIdeogram(10);
+		assertEquals(117, chromMap.length());
 		
 		gc= new GenomicCoords("chr7", 1, 1000000000, samSeqDict, 10, null);
-		chromMap= gc.getChromIdeogram();		
+		chromMap= gc.getChromIdeogram(10);		
 		assertEquals("**********", chromMap);
 		
-		
 		gc= new GenomicCoords("chr7", 200000000, 200000000, samSeqDict, 10, null);
-		chromMap= gc.getChromIdeogram();		
-		assertEquals("|--------*", chromMap);
+		chromMap= gc.getChromIdeogram(10);		
+		assertEquals("1--------*", chromMap);
 		
 		
 		gc= new GenomicCoords("chr7", 20000000, 55000000, samSeqDict, 16, null);
-		chromMap= gc.getChromIdeogram();		
-		assertEquals("|-****---------|", chromMap);
-		
+		chromMap= gc.getChromIdeogram(10);
+		assertEquals("1-****----110M--", chromMap);
 	}
 	
 	@Test
@@ -240,8 +241,8 @@ public class GenomicCoordsTest {
 		gc= new GenomicCoords("seq", 1, 120, null, 50, "test_data/seq_cg.fa");
 		TrackWiggles gcCnt= gc.getGCProfile();
 		gcCnt.setyMaxLines(2);
-		String exp= "                                  ::::::::::::::::\n" +
-                    "::::::::::::::::.________________:::::::::::::::::";
+		String exp= "                                     .::::::::::::\n" +
+                    "::::::::::::::::.....____________.::::::::::::::::";
 		assertEquals(exp, gcCnt.printToScreen());
 		System.out.println(gcCnt.getTitle());
 		System.out.println(gcCnt.printToScreen());

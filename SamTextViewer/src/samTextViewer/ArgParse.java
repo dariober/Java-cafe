@@ -34,12 +34,11 @@ public class ArgParse {
 			.nargs("*")
 			.help("Input files. bam/cram must be sorted and indexed. Large bed/gtf files should be indexed with tabix.");
 		
-		docstrings.put("-r", "Go to region. Format 1-based as 'chrom:start-end' or 'chrom:start' or 'chrom'. E.g. chr1:1-1000");
 		parser.addArgument("--region", "-r")
 			.type(String.class)
 			.required(false)
 			.setDefault("")
-			.help(docstrings.get("-r"));
+			.help("Go to region. Format 1-based as 'chrom:start-end' or 'chrom:start' or 'chrom'. E.g. chr1:1-1000");
 
 		parser.addArgument("--genome", "-g")
 			.type(String.class)

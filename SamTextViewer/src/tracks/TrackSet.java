@@ -112,11 +112,16 @@ public class TrackSet {
 			ymax= Double.NaN;
 		}
 
-		if(ymin >= ymax){
-			System.err.println("Warning ymin >= ymax. Resetting to default.");
-			ymin= Double.NaN;
-			ymax= Double.NaN;							
+		if(ymin > ymax){ // Swap
+			Double newMax= ymin;
+			ymin= ymax;
+			ymax= newMax;			
 		}
+		//if(ymin >= ymax){
+		//	System.err.println("Warning ymin >= ymax. Resetting to default.");
+		//	ymin= Double.NaN;
+		//	ymax= Double.NaN;							
+		//}
 		for(Track tr : this.trackSet.values()){
 			if(tr.getFileTag().matches(trackNameRegex)){
 				tr.setYLimitMin(ymin);

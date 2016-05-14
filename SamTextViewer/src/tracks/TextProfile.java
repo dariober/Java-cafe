@@ -21,8 +21,8 @@ class TextProfile {
 	private String strFor2u= ":";
 	private String strForFill= " ";
 	private String strForZero= "_";
-	private String strForZeroTop= " "; // Character.toString ((char) 773); // Upperscore, opposite of _
-	// private String strForNaN= " ";
+	private String strForZeroTop= "~"; // Character.toString ((char) 773); // Upperscore, opposite of _
+	private String strForNaN= " ";
 	
 	/* C o n s t r u c t o r */
 	/**
@@ -32,7 +32,7 @@ class TextProfile {
 	 * If NaN use min and max from yValues  
 	 */
 	public TextProfile(List<Double> yValues, int yMaxLines, Double yMinUser, Double yMaxUser){
-		
+				
 		// * Get ymin and ymax of input yValues
 		Double ymin= Double.NaN;
 		Double ymax= Double.NaN;
@@ -46,7 +46,6 @@ class TextProfile {
 				}
 			}
 		}
-		// * If yMinUser is NaN set it to ymin. Same for yMaxUser  
 		if(yMinUser.isNaN()){
 			yMinUser= ymin;
 		}
@@ -58,6 +57,7 @@ class TextProfile {
 		this.scorePerDot= (double)(yMaxUser - yMinUser) / ((double)yMaxLines * 2); // * 2 because we use ':' for 2 units in a single line.
 
 		// Shift the yValues to zero by subtracting the ymin or ymax.
+		// FIXME: This resetting makes the smallest zero and therefore indistinguishable from "true" zero!
 		double offset= 0;
 		if(yMinUser > 0){
 			offset= yMinUser; 
@@ -66,10 +66,16 @@ class TextProfile {
 			offset= yMaxUser; 
 		}
 		List<Double> yValuesOffset= new ArrayList<Double>();
-		for(double x : yValues){
-			yValuesOffset.add(x - offset);
+		for(double y : yValues){
+			// Here we set to NaN points outside the ylimits and we offset points as necessary
+			if(yMaxUser > 0 && yMinUser < 0){ // ylim include 0. No point excluded
+				yValuesOffset.add(y - offset);
+			} else if ( (yMinUser >= 0 && y < yMinUser) || (yMaxUser <= 0 && y > yMaxUser) ){ // y is outside the ylimits
+				yValuesOffset.add(Double.NaN);
+			} else {
+				yValuesOffset.add(y - offset);
+			}
 		}
-		
 		// Locate zero on y axis. It's silly to generate a sequence just to find the index closest to zero. But anyway...
 		List<Double> yAxis = Utils.seqFromToLenOut(yMinUser, yMaxUser, yMaxLines);
 		int y0= 0;
@@ -93,30 +99,32 @@ class TextProfile {
 	 * @param scorePerDot
 	 * @return
 	 */
-	private List<String> prepareYColumn(double yValue, int yMaxLines, int y0){
+	private List<String> prepareYColumn(Double yValue, int yMaxLines, int y0){
 	
 		Double yPosDotU= Math.abs(yValue / this.scorePerDot); // Y positions in dot units, not line units. 
-		if((int)Math.rint(yPosDotU) == 0){ // For zero coverage
+		if((int)Math.rint(yPosDotU) == 0){ // For zero coverage. NB: (int)Double.NaN == 0
 			ArrayList<String> strDepth= new ArrayList<String>();
 			for(int j= 0; j < yMaxLines; j++){
 				strDepth.add(strForFill);
-			}			
-			if(y0 < yMaxLines-1 || yMaxLines == 1){
+			}
+			if(yValue.isNaN()){
+				strDepth.set(y0, this.strForNaN);
+			} else if(y0 < yMaxLines-1 || yMaxLines == 1){
 				strDepth.set(y0, this.strForZero);
 			} else {
 				strDepth.set(y0, this.strForZeroTop);
 			}
 			return strDepth;
 		} else if(yValue < 0){
-			return pileForNegative(yValue, yMaxLines, y0, scorePerDot);
+			return pileForNegative(yValue, yMaxLines, y0);
 		} else if(yValue > 0){
-			return pileForPositive(yValue, yMaxLines, y0, scorePerDot);
+			return pileForPositive(yValue, yMaxLines, y0);
 		} else {
 			throw new RuntimeException("Unexpected exception");
 		}
 	}
 	
-	private List<String> pileForPositive(double yValue, int yMaxLines, int y0, double scorePerDot){
+	private List<String> pileForPositive(double yValue, int yMaxLines, int y0){
 
 		ArrayList<String> strDepth= new ArrayList<String>(); // This will be a vertical bar
 		for(int j= 0; j < yMaxLines; j++){
@@ -126,10 +134,10 @@ class TextProfile {
 		double currentScore= 0;
 		while(true){
 			if(pos >= strDepth.size()) break;
-			if((yValue - currentScore) > scorePerDot * 1.5){ // Add double
+			if((yValue - currentScore) > this.scorePerDot * 1.5){ // Add double
 				strDepth.set(pos, this.strFor2u);
-				currentScore += 2 * scorePerDot;
-			} else if((yValue - currentScore) > scorePerDot * 0.5){
+				currentScore += 2 * this.scorePerDot;
+			} else if((yValue - currentScore) > this.scorePerDot * 0.5){
 				strDepth.set(pos, this.strFor1u);
 				break;
 			} else {
@@ -140,7 +148,7 @@ class TextProfile {
 		return strDepth;
 	}
 	
-	private List<String> pileForNegative(double yValue, int yMaxLines, int y0, double scorePerDot){
+	private List<String> pileForNegative(double yValue, int yMaxLines, int y0){
 		
 		ArrayList<String> strDepth= new ArrayList<String>(); // This will be a vertical bar
 		for(int j= 0; j < yMaxLines; j++){
@@ -150,16 +158,16 @@ class TextProfile {
 		double currentScore= 0;
 		if(y0 < strDepth.size()-1){ // First char is 1u, unless all the values are negative and the zero is on the top
 			strDepth.set(y0, this.strFor1stNegU);
-			currentScore= 1 * scorePerDot;
+			currentScore= 1 * this.scorePerDot;
 			pos= y0-1;
 		}
 		while(true){
 			if(pos < 0) break;
 			
-			if((-yValue - currentScore) > scorePerDot * 1.5){ // Add double
+			if((-yValue - currentScore) > this.scorePerDot * 1.5){ // Add double
 				strDepth.set(pos, this.strFor2u);
-				currentScore += 2 * scorePerDot;
-			} else if((-yValue - currentScore) > scorePerDot * 0.5){
+				currentScore += 2 * this.scorePerDot;
+			} else if((-yValue - currentScore) > this.scorePerDot * 0.5){
 				strDepth.set(pos, this.strFor1uRev);
 				break;
 			} else {
@@ -190,10 +198,12 @@ class TextProfile {
 			for(int i= 0; i <= y0; i++){
 				String x= strDepth.get(i);
 				if(i == y0){
-					if(!x.equals(this.strForZero) && !x.equals(this.strFor1u) && !x.equals(this.strFor2u)){
-						String msg= "y0= " + y0 + "; yValue= " + yValue + "; Unexpected char in column bar. Got \"" + x + "\"" + "; Bar:\n" + strDepth;
-						throw new RuntimeException(msg);
-					}
+					//if(!x.equals(this.strForZero) && !x.equals(this.strFor1u) && !x.equals(this.strFor2u) && !x.equals(this.strForFill)){
+					//	String msg= "y0= " + y0 + "; yValue= " + yValue 
+					//			+ "; Unexpected char in column bar. Got \"" + x + "\"" 
+					//			+ "; Bar:\n" + strDepth;
+					//	throw new RuntimeException(msg);
+					//}
 				} else if(!x.equals(this.strForFill)){
 					String msg= "y0= " + y0 + "; yValue= " + yValue + "; Unexpected char in column bar. Got \"" + x + "\"" + "; Bar:\n" + strDepth;
 					throw new RuntimeException(msg);
