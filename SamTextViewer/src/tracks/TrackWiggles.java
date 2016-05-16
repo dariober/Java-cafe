@@ -33,6 +33,7 @@ public class TrackWiggles extends Track {
 	private List<ScreenWiggleLocusInfo> screenWiggleLocusInfoList;
 	private int bdgDataColIdx= 4; 
 	private BBFileReader bigWigReader;
+	
 	/* C o n s t r u c t o r s */
 
 	/**

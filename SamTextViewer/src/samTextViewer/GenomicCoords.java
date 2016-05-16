@@ -179,6 +179,14 @@ public class GenomicCoords implements Cloneable {
 
 	public void correctCoordsAgainstSeqDict(SAMSequenceDictionary samSeqDict){
 		
+		if(samSeqDict == null || samSeqDict.size() == 0){
+			// Just check start pos
+			if (this.from <=0 ){
+				this.from= 1;
+			}			
+			return;
+		}
+		
 		if(this.chrom == null){ // Nothing to do
 			return;
 		}
@@ -646,6 +654,26 @@ public class GenomicCoords implements Cloneable {
 		return cgWiggle;
 	}
 
+	public void centerAndExtendGenomicCoords(GenomicCoords gc, int size, double slop) throws InvalidGenomicCoordsException {
+		
+		if(size <= 0){
+			System.err.println("Invalid feature size. Must be > 0, got " + size);
+			throw new InvalidGenomicCoordsException();
+		}
+		
+		double center= (size/2.0) + gc.getFrom();
+		gc.from= (int)Math.rint(center - (size * slop));
+		gc.to= (int)Math.rint(center + (size * slop));
+		
+		if(((gc.to - gc.from)+1) < gc.windowSize){
+			int span= (gc.to - gc.from);
+			int extendBy= (int)Math.rint((gc.windowSize / 2.0) - (span / 2.0));
+			gc.from -= extendBy;
+			gc.to += extendBy;
+		}
+		gc.correctCoordsAgainstSeqDict(samSeqDict);
+	}
+
 	
 	/* Getters and setters */
 	
@@ -690,4 +718,5 @@ public class GenomicCoords implements Cloneable {
 	public String getGcProfileFileTag(){
 		return this.gcProfileFileTag;
 	}
+
 }

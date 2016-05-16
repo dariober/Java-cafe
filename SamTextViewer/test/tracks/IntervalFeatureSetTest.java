@@ -105,27 +105,27 @@ public class IntervalFeatureSetTest {
 		
 		IntervalFeatureSet set= new IntervalFeatureSet("test_data/refSeq.hg19.short.sort-2.bed");
 		
-		IntervalFeature x = set.findNextRegexOnChrom(".*NM_.*", "chr1", 20000000);
+		IntervalFeature x = set.findNextRegexInGenome(".*NM_.*", "chr1", 20000000);
 		assertTrue(x.getRaw().contains("NM_013943_utr3_5_0_chr1_25167429_f"));
-		x = set.findNextRegexOnChrom(".*NM_.*", "chr1", 80000000);
+		x = set.findNextRegexInGenome(".*NM_.*", "chr1", 80000000);
 		assertTrue(x.getRaw().contains("NM_001080397_utr3_8_0_chr1_8404074_f"));
 		
-		x = set.findNextRegexOnChrom("NotPresent", "chr1", 1);
+		x = set.findNextRegexInGenome("NotPresent", "chr1", 1);
 		assertEquals(null, x);
 		
 		// Tabix
 		set= new IntervalFeatureSet("test_data/refSeq.hg19.short.sort.bed.gz");
-		x = set.findNextRegexOnChrom(".*NM_.*", "chr1", 20000000);
+		x = set.findNextRegexInGenome(".*NM_.*", "chr1", 20000000);
 		assertTrue(x.getRaw().contains("NM_013943_utr3_5_0_chr1_25167429_f"));
-		x = set.findNextRegexOnChrom(".*NM_.*", "chr1", 80000000);
+		x = set.findNextRegexInGenome(".*NM_.*", "chr1", 80000000);
 		assertTrue(x.getRaw().contains("NM_001080397_utr3_8_0_chr1_8404074_f"));
 	
 		set= new IntervalFeatureSet("test_data/refSeq.hg19.short.sort-2.bed");
-		x = set.findNextRegexOnChrom(".*NM_.*", "chr1", 20000000);
+		x = set.findNextRegexInGenome(".*NM_.*", "chr1", 20000000);
 		int i= 0;
 		while(i < 20){
 			// System.out.println(x);
-			x = set.findNextRegexOnChrom(".*NM_.*", x.getChrom(), x.getFrom());
+			x = set.findNextRegexInGenome(".*NM_.*", x.getChrom(), x.getFrom());
 			assertTrue(x.getRaw().contains("NM_"));
 			i++;
 		}
@@ -169,6 +169,33 @@ public class IntervalFeatureSetTest {
 		gc= new GenomicCoords("chr1:100000000-101000000", null, 100, null);
 		newGc= set.coordsOfNextFeature(gc);
 		assertEquals(gc, newGc);
+	}
+	
+	@Test
+	public void canFindAllRegex() throws IOException, InvalidGenomicCoordsException{
+		
+		IntervalFeatureSet set= new IntervalFeatureSet("test_data/hg19_genes_head.gtf");
+		GenomicCoords gc= new GenomicCoords("chr18:1-10000", null, 100, null);
+		GenomicCoords matched = set.genomicCoordsAllChromRegexInGenome(".*\"WASH7P\".*", gc);
+		assertEquals("chr1", matched.getChrom());
+		assertEquals(14362, (int)matched.getFrom());
+		assertEquals(29370, (int)matched.getTo());
+		
+		// With tabix
+		set= new IntervalFeatureSet("test_data/hg19_genes_head.gtf.gz");
+		gc= new GenomicCoords("chr18:1-10000", null, 100, null);
+		matched = set.genomicCoordsAllChromRegexInGenome(".*\"WASH7P\".*", gc);
+		assertEquals("chr1", matched.getChrom());
+		assertEquals(14362, (int)matched.getFrom());
+		assertEquals(29370, (int)matched.getTo());
+		
+		// No match
+		set= new IntervalFeatureSet("test_data/hg19_genes_head.gtf.gz");
+		gc= new GenomicCoords("chr18:1-10000", null, 100, null);
+		matched = set.genomicCoordsAllChromRegexInGenome(".*\"FOOBAR\".*", gc);
+		assertEquals("chr18", matched.getChrom());
+		assertEquals(1, (int)matched.getFrom());
+		assertEquals(10000, (int)matched.getTo());
 	}
 	
 	@Test
@@ -237,7 +264,7 @@ chr1	67208778	67216822	NM_001308203_utr3_21_0_chr1_67208779_f	0	+
 		System.out.println(set.getIntervalMap().get("chr1").get(0));
 	}
 	
-	@Test
+	//@Test
 	public void canReadFromURL() throws IOException{
 		String urlStr= "http://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/wgEncodeHaibTfbsA549Atf3V0422111Etoh02PkRep1.broadPeak.gz";
 		

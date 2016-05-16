@@ -133,7 +133,7 @@ public class Main {
 		for(String x : inputFileList){
 			console.addCompleter(new StringsCompleter(new File(x).getName()));
 		}
-		for(String x : "next goto find showGenome addTracks visible trackHeight ylim dataCol print printFull rNameOn rNameOff history".split(" ")){
+		for(String x : "next next_start goto find_next find_all showGenome addTracks visible trackHeight ylim dataCol print printFull rNameOn rNameOff history".split(" ")){
 			// Add options. Really you should use a dict for this.
 			if(x.length() > 2){
 				console.addCompleter(new StringsCompleter(x));
@@ -332,34 +332,56 @@ public class Main {
 				}
 				
 				if(cmdInput == null || cmdInput.equals("h")){
-					String inline= "\n    N a v i g a t i o n\n\n"
-							+ "f / b \n      Small step forward/backward 1/10 window\n"
-							+ "ff / bb\n      Large step forward/backward 1/2 window\n"
-							+ "zi / zo [x]\n      Zoom in / zoom out x times (default x= 1). Each zoom halves or doubles the window size\n"
-							+ "goto chrom:from-to\n      Go to given region. E.g. \"goto chr1:1-1000\" or chr1:10 or chr1. goto keyword can be replaced with ':' (like goto in vim)\n"
-							+ "<from> [to]\n      Go to position <from> or to region \"from to\" on current chromosome. E.g. 10 or \"10 1000\" or \"10-1000\"\n" 
-							+ "+/-<int>[k,m]\n      Move forward/backward by <int> bases. Suffixes k (kilo) and M (mega) allowed. E.g. -2m or +10k\n"
-							+ "p / n\n      Go to previous/next visited position\n"
-							+ "\n    S e a r c h\n\n"
-							+ "next <trackId>\n      Move to the next feature in <trackId> on *current* chromosome\n"
-							+ "find <regex> [trackId]\n      Find the next record in trackId matching regex. Use single quotes for strings containing spaces.\n"
-							+                         "      For case insensitive matching prepend (?i) to regex. E.g. \"next '(?i).*actb.*' myTrack#1\"\n"
-							+ "\n    D i s p l a y\n\n"
-							+ "visible [show regex] [hide regex] [track regex]\n      In annotation tracks, only include rows captured by [show regex] and exclude [hide regex].\n"
-							+                                                   "      Apply to tracks captured by [track regex]. With no optional arguments reset to default: \"'.*' '^$' '.*'\"\n"
-							+                                                   "      Use '.*' to match everything and '^$' to hide nothing. E.g. \"visible .*exon.* .*CDS.* .*gtf#.*\"\n"       
-							+ "trackHeight <int> [track regex]\n      Set track height to int lines for all tracks captured by regex. Default regex: '.*'\n"
-							+ "ylim <min> <max> [track regex]\n      Set limits of y axis for all track IDs captured by regex. Use na to autoscale to min and/or max.\n"
-							+                                 "      E.g. ylim 0 na. If regex is omitted all tracks will be captured. Default: \"ylim na na .*\"\n"
-							+ "dataCol <idx> [regex]\n      Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index.\n"
-							+ "print / printFull\n      Turn on/off the printing of bed/gtf features.\n"
-							+                    "      print clip lines to fit the screen, printFull will wrap the long lines\n"
-							// + "rNameOn / rNameOff\n      Show/Hide read names\n"
-							+ "showGenome\n      Print the genome file\n"
-							+ "addTracks [file/url]...\n      Add tracks\n" 
-							+ "history\n      Show visited positions\n";
+String inline= "\n    N a v i g a t i o n\n\n"
++ "f / b \n"
++ "      Small step forward/backward 1/10 window\n"
++ "ff / bb\n"
++ "zi / zo [x]\n"
++ "      Zoom in / zoom out x times (default x= 1). Each zoom halves or doubles the window size\n"
++ "      Large step forward/backward 1/2 window\n"
++ "goto chrom:from-to\n"
++ "      Go to given region. E.g. \"goto chr1:1-1000\" or chr1:10 or chr1. goto keyword can be replaced with ':' (like goto in vim)\n"
++ "<from> [to]\n"
++ "      Go to position <from> or to region \"from to\" on current chromosome. E.g. 10 or \"10 1000\" or \"10-1000\"\n" 
++ "+/-<int>[k,m]\n"
++ "      Move forward/backward by <int> bases. Suffixes k (kilo) and M (mega) allowed. E.g. -2m or +10k\n"
++ "p / n\n"
++ "      Go to previous/next visited position\n"
++ "next / next_start [trackId]\n"
++ "      Move to the next feature in trackId on *current* chromosome\n"
++ "      'next' centers the window on the found feature while 'next_start' sets the window at the start of the feature.\n"
+
++ "\n    F i n d  \n\n"
++ "find_next <regex> [trackId]\n"
++ "      Find the next record in trackId matching regex. Use single quotes for strings containing spaces.\n"
++ "      For case insensitive matching prepend (?i) to regex. E.g. \"next '(?i).*actb.*' myTrack#1\"\n"
++ "find_all <regex> [trackId]\n"
++ "      Find all matches on chromosome. The search stops at the first chromosome returning hits\n"
++ "      starting with the current one. Useful to get all gtf records of a gene\n"
+
++ "\n    D i s p l a y  \n\n"
++ "visible [show regex] [hide regex] [track regex]\n"
++ "      In annotation tracks, only include rows captured by [show regex] and exclude [hide regex].\n"
++ "      Apply to tracks captured by [track regex]. With no optional arguments reset to default: \"'.*' '^$' '.*'\"\n"
++ "      Use '.*' to match everything and '^$' to hide nothing. E.g. \"visible .*exon.* .*CDS.* .*gtf#.*\"\n"       
++ "trackHeight <int> [track regex]\n"
++ "      Set track height to int lines for all tracks captured by regex. Default regex: '.*'\n"
++ "ylim <min> <max> [track regex]\n"
++ "      Set limits of y axis for all track IDs captured by regex. Use na to autoscale to min and/or max.\n"
++ "      E.g. ylim 0 na. If regex is omitted all tracks will be captured. Default: \"ylim na na .*\"\n"
++ "dataCol <idx> [regex]\n"
++ "      Select data column for all bedgraph tracks captured by regex. <idx>: 1-based column index.\n"
++ "print / printFull\n"
++ "      Turn on/off the printing of bed/gtf features.\n"
++ "      print clip lines to fit the screen, printFull will wrap the long lines\n"
++ "showGenome\n"
++ "      Print the genome file\n"
++ "addTracks [file or url]...\n"
++ "      Add tracks\n" 
++ "history\n"
++ "      Show visited positions\n";
 					System.out.println(inline);
-					System.out.println("    M i s c e l l a n e a\n");
+					System.out.println("    A l i g n m e n t s\n");
 					System.out.println(ArgParse.getDocstrings());
 					System.out.println("q      Quit");
 					System.out.println("See also http://github.com/dariober/Java-cafe/tree/master/SamTextViewer");
@@ -473,15 +495,18 @@ public class Main {
 						withReadName= true;
 					} else if(cmdInput.toLowerCase().equals("rnameoff")) {
 						withReadName= false;
-					} else if(cmdInput.startsWith("next ") || cmdInput.equals("next")){
+					} else if(cmdInput.startsWith("next_start ") || cmdInput.equals("next_start")){
 						GenomicCoords gc= (GenomicCoords)gch.current().clone();
-						gch.add(trackSet.goToNextFeatureOnFile(cmdInput.replace("next", "").trim(), gc));
-					} else if(cmdInput.startsWith("find ")) {  
+						gch.add(trackSet.goToNextFeatureOnFile(cmdInput.replace("next_start", "").trim(), gc, -1.0));
+					} else if(cmdInput.startsWith("next ") || cmdInput.equals("next")){
+							GenomicCoords gc= (GenomicCoords)gch.current().clone();
+							gch.add(trackSet.goToNextFeatureOnFile(cmdInput.replace("next", "").trim(), gc, 5.0));
+					} else if(cmdInput.startsWith("find_next ") || cmdInput.startsWith("find_all ")) {  
 						StrTokenizer str= new StrTokenizer(cmdInput);
 						str.setQuoteChar('\'');
 						List<String> tokens= str.getTokenList();
 						if(tokens.size() < 2){
-							System.err.println("Error in 'find' subcommand. Expected at least 2 args got: " + cmdInput);
+							System.err.println("Error in find* subcommand. Expected at least 2 args got: " + cmdInput);
 							cmdInput= null;
 							continue;
 						}
@@ -489,7 +514,8 @@ public class Main {
 							tokens.add("");
 						}
 						GenomicCoords gc= (GenomicCoords)gch.current().clone();
-						gch.add(trackSet.findNextStringOnTrack(tokens.get(1), tokens.get(2), gc));
+						boolean all= cmdInput.startsWith("find_all ") ? true : false; 
+						gch.add(trackSet.findNextRegexOnTrack(tokens.get(1), tokens.get(2), gc, all));
 						
 					} else if(cmdInput.startsWith("visible ") || cmdInput.equals("visible")){
 						try{

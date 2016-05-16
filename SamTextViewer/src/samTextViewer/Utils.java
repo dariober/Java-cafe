@@ -733,7 +733,7 @@ public class Utils {
 		List<String> tabList= new ArrayList<String>();
 		int maxChromLen= -1;
 		for(SAMSequenceRecord x : samSeqDict.getSequences()){
-			String row= x.getSequenceName() + "\t" + x.getSequenceLength();
+			String row= x.getSequenceName() + "\t" + x.getSequenceLength();			
 			tabList.add(row);
 			if(x.getSequenceLength() > maxChromLen){
 				maxChromLen= x.getSequenceLength(); 

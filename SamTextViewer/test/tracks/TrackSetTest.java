@@ -32,7 +32,7 @@ public class TrackSetTest {
 		// assertEquals(0, ts.getTrackSet().get("#20").getYmin(), 0.001);
 		// assertEquals(10, ts.getTrackSet().get("#1").getYmax(), 0.001);
 	}
-	
+		
 	@Test
 	public void canSetTrackHeight() throws InvalidCommandLineException, IOException, InvalidGenomicCoordsException{
 				

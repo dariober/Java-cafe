@@ -123,7 +123,7 @@ public class TrackIntervalFeature extends Track {
 			// Find a read in input whose start is greater then end of current
 			for(int i=0; i < flatList.size(); i++){
 				IntervalFeature intervalFeature= flatList.get(i);
-				int gap= (this.getGc().getBpPerScreenColumn() > 1) ? 0 : 1; // If reads are very compressed, do not add space between adjacent ones.
+				int gap= 1; // Add a space between book-end features
 				if(intervalFeature.getScreenFrom() > line.get(line.size()-1).getScreenTo()+gap){ // +2 because we want some space between adjacent reads
 					listOfLines.get(listOfLines.size()-1).add(intervalFeature); // Append to the last line. 
 					trToRemove.add(intervalFeature);

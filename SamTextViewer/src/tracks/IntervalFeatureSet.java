@@ -264,9 +264,10 @@ public class IntervalFeatureSet {
 		return chromsStartingAt;
 	}
 	
-	/** Search chrom to find the *next* feature matching the given string. The search will 
-	 * wrap around the chrom if not found in the chunk following "from". */
-	protected IntervalFeature findNextRegexOnChrom(String regex, String chrom, int from) throws IOException{
+	/** Searching the current chrom starting at "from" to find the *next* feature matching the given string. 
+	 * If not found, search the other chroms, if not found restart from the beginning of
+	 * the current chrom until the "from" position is reached. */
+	protected IntervalFeature findNextRegexInGenome(String regex, String chrom, int from) throws IOException{
 		
 		if(this.intervalMap != null){
 	
@@ -289,7 +290,7 @@ public class IntervalFeatureSet {
 			} return null; // Not found anywhere
 
 		} else if(this.isTabix){
-			
+		
 			int startingPoint= from;
 			List<String> chromSearchOrder = getChromListStartingAt(this.tabixReader.getChromosomes(), chrom);
 			chromSearchOrder.add(chrom);
@@ -312,9 +313,92 @@ public class IntervalFeatureSet {
 		return null;
 	}
 	
+	/** Find all the feature matching regex.
+	 * Only the feature on one chromosome are returned and this chromsome is the first one to have a match.
+	 * The search starts from the beginning of the current chrom and if nothing is found continues
+	 * to the other chroms. 
+	 * @throws InvalidGenomicCoordsException */
+	private List<IntervalFeature> findAllChromRegexInGenome(String regex, GenomicCoords currentGc) throws IOException, InvalidGenomicCoordsException{
+		
+		// Accumulate features here
+		List<IntervalFeature> matchedFeatures= new ArrayList<IntervalFeature>(); 
+
+		// We start search from input chrom
+		List<String> chromSearchOrder= null;
+		if(this.intervalMap != null){
+			chromSearchOrder = getChromListStartingAt(this.intervalMap.keySet(), currentGc.getChrom());
+		} else if (this.isTabix){
+			chromSearchOrder = getChromListStartingAt(this.tabixReader.getChromosomes(), currentGc.getChrom());
+		} else {
+			throw new RuntimeException("Cannot init chroms");
+		}
+		
+		chromSearchOrder.add(currentGc.getChrom());		
+		for(String curChrom : chromSearchOrder){
+		
+			if(this.intervalMap != null){
+				List<IntervalFeature> featuresList = this.intervalMap.get(curChrom);
+				for(IntervalFeature x : featuresList){
+					if(x.getRaw().matches(regex) && this.featureIsVisible(x)){ 
+						matchedFeatures.add(x);
+					}
+				}
+			} else if(this.isTabix){
+				Iterator iter = this.tabixReader.query(curChrom , 0, Integer.MAX_VALUE);
+				while(true){
+					String line= iter.next();
+					if(line == null) break;
+					if(line.matches(regex)){
+						IntervalFeature x= new IntervalFeature(line, this.type);
+						if(this.featureIsVisible(x)){
+							matchedFeatures.add(x);
+						}
+					}
+				}
+			}
+			if(matchedFeatures.size() > 0){
+				// At least one feature matching regex found on this chrom.
+				// Chech we are at the same position as the beginning. if so, continue to other chroms
+				if(matchedFeatures.get(0).getChrom().equals(currentGc.getChrom()) && 
+				   matchedFeatures.get(0).getFrom() == currentGc.getFrom() &&
+				   matchedFeatures.get(matchedFeatures.size()-1).getTo() == currentGc.getTo()){
+				   // Discard results and keep searching other chroms.
+					matchedFeatures= new ArrayList<IntervalFeature>();
+				} else {
+					break;
+				}
+			}
+		} // Loop chrom
+		return matchedFeatures;
+	}
+	
+	/** Execute findAllChromRegexInGenome() and return the extreme coordinates of the matched features */
+	protected GenomicCoords genomicCoordsAllChromRegexInGenome(String regex, GenomicCoords currentGc) throws IOException, InvalidGenomicCoordsException{
+
+		List<IntervalFeature> matchedFeatures = findAllChromRegexInGenome(regex, currentGc);
+		
+		if(matchedFeatures.size() == 0){
+			return currentGc;
+		}
+		
+		// Now get the coords of the first and last feature matched.
+		String chrom= matchedFeatures.get(0).getChrom();
+		int startFrom= matchedFeatures.get(0).getFrom();
+		int endTo= matchedFeatures.get(matchedFeatures.size()-1).getTo();
+		GenomicCoords allMatchesGc= new GenomicCoords(
+				chrom, 
+				startFrom, 
+				endTo, 
+				currentGc.getSamSeqDict(),
+				currentGc.getUserWindowSize(),
+				currentGc.getFastaFile());
+		return allMatchesGc;
+		
+	}
+	
 	public GenomicCoords findNextRegex(GenomicCoords currentGc, String regex) throws IOException, InvalidGenomicCoordsException{
 
-		IntervalFeature nextFeature= findNextRegexOnChrom(regex, currentGc.getChrom(), currentGc.getTo());
+		IntervalFeature nextFeature= findNextRegexInGenome(regex, currentGc.getChrom(), currentGc.getTo());
 		if(nextFeature == null){
 			return currentGc;
 		}
@@ -327,7 +411,25 @@ public class IntervalFeatureSet {
 				currentGc.getFastaFile());
 		return nextGc;
 	}
+
+	protected GenomicCoords startEndOfNextFeature(GenomicCoords currentGc) throws InvalidGenomicCoordsException, IOException {
+		IntervalFeature nextFeature= getNextFeatureOnChrom(currentGc.getChrom(), currentGc.getTo());
+		if(nextFeature == null){
+			return currentGc;
+		}
+		GenomicCoords nextGc= new GenomicCoords(
+				nextFeature.getChrom(), 
+				nextFeature.getFrom(), 
+				nextFeature.getTo(), 
+				currentGc.getSamSeqDict(),
+				currentGc.getUserWindowSize(),
+				currentGc.getFastaFile());
+		return nextGc;		
+	}
 	
+	/**Return the coordinates of the next feature so that the start coincide with the start of the feature and
+	 * the end is the start + windowSize.  
+	 * */
 	public GenomicCoords coordsOfNextFeature(GenomicCoords currentGc) throws InvalidGenomicCoordsException, IOException {
 		IntervalFeature nextFeature= getNextFeatureOnChrom(currentGc.getChrom(), currentGc.getTo());
 		if(nextFeature == null){

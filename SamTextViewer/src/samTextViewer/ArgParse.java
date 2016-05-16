@@ -73,7 +73,7 @@ public class ArgParse {
 			.setDefault(0)
 			.help(docstrings.get("-q"));
 		
-		docstrings.put("-m", "Maximum number of lines to print for read tracks. No limit If < 0");
+		docstrings.put("-m", "Maximum number of lines to print for read tracks.");
 		parser.addArgument("--maxLines", "-m")
 			.type(Integer.class)
 			.setDefault(10)

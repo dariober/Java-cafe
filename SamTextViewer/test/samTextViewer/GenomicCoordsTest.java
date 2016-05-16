@@ -10,6 +10,7 @@ import java.util.List;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import tracks.TrackSet;
 import tracks.TrackWiggles;
 
 import org.junit.Test;
@@ -247,5 +248,26 @@ public class GenomicCoordsTest {
 		System.out.println(gcCnt.getTitle());
 		System.out.println(gcCnt.printToScreen());
 	}
-			
+
+	@Test
+	public void canCenterAndExtendGenomicCoords() throws InvalidGenomicCoordsException, IOException{
+		GenomicCoords gc= new GenomicCoords("chr1", 10000, 20000, null, 100, null);
+		int size= 100;
+		double slop= 5.0;
+		gc.centerAndExtendGenomicCoords(gc, size, slop);
+		assertEquals(9550, (int)gc.getFrom());
+		assertEquals(10550, (int)gc.getTo());
+		
+		gc= new GenomicCoords("chr1", 10000, 20000, null, 100, null);
+		size= 3;
+		gc.centerAndExtendGenomicCoords(gc, size, 3.3); // Extended size smaller then windowSize
+		assertTrue(gc.getUserWindowSize() <= gc.getGenomicWindowSize());
+		
+		gc= new GenomicCoords("chr1", 1, 300, null, 100, null);
+		size= 100;
+		gc.centerAndExtendGenomicCoords(gc, size, 5.0); 
+		assertEquals(1, (int)gc.getFrom());
+
+	}
+
 }
